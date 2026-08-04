@@ -32,7 +32,7 @@ function isAuthDisabled() {
   return false
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Optional global switch to turn off auth quickly in dev
@@ -77,7 +77,7 @@ export function middleware(request: NextRequest) {
   if (!isAuthed) {
     // Check for valid PDF token — allows Puppeteer to render invoice without login
     const pdfToken = request.nextUrl.searchParams.get("pdfToken")
-    if (pdfToken && verifyPdfToken(pdfToken)) {
+    if (pdfToken && (await verifyPdfToken(pdfToken))) {
       return NextResponse.next()
     }
     const loginUrl = new URL("/", request.url)
