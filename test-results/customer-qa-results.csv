@@ -1,0 +1,14 @@
+TestCaseID,Area,TestCase,Steps,Expected,Actual,Status,Priority,Timestamp
+"TC_001","Environment","Application Accessibility","1. Navigate to /customers page","Page loads successfully with status 200","Status: 0, Time: 0s","FAIL","Critical","2025-09-21T13:15:31.665Z"
+"TC_002","Environment","New Customer Form Access","1. Navigate to /customers/new page","Form page loads successfully with status 200","Status: 0, Time: 0s","FAIL","Critical","2025-09-21T13:15:31.673Z"
+"TC_003","Environment","Customer API Endpoint","1. GET /api/customers","API responds with valid JSON structure and status 200","Status: 0, Data: Invalid/No JSON","FAIL","Critical","2025-09-21T13:15:31.682Z"
+"TC_004","Validation","Required Fields Validation","1. Submit POST /api/customers with empty data","API returns 400 error with validation message","Status: 0, Message: No error message","FAIL","High","2025-09-21T13:15:31.693Z"
+"TC_005","Validation","Phone Number Validation","1. Submit POST with invalid phone (12345)","API rejects with 400 and phone validation error","Status: 0, Message: undefined","FAIL","High","2025-09-21T13:15:31.707Z"
+"TC_006","Validation","Email Validation","1. Submit POST with invalid email (test@)","API rejects with 400 and email validation error","Status: 0, Message: undefined","FAIL","High","2025-09-21T13:15:31.719Z"
+"TC_007","Validation","Pincode Validation","1. Submit POST with invalid pincode (123)","API rejects with 400 and pincode validation error","Status: 0, Message: undefined","FAIL","High","2025-09-21T13:15:31.728Z"
+"TC_008","Security","XSS Protection","1. Submit POST with XSS payload in name field","API sanitizes input or rejects with security error","Status: 0, Sanitized: No","FAIL","High","2025-09-21T13:15:31.737Z"
+"TC_009","CRUD Operations","Customer Creation - Valid Data","1. POST /api/customers with valid test data
+2. Data: {""name"":""Baapu boy"",""phone"":""+91 7878787890"",""whatsapp"":""+91 7878787890"",""email"":""info@safawalaa.com"",""address"":""Vadodara, gujarat."",""pincode"":""390012"",""city"":""Vadodara"",""state"":""Gujarat"",""notes"":""functional QA test""}","Status 200/201, customer created with ID returned","Status: 0, Success: undefined, ID: undefined","FAIL","Critical","2025-09-21T13:15:31.745Z"
+"TC_010","Performance","API Response Time","1. Measure GET /api/customers response time","Should respond within 2 seconds","Response time: 7ms (0s)","PASS","Medium","2025-09-21T13:15:31.753Z"
+"TC_011","Error Handling","Malformed JSON Handling","1. POST with malformed JSON","Should return 400 with proper error message","Status: 0","FAIL","Medium","2025-09-21T13:15:31.760Z"
+"TC_012","Error Handling","Non-existent Resource","1. GET /api/customers/nonexistent","Should return 404","Status: 0","FAIL","Low","2025-09-21T13:15:31.768Z"

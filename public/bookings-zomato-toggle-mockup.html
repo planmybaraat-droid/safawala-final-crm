@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookings — Zomato-style toggle mockup</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
+    --rental:#059669; --rental-light:#ecfdf5;
+    --sale:#d97706; --sale-light:#fffbeb;
+    --accent:#4f46e5;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  .wrap{max-width:1160px;margin:0 auto;padding:24px;}
+
+  .topbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;margin-bottom:18px;}
+  .topbar h1{font-size:22px;font-weight:700;margin:0;}
+  .topbar p{margin:2px 0 0;font-size:13px;color:var(--muted);}
+  .right{justify-self:end;}
+  .btn{border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;}
+
+  /* Zomato-style veg/non-veg switch */
+  .zomato{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 8px 6px 14px;}
+  .zomato .label{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--muted);transition:color .2s ease;}
+  .zomato .label.rental-txt{color:var(--rental);}
+  .zomato .label.sale-txt{color:var(--sale);}
+  .zswitch{position:relative;width:56px;height:30px;border-radius:999px;background:var(--rental);cursor:pointer;transition:background .25s ease;flex-shrink:0;}
+  .zswitch[data-mode="sale"]{background:var(--sale);}
+  .zswitch .knob{
+    position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:12px;
+    transition:transform .25s cubic-bezier(.4,0,.2,1);
+  }
+  .zswitch[data-mode="sale"] .knob{ transform:translateX(26px); }
+
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px;}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+  .stat .num{font-size:20px;font-weight:700;}
+  .stat .lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+  .stat .sub{font-size:10px;color:var(--muted);margin-top:4px;}
+
+  .tablecard{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .tablehead{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;background:#fafafa;display:flex;align-items:center;gap:8px;}
+  table{width:100%;border-collapse:collapse;}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);padding:10px 16px;border-bottom:1px solid var(--border);}
+  tbody td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);}
+  tbody tr:last-child td{border-bottom:none;}
+  .type-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;}
+  .type-badge.rental{background:var(--rental-light);color:var(--rental);}
+  .type-badge.sale{background:var(--sale-light);color:var(--sale);}
+  .hide{display:none;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .dot.rental{background:var(--rental);}
+  .dot.sale{background:var(--sale);}
+
+  .footnote{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>Bookings</h1>
+      <p>Manage your customer bookings and orders</p>
+    </div>
+
+    <div class="zomato" id="zomato">
+      <span class="label rental-txt" id="ztext">Rental mode</span>
+      <div class="zswitch" id="zswitch" data-mode="rental">
+        <div class="knob" id="zknob">📦</div>
+      </div>
+    </div>
+
+    <div class="right">
+      <button class="btn">+ New Booking</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><div class="num" id="s-total">68</div><div class="lbl">Total bookings</div><div class="sub" id="s-total-sub">packages included</div></div>
+    <div class="stat"><div class="num" id="s-pending" style="color:#d97706">4</div><div class="lbl">Confirmed pending</div></div>
+    <div class="stat"><div class="num" id="s-ready" style="color:#2563eb">64</div><div class="lbl">Ready for delivery</div></div>
+    <div class="stat"><div class="num" id="s-delivered" style="color:#16a34a">1</div><div class="lbl">Delivered</div></div>
+    <div class="stat"><div class="num" id="s-completed" style="color:#7c3aed">0</div><div class="lbl" id="s-completed-lbl">Rental completed</div></div>
+    <div class="stat"><div class="num" id="s-revenue">₹15.1L</div><div class="lbl">Total revenue</div></div>
+  </div>
+
+  <div class="tablecard">
+    <div class="tablehead"><span class="dot rental" id="headdot"></span><span id="tablehead">Rentals (68)</span></div>
+    <table>
+      <thead><tr><th>Booking #</th><th>Customer</th><th>Type</th><th>Status</th><th>Amount</th></tr></thead>
+      <tbody id="tbody">
+        <tr class="row rental"><td>INV-00006</td><td>PNB Bank</td><td><span class="type-badge rental">Rental</span></td><td>Confirmed</td><td>₹700</td></tr>
+        <tr class="row sale"><td>INV-00005</td><td>Khetesh</td><td><span class="type-badge sale">Sale</span></td><td>Pending</td><td>₹2,499</td></tr>
+        <tr class="row rental"><td>INV-00004</td><td>Rakshita</td><td><span class="type-badge rental">Rental</span></td><td>Confirmed</td><td>₹4,550</td></tr>
+        <tr class="row sale"><td>INV-00003</td><td>Anil Kapoor</td><td><span class="type-badge sale">Sale</span></td><td>Delivered</td><td>₹5,200</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footnote">Tap the switch — same idea as Zomato's veg/non-veg toggle, but for Rental / Sale. Everything below flips instantly.</div>
+
+</div>
+
+<script>
+  const zswitch = document.getElementById('zswitch');
+  const zknob = document.getElementById('zknob');
+  const ztext = document.getElementById('ztext');
+  const headdot = document.getElementById('headdot');
+  const rows = document.querySelectorAll('.row');
+
+  const data = {
+    rental: { total: 68, sub: "packages included", pending: 4, ready: 64, delivered: 1, completed: 0, completedLbl: "Rental completed", revenue: "₹15.1L", head: "Rentals (68)", icon: "📦" },
+    sale:   { total: 34, sub: "direct sales",       pending: 3, ready: 31, delivered: 0, completed: 9, completedLbl: "Sale completed",   revenue: "₹5.3L",  head: "Sales (34)",  icon: "🏷️" },
+  };
+
+  function setMode(mode) {
+    zswitch.dataset.mode = mode;
+    zknob.textContent = data[mode].icon;
+    ztext.textContent = mode === 'rental' ? 'Rental mode' : 'Sale mode';
+    ztext.classList.toggle('rental-txt', mode === 'rental');
+    ztext.classList.toggle('sale-txt', mode === 'sale');
+    headdot.classList.toggle('rental', mode === 'rental');
+    headdot.classList.toggle('sale', mode === 'sale');
+
+    const d = data[mode];
+    document.getElementById('s-total').textContent = d.total;
+    document.getElementById('s-total-sub').textContent = d.sub;
+    document.getElementById('s-pending').textContent = d.pending;
+    document.getElementById('s-ready').textContent = d.ready;
+    document.getElementById('s-delivered').textContent = d.delivered;
+    document.getElementById('s-completed').textContent = d.completed;
+    document.getElementById('s-completed-lbl').textContent = d.completedLbl;
+    document.getElementById('s-revenue').textContent = d.revenue;
+    document.getElementById('tablehead').textContent = d.head;
+
+    rows.forEach(r => r.classList.toggle('hide', !r.classList.contains(mode)));
+  }
+
+  zswitch.addEventListener('click', () => {
+    setMode(zswitch.dataset.mode === 'rental' ? 'sale' : 'rental');
+  });
+
+  setMode('rental');
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { supabaseServer, getDefaultFranchiseId } from "@/lib/supabase-server-simple"
+import type { Booking, Customer, Product } from "@/lib/types"
+
+export async function GET(request: NextRequest) {
+  try {
+    // For now, use default franchise ID (remove authentication)
+    const franchiseId = await getDefaultFranchiseId()
+
+    // Get dashboard statistics
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+
+    // Get total bookings
+    const { data: bookingsData, error: bookingsError } = await supabaseServer
+      .from("bookings")
+      .select("*")
+      .eq("franchise_id", franchiseId)
+
+    if (bookingsError) {
+      console.error("Error fetching bookings:", bookingsError)
+    }
+
+    const totalBookings = bookingsData?.length || 0
+    const activeBookings = bookingsData?.filter((b: any) => 
+      ['confirmed', 'delivered'].includes(b.status)
+    ).length || 0
+
+    // Get total customers
+    const { data: customersData, error: customersError } = await supabaseServer
+      .from("customers")
+      .select("*")
+      .eq("franchise_id", franchiseId)
+
+    if (customersError) {
+      console.error("Error fetching customers:", customersError)
+    }
+
+    const totalCustomers = customersData?.length || 0
+
+    // Calculate total revenue
+    const totalRevenue = bookingsData?.reduce((sum: number, booking: any) => 
+      sum + (booking.total_amount || 0), 0
+    ) || 0
+
+    // Calculate monthly growth (simplified)
+    const thisMonthBookings = bookingsData?.filter((b: any) => 
+      new Date(b.created_at) >= startOfMonth
+    ).length || 0
+
+    const lastMonthBookings = bookingsData?.filter((b: any) => {
+      const date = new Date(b.created_at)
+      return date >= startOfLastMonth && date <= endOfLastMonth
+    }).length || 0
+
+    const monthlyGrowth = lastMonthBookings > 0 
+      ? ((thisMonthBookings - lastMonthBookings) / lastMonthBookings) * 100 
+      : 0
+
+        // Get inventory items
+    const { data: productsData, error: productsError } = await supabaseServer
+      .from("products")
+      .select("*")
+      .eq("franchise_id", franchiseId)
+
+    if (productsError) {
+      console.error("Error fetching products:", productsError)
+    }
+
+    const lowStockItems = productsData?.filter((p: any) => 
+      (p.stock_available || 0) <= (p.reorder_level || 5)
+    ).length || 0
+
+    const stats = {
+      totalBookings,
+      activeBookings,
+      totalCustomers,
+      totalRevenue,
+      monthlyGrowth: Math.round(monthlyGrowth * 100) / 100,
+      lowStockItems
+    }
+
+    return NextResponse.json({ success: true, data: stats })
+
+  } catch (error) {
+    console.error("Dashboard stats error:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch dashboard statistics" },
+      { status: 500 }
+    )
+  }
+}

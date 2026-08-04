@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Auth Session Check</title>
+</head>
+<body>
+    <h1>Supabase Auth Session Diagnostic</h1>
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.innerHTML += `<p>${message}</p>`;
+            console.log(message);
+        }
+        
+        // Check localStorage
+        log('<h2>1. LocalStorage Check:</h2>');
+        
+        const authToken = localStorage.getItem('sb-xplnyaxkusvuajtmorss-auth-token');
+        if (authToken) {
+            log('✅ Auth token found in localStorage');
+            try {
+                const parsed = JSON.parse(authToken);
+                log(`Token has: ${Object.keys(parsed).join(', ')}`);
+                if (parsed.access_token) {
+                    log('✅ access_token exists');
+                } else {
+                    log('❌ access_token missing');
+                }
+            } catch (e) {
+                log('❌ Failed to parse auth token: ' + e.message);
+            }
+        } else {
+            log('❌ No auth token in localStorage');
+        }
+        
+        // Check user data
+        log('<h2>2. User Data Check:</h2>');
+        const userData = localStorage.getItem('safawala_user');
+        if (userData) {
+            log('✅ User data found');
+            try {
+                const user = JSON.parse(userData);
+                log(`User: ${user.email} (${user.role})`);
+                log(`Franchise: ${user.franchise_name || 'None'}`);
+            } catch (e) {
+                log('❌ Failed to parse user data');
+            }
+        } else {
+            log('❌ No user data found');
+        }
+        
+        // Check all localStorage keys
+        log('<h2>3. All LocalStorage Keys:</h2>');
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            log(`- ${key}`);
+        }
+        
+        log('<h2>4. Recommendation:</h2>');
+        if (!authToken) {
+            log('❌ You need to log in again. The auth session is not stored.');
+            log('Steps:');
+            log('1. Log out completely');
+            log('2. Clear all site data (F12 > Application > Clear site data)');
+            log('3. Log back in');
+            log('4. Check console for: [v0] Supabase session set successfully');
+        } else {
+            log('✅ Auth token exists. If still getting 401 errors, the issue is with RLS policies.');
+        }
+    </script>
+</body>
+</html>

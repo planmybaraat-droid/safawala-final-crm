@@ -1,0 +1,88 @@
+/* Custom CSS overrides for Staff Management Select components */
+
+/* Force Select dropdown content to be visible with proper styling */
+[data-radix-select-content] {
+  z-index: 9999 !important;
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  min-width: 200px !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+}
+
+/* Style Select items for better visibility */
+[data-radix-select-item] {
+  padding: 8px 12px 8px 32px !important; /* Added more left padding for tick space */
+  color: #111827 !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease-in-out !important;
+  position: relative !important;
+}
+
+[data-radix-select-item]:hover,
+[data-radix-select-item][data-highlighted] {
+  background-color: #f3f4f6 !important;
+  outline: none !important;
+}
+
+[data-radix-select-item][data-state="checked"] {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  font-weight: 600 !important; /* Make selected item bold */
+}
+
+/* Style the tick icon positioning */
+[data-radix-select-item] > span:first-child {
+  position: absolute !important;
+  left: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Style Select trigger for consistency */
+[data-radix-select-trigger] {
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+  color: #111827 !important;
+}
+
+/* Ensure proper viewport styling */
+[data-radix-select-viewport] {
+  padding: 4px !important;
+}
+
+/* Make sure the portal renders above dialogs */
+[data-radix-portal] {
+  z-index: 9999 !important;
+}
+
+/* Additional styles for staff management dropdowns */
+.staff-management-select {
+  position: relative;
+}
+
+.staff-management-select [data-radix-select-content] {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  width: 100% !important;
+  min-width: 200px !important;
+}
+
+/* Dialog content should have lower z-index than select content */
+[data-radix-dialog-content] {
+  z-index: 50 !important;
+}
+
+/* Ensure select content appears above dialog overlay */
+[data-radix-select-content] {
+  z-index: 9999 !important;
+  position: fixed !important;
+}

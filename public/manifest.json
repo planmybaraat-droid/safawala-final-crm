@@ -1,0 +1,37 @@
+{
+  "name": "Safawala CRM",
+  "short_name": "Safawala",
+  "description": "Premium wedding accessory rental & sales management",
+  "start_url": "/portal/booking",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5ebe0",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "/safawalalogo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/safawalalogo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "New Booking",
+      "url": "/bookings/create",
+      "description": "Create a new booking"
+    },
+    {
+      "name": "Customers",
+      "url": "/portal/booking/customers",
+      "description": "View customer list"
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookings — Sale/Rental toggle mockup</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
+    --all:#4338ca; --all-light:#eef2ff;
+    --rental:#059669; --rental-light:#ecfdf5;
+    --sale:#d97706; --sale-light:#fffbeb;
+    --accent:#4f46e5;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  .wrap{max-width:1160px;margin:0 auto;padding:24px;}
+
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:14px;}
+  .topbar h1{font-size:22px;font-weight:700;margin:0;}
+  .topbar p{margin:2px 0 0;font-size:13px;color:var(--muted);}
+  .btn{border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:#fff;}
+
+  /* 3-way segmented toggle */
+  .toggle{
+    position:relative;display:inline-flex;background:#eceef1;border-radius:999px;padding:4px;width:300px;
+  }
+  .toggle .thumb{
+    position:absolute;top:4px;left:4px;width:calc(33.333% - 4px);height:calc(100% - 8px);
+    background:#fff;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.12);
+    transition:transform .22s ease;
+  }
+  .toggle[data-mode="rental"] .thumb{ transform:translateX(100%); }
+  .toggle[data-mode="sale"] .thumb{ transform:translateX(200%); }
+  .toggle button{
+    position:relative;z-index:1;flex:1;border:none;background:transparent;padding:8px 0;
+    font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);border-radius:999px;
+    display:flex;align-items:center;justify-content:center;gap:4px;transition:color .2s ease;white-space:nowrap;
+  }
+  .toggle[data-mode="all"] button.all{ color:var(--all); }
+  .toggle[data-mode="rental"] button.rental{ color:var(--rental); }
+  .toggle[data-mode="sale"] button.sale{ color:var(--sale); }
+
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px;}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;transition:border-color .2s ease;}
+  .stat .num{font-size:20px;font-weight:700;}
+  .stat .lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+  .stat .sub{font-size:10px;color:var(--muted);margin-top:4px;}
+
+  .tablecard{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .tablehead{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;background:#fafafa;}
+  table{width:100%;border-collapse:collapse;}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);padding:10px 16px;border-bottom:1px solid var(--border);}
+  tbody td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);}
+  tbody tr:last-child td{border-bottom:none;}
+  .type-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;}
+  .type-badge.rental{background:var(--rental-light);color:var(--rental);}
+  .type-badge.sale{background:var(--sale-light);color:var(--sale);}
+  .hide{display:none;}
+
+  .footnote{margin-top:14px;font-size:11px;color:var(--muted);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>Bookings</h1>
+      <p>Manage your customer bookings and orders</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="toggle" id="toggle" data-mode="all">
+        <div class="thumb"></div>
+        <button class="all" data-mode="all">All <span id="cnt-all">(102)</span></button>
+        <button class="rental" data-mode="rental">Rentals <span id="cnt-rental">(68)</span></button>
+        <button class="sale" data-mode="sale">Sales <span id="cnt-sale">(34)</span></button>
+      </div>
+      <button class="btn btn-primary">+ New Booking</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><div class="num" id="s-total">102</div><div class="lbl">Total bookings</div><div class="sub" id="s-total-sub">68 rental · 34 sale</div></div>
+    <div class="stat"><div class="num" id="s-pending" style="color:#d97706">7</div><div class="lbl">Confirmed pending</div></div>
+    <div class="stat"><div class="num" id="s-ready" style="color:#2563eb">95</div><div class="lbl">Ready for delivery</div></div>
+    <div class="stat"><div class="num" id="s-delivered" style="color:#16a34a">1</div><div class="lbl">Delivered</div></div>
+    <div class="stat"><div class="num" id="s-completed" style="color:#7c3aed">0</div><div class="lbl" id="s-completed-lbl">Rental completed</div></div>
+    <div class="stat"><div class="num" id="s-revenue">₹20.4L</div><div class="lbl">Total revenue</div></div>
+  </div>
+
+  <div class="tablecard">
+    <div class="tablehead" id="tablehead">All bookings (102)</div>
+    <table>
+      <thead><tr><th>Booking #</th><th>Customer</th><th>Type</th><th>Status</th><th>Amount</th></tr></thead>
+      <tbody id="tbody">
+        <tr class="row rental"><td>INV-00006</td><td>PNB Bank</td><td><span class="type-badge rental">Rental</span></td><td>Confirmed</td><td>₹700</td></tr>
+        <tr class="row sale"><td>INV-00005</td><td>Khetesh</td><td><span class="type-badge sale">Sale</span></td><td>Pending</td><td>₹2,499</td></tr>
+        <tr class="row rental"><td>INV-00004</td><td>Rakshita</td><td><span class="type-badge rental">Rental</span></td><td>Confirmed</td><td>₹4,550</td></tr>
+        <tr class="row sale"><td>INV-00003</td><td>Anil Kapoor</td><td><span class="type-badge sale">Sale</span></td><td>Delivered</td><td>₹5,200</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footnote">One toggle drives both the stat cards and the table — no separate filter dropdown needed for type.</div>
+
+</div>
+
+<script>
+  const toggle = document.getElementById('toggle');
+  const buttons = toggle.querySelectorAll('button');
+  const rows = document.querySelectorAll('.row');
+
+  const data = {
+    all:    { total: 102, sub: "68 rental · 34 sale", pending: 7, ready: 95, delivered: 1, completed: 9, completedLbl: "Completed", revenue: "₹20.4L", head: "All bookings (102)" },
+    rental: { total: 68,  sub: "packages included",   pending: 4, ready: 64, delivered: 1, completed: 0, completedLbl: "Rental completed", revenue: "₹15.1L", head: "Rentals (68)" },
+    sale:   { total: 34,  sub: "direct sales",         pending: 3, ready: 31, delivered: 0, completed: 9, completedLbl: "Sale completed", revenue: "₹5.3L", head: "Sales (34)" },
+  };
+
+  function setMode(mode) {
+    toggle.dataset.mode = mode;
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+
+    const d = data[mode];
+    document.getElementById('s-total').textContent = d.total;
+    document.getElementById('s-total-sub').textContent = d.sub;
+    document.getElementById('s-pending').textContent = d.pending;
+    document.getElementById('s-ready').textContent = d.ready;
+    document.getElementById('s-delivered').textContent = d.delivered;
+    document.getElementById('s-completed').textContent = d.completed;
+    document.getElementById('s-completed-lbl').textContent = d.completedLbl;
+    document.getElementById('s-revenue').textContent = d.revenue;
+    document.getElementById('tablehead').textContent = d.head;
+
+    rows.forEach(r => {
+      r.classList.toggle('hide', mode !== 'all' && !r.classList.contains(mode));
+    });
+  }
+
+  buttons.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  setMode('all');
+</script>
+</body>
+</html>

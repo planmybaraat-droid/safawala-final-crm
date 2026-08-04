@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stitching — mockup</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
+    --accent:#4f46e5; --accent-light:#eef2ff; --green:#059669; --green-light:#ecfdf5;
+    --amber:#d97706; --amber-light:#fffbeb; --red:#dc2626; --red-light:#fef2f2;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  .wrap{max-width:1040px;margin:0 auto;padding:24px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  .topbar h1{font-size:20px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px;}
+  .topbar p{margin:2px 0 0;font-size:13px;color:var(--muted);}
+  .btn{border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#4338ca;}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+  .search{flex:1;min-width:220px;position:relative;}
+  .search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);}
+  .tabs{display:flex;gap:6px;background:#eceef1;padding:4px;border-radius:9px;}
+  .tab{padding:7px 14px;font-size:13px;font-weight:500;border-radius:7px;cursor:pointer;color:var(--muted);white-space:nowrap;}
+  .tab.active{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .stat .num{font-size:22px;font-weight:700;}
+  .stat .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);padding:10px 14px;background:#fafafa;border-bottom:1px solid var(--border);}
+  tbody td{padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#fafbff;}
+
+  .cust{font-weight:600;}
+  .phone{color:var(--muted);font-size:12px;}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;}
+  .b-stitch{background:var(--accent-light);color:var(--accent);}
+  .b-live{background:var(--green-light);color:var(--green);}
+  .headsize{font-size:11px;color:var(--muted);margin-top:3px;}
+  .datetime{display:flex;flex-direction:column;gap:1px;}
+  .datetime .d{font-weight:600;}
+  .datetime .t{font-size:12px;color:var(--muted);}
+  .status{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;}
+  .s-pending{background:var(--amber-light);color:var(--amber);}
+  .s-done{background:var(--green-light);color:var(--green);}
+  .s-overdue{background:var(--red-light);color:var(--red);}
+  .row-actions{display:flex;gap:6px;}
+  .icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);}
+  .icon-btn:hover{background:#f3f4f6;}
+
+  .note{margin-top:14px;font-size:12px;color:var(--muted);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>✂️ Stitching</h1>
+      <p>Every stitching &amp; live stitching appointment across all bookings, in one place.</p>
+    </div>
+    <button class="btn btn-primary">+ New appointment</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="num">18</div><div class="lbl">Total this month</div></div>
+    <div class="stat"><div class="num" style="color:var(--amber)">7</div><div class="lbl">Pending</div></div>
+    <div class="stat"><div class="num" style="color:var(--red)">2</div><div class="lbl">Overdue</div></div>
+    <div class="stat"><div class="num" style="color:var(--green)">9</div><div class="lbl">Completed</div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input placeholder="Search customer, phone or order number…">
+    </div>
+    <div class="tabs">
+      <div class="tab active">All</div>
+      <div class="tab">Pending</div>
+      <div class="tab">Completed</div>
+      <div class="tab">Overdue</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Service</th>
+        <th>Appointment</th>
+        <th>Order</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="cust">Rakesh Mehta</div>
+          <div class="phone">+91 98200 11223</div>
+        </td>
+        <td>
+          <span class="badge b-stitch">Stitching</span>
+          <div class="headsize">Head size: 22</div>
+        </td>
+        <td>
+          <div class="datetime"><span class="d">14 Jul 2026</span><span class="t">11:00 AM</span></div>
+        </td>
+        <td>ORD-2026014</td>
+        <td><span class="status s-pending">Pending</span></td>
+        <td>
+          <div class="row-actions">
+            <div class="icon-btn" title="View order">↗</div>
+            <div class="icon-btn" title="Mark done">✓</div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="cust">Priya Shah</div>
+          <div class="phone">+91 90210 44556</div>
+        </td>
+        <td>
+          <span class="badge b-live">Live stitching</span>
+        </td>
+        <td>
+          <div class="datetime"><span class="d">15 Jul 2026</span><span class="t">4:30 PM</span></div>
+        </td>
+        <td>ORD-2026019</td>
+        <td><span class="status s-pending">Pending</span></td>
+        <td>
+          <div class="row-actions">
+            <div class="icon-btn" title="View order">↗</div>
+            <div class="icon-btn" title="Mark done">✓</div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="cust">Anil Kapoor</div>
+          <div class="phone">+91 98765 33221</div>
+        </td>
+        <td>
+          <span class="badge b-stitch">Stitching</span>
+          <div class="headsize">Head size: 21</div>
+        </td>
+        <td>
+          <div class="datetime"><span class="d">10 Jul 2026</span><span class="t">10:00 AM</span></div>
+        </td>
+        <td>ORD-2025998</td>
+        <td><span class="status s-overdue">Overdue</span></td>
+        <td>
+          <div class="row-actions">
+            <div class="icon-btn" title="View order">↗</div>
+            <div class="icon-btn" title="Mark done">✓</div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="cust">Devansh Rao</div>
+          <div class="phone">+91 99887 65432</div>
+        </td>
+        <td>
+          <span class="badge b-live">Live stitching</span>
+        </td>
+        <td>
+          <div class="datetime"><span class="d">8 Jul 2026</span><span class="t">1:00 PM</span></div>
+        </td>
+        <td>ORD-2025990</td>
+        <td><span class="status s-done">Completed</span></td>
+        <td>
+          <div class="row-actions">
+            <div class="icon-btn" title="View order">↗</div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">Stitching keeps a head size field · Live stitching only takes appointment date &amp; time</div>
+
+</div>
+</body>
+</html>

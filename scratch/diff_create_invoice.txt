@@ -1,0 +1,489 @@
+diff --git a/app/create-invoice/page.tsx b/app/create-invoice/page.tsx
+index 1ad3af5..58f468c 100644
+--- a/app/create-invoice/page.tsx
++++ b/app/create-invoice/page.tsx
+@@ -71,6 +71,8 @@ import { Checkbox } from "@/components/ui/checkbox"
+ import { supabase as supabaseClient } from "@/lib/supabase"
+ import { fetchProductsWithBarcodes } from "@/lib/product-barcode-service"
+ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
++import { BookingWorkflowStepper } from "@/components/shared"
++import { cn } from "@/lib/utils"
+ 
+ 
+ interface Customer {
+@@ -257,6 +259,14 @@ export default function CreateInvoicePage() {
+   const [sendWhatsAppInvoice, setSendWhatsAppInvoice] = useState(true)
+   const [applyGst, setApplyGst] = useState(false)
+ 
++  // Leads selection and conversion states
++  const [customerMode, setCustomerMode] = useState<"customer" | "lead">("customer")
++  const [leads, setLeads] = useState<any[]>([])
++  const [leadsLoading, setLeadsLoading] = useState(false)
++  const [leadSearch, setLeadSearch] = useState("")
++  const [selectedLeadToConvert, setSelectedLeadToConvert] = useState<any | null>(null)
++  const [convertingLead, setConvertingLead] = useState(false)
++
+   // Modification Form States
+   const [modService, setModService] = useState<string>("")
+   const [modCost, setModCost] = useState<number>(0)
+@@ -402,6 +412,7 @@ export default function CreateInvoicePage() {
+       loadCustomers()
+       loadProductsAndCategories()
+       loadStaffMembers()
++      loadLeads()
+     }
+     loadCompanySettings()
+   }, [])
+@@ -536,6 +547,126 @@ export default function CreateInvoicePage() {
+     }
+   }
+ 
++  const loadLeads = async () => {
++    setLeadsLoading(true)
++    try {
++      const response = await fetch("/api/leads", {
++        cache: "no-store",
++        credentials: "include",
++      })
++      if (response.ok) {
++        const json = await response.json()
++        const activeLeads = (json.data || []).filter((l: any) => l.status !== "converted")
++        setLeads(activeLeads)
++      }
++    } catch (e) {
++      console.error("Failed to load leads:", e)
++    } finally {
++      setLeadsLoading(false)
++    }
++  }
++
++  const handleConvertLead = async (lead: any) => {
++    setConvertingLead(true)
++    try {
++      const response = await fetch("/api/leads", {
++        method: "PATCH",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ id: lead.id, status: "converted" }),
++      })
++      
++      if (!response.ok) {
++        throw new Error("Failed to convert lead")
++      }
++      
++      const resData = await response.json()
++      if (!resData.success) {
++        throw new Error(resData.error || "Failed to convert lead")
++      }
++
++      toast({
++        title: "Lead Converted",
++        description: `Successfully converted "${lead.name}" to Customer.`,
++        variant: "default",
++      })
++
++      // Reload lists
++      await Promise.all([loadCustomers(), loadLeads()])
++
++      // Find the new customer (preferring the one returned from the API response)
++      let newCust = resData.customer
++      
++      if (!newCust) {
++        const cleanPhone = lead.phone?.trim()
++        // Fallback: Query database directly to bypass API caches and guarantee retrieve
++        await new Promise(resolve => setTimeout(resolve, 500))
++        const { data: directCustData } = await supabaseClient
++          .from("customers")
++          .select("*")
++          .eq("phone", cleanPhone)
++          .maybeSingle()
++
++        newCust = directCustData
++        if (!newCust) {
++          const { data: directCustByLead } = await supabaseClient
++            .from("customers")
++            .select("*")
++            .eq("lead_id", lead.id)
++            .maybeSingle()
++          newCust = directCustByLead
++        }
++      }
++
++      if (newCust) {
++        // Add to local state so it appears in the dropdown list
++        setCustomers((prev) => {
++          if (prev.some(c => c.id === newCust.id)) return prev
++          return [newCust as any, ...prev]
++        })
++        setSelectedCustomer(newCust as any)
++        setCustomerMode("customer") // Switch tab to customer to show the active profile
++        
++        // Pre-fill invoice data
++        setInvoiceData((prev: any) => {
++          const next = { ...prev }
++          if (lead.event_date) {
++            next.event_date = formatDateForInput(lead.event_date)
++            next.delivery_date = formatDateForInput(lead.event_date)
++          }
++          if (lead.location) {
++            next.venue_address = lead.location
++          }
++          if (lead.name) {
++            next.groom_name = lead.name
++          }
++          return next
++        })
++
++        toast({
++          title: "Customer Selected",
++          description: `Successfully converted "${newCust.name}" and auto-selected them.`,
++          variant: "default",
++        })
++      } else {
++        toast({
++          title: "Customer Created",
++          description: "Profile created, please search and select manually in the Customers tab.",
++          variant: "default",
++        })
++      }
++      setSelectedLeadToConvert(null)
++    } catch (error: any) {
++      console.error("Conversion error:", error)
++      toast({
++        title: "Conversion Failed",
++        description: error.message || "Something went wrong during lead conversion.",
++        variant: "default",
++      })
++    } finally {
++      setConvertingLead(false)
++    }
++  }
++
+   const loadProductsAndCategories = async () => {
+     try {
+       // Get current user to get franchise_id
+@@ -1181,6 +1312,14 @@ export default function CreateInvoicePage() {
+         c.phone.includes(customerSearch)
+       )
+ 
++  // Filter leads
++  const filteredLeads = leadSearch.trim() === ""
++    ? leads
++    : leads.filter(l =>
++        l.name.toLowerCase().includes(leadSearch.toLowerCase()) ||
++        l.phone.includes(leadSearch)
++      )
++
+   // Filter products
+   const filteredProducts = products.filter(p =>
+     p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+@@ -1722,7 +1861,7 @@ export default function CreateInvoicePage() {
+ 
+       const message = isUpdate ? `Quote ${order.order_number} updated` : `Quote ${order.order_number} created`
+       toast({ title: isUpdate ? "Quote Updated" : "Quote Saved", description: message })
+-      router.push("/bookings?refresh=" + Date.now())
++      router.push("/quotes?refresh=" + Date.now())
+     } catch (error: any) {
+       toast({ title: "Error", description: error.message, variant: "destructive" })
+     }
+@@ -2457,8 +2596,20 @@ export default function CreateInvoicePage() {
+ 
+           {/* ================= WEB-ONLY CONTENT START ================= */}
+           <div className="p-4 md:p-6 print:hidden bg-white space-y-6">
+-            <Tabs defaultValue="details" className="w-full">
+-                  <TabsList className="grid grid-cols-3 bg-slate-100 p-1 rounded-lg mb-4 border border-slate-200">
++
++
++
++            <div className={cn(
++              invoiceData.invoice_type === "sale" ? "grid grid-cols-12 gap-6 items-start" : "space-y-6"
++            )}>
++              <div className={cn(
++                invoiceData.invoice_type === "sale" ? "col-span-12 lg:col-span-8 space-y-6" : "w-full"
++              )}>
++                <Tabs defaultValue="details" className="w-full">
++                  <TabsList className={cn(
++                    "grid grid-cols-3 bg-slate-100 p-1 rounded-lg mb-4 border border-slate-200",
++                    invoiceData.invoice_type === "sale" && "hidden"
++                  )}>
+                     <TabsTrigger value="details" className="data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-slate-500 rounded-md py-1.5 font-medium text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5">
+                       <User className="h-4 w-4" />
+                       Details
+@@ -2474,8 +2625,16 @@ export default function CreateInvoicePage() {
+                   </TabsList>
+ 
+                   {/* TAB 1: CUSTOMER & EVENT DETAILS */}
+-                  <TabsContent value="details" className="space-y-4 focus-visible:outline-none focus-visible:ring-0">
++                  <TabsContent 
++                    value="details" 
++                    className={cn(
++                      "space-y-4 focus-visible:outline-none focus-visible:ring-0",
++                      invoiceData.invoice_type === "sale" && "!block !opacity-100"
++                    )}
++                  >
+                     
++
++
+                     {/* Customer Selection Card */}
+                     <Card className="p-4 shadow-sm border-l-4 border-l-indigo-500 bg-white">
+                       <div className="flex items-center justify-between mb-3">
+@@ -2497,18 +2656,59 @@ export default function CreateInvoicePage() {
+                         </Button>
+                       </div>
+ 
+-                      {/* Customer Search */}
+-                      <div className="print:hidden mb-3">
+-                        <div className="relative">
+-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+-                          <Input
+-                            placeholder="Search customers..."
+-                            value={customerSearch}
+-                            onChange={(e) => setCustomerSearch(e.target.value)}
+-                            className="pl-10 h-9 text-xs bg-white border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+-                          />
++                      {/* Customer / Lead Toggle */}
++                      {!selectedCustomer && (
++                        <div className="flex bg-slate-100 p-0.5 rounded-lg mb-3 print:hidden">
++                          <button
++                            type="button"
++                            className={cn(
++                              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all",
++                              customerMode === "customer"
++                                ? "bg-white text-indigo-700 shadow-sm"
++                                : "text-slate-600 hover:text-slate-900"
++                            )}
++                            onClick={() => setCustomerMode("customer")}
++                          >
++                            Customers
++                          </button>
++                          <button
++                            type="button"
++                            className={cn(
++                              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all",
++                              customerMode === "lead"
++                                ? "bg-white text-indigo-700 shadow-sm"
++                                : "text-slate-600 hover:text-slate-900"
++                            )}
++                            onClick={() => setCustomerMode("lead")}
++                          >
++                            Leads
++                          </button>
+                         </div>
+-                      </div>
++                      )}
++
++                      {/* Customer Search or Lead Search */}
++                      {!selectedCustomer && (
++                        <div className="print:hidden mb-3">
++                          <div className="relative">
++                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
++                            {customerMode === "customer" ? (
++                              <Input
++                                placeholder="Search customers..."
++                                value={customerSearch}
++                                onChange={(e) => setCustomerSearch(e.target.value)}
++                                className="pl-10 h-9 text-xs bg-white border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
++                              />
++                            ) : (
++                              <Input
++                                placeholder="Search leads by name, WhatsApp, location..."
++                                value={leadSearch}
++                                onChange={(e) => setLeadSearch(e.target.value)}
++                                className="pl-10 h-9 text-xs bg-white border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
++                              />
++                            )}
++                          </div>
++                        </div>
++                      )}
+ 
+                       {/* Customer List or Selected Customer */}
+                       {selectedCustomer ? (
+@@ -2536,7 +2736,7 @@ export default function CreateInvoicePage() {
+                             <X className="h-4 w-4" />
+                           </Button>
+                         </div>
+-                      ) : (
++                      ) : customerMode === "customer" ? (
+                         <div className="border border-gray-100 rounded-lg max-h-36 overflow-y-auto text-sm print:hidden bg-white">
+                           {customersLoading ? (
+                             <div className="space-y-0">
+@@ -2576,6 +2776,65 @@ export default function CreateInvoicePage() {
+                             </>
+                           )}
+                         </div>
++                      ) : (
++                        <div className="border border-gray-100 rounded-lg max-h-36 overflow-y-auto text-sm print:hidden bg-white">
++                          {leadsLoading ? (
++                            <div className="space-y-0">
++                              {[1, 2, 3].map((i) => (
++                                <div key={i} className="p-2.5 border-b last:border-b-0">
++                                  <div className="h-4 w-24 mb-1 bg-gray-200 rounded animate-pulse" />
++                                  <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
++                                </div>
++                              ))}
++                            </div>
++                          ) : (
++                            <>
++                              {(leadSearch ? filteredLeads : leads.slice(0, 3)).map((lead) => (
++                                <button
++                                  key={lead.id}
++                                  type="button"
++                                  onClick={() => setSelectedLeadToConvert(lead)}
++                                  className="w-full text-left p-2 border-b last:border-b-0 hover:bg-emerald-50/45 transition-colors group flex items-center justify-between"
++                                >
++                                  <div className="text-left">
++                                    <div className="font-medium text-gray-800 group-hover:text-emerald-900 text-xs flex items-center gap-1.5">
++                                      {lead.name}
++                                      {lead.status && (
++                                        <Badge variant="outline" className="text-[9px] px-1 py-0 scale-90 capitalize border-amber-200 bg-amber-50 text-amber-700">
++                                          {lead.status}
++                                        </Badge>
++                                      )}
++                                    </div>
++                                    <div className="text-[10px] text-gray-500 flex items-center gap-2 mt-0.5">
++                                      <span>📱 {lead.phone}</span>
++                                      {lead.event_date && (
++                                        <span>📅 Event: {new Date(lead.event_date).toLocaleDateString()}</span>
++                                      )}
++                                    </div>
++                                  </div>
++                                  <div className="text-[10px] font-bold text-indigo-700 opacity-0 group-hover:opacity-100 pr-1">
++                                    Convert & Select ✓
++                                  </div>
++                                </button>
++                              ))}
++                              {leadSearch && filteredLeads.length === 0 && (
++                                <div className="p-3 text-xs text-gray-500 text-center">
++                                  No leads matching search
++                                </div>
++                              )}
++                              {!leadSearch && leads.length === 0 && (
++                                <div className="p-3 text-xs text-gray-500 text-center">
++                                  No active leads found
++                                </div>
++                              )}
++                              {!leadSearch && leads.length > 3 && (
++                                <div className="p-2 text-[10px] text-gray-500 text-center bg-gray-50/50 border-t">
++                                  Type to search {leads.length} active leads...
++                                </div>
++                              )}
++                            </>
++                          )}
++                        </div>
+                       )}
+                     </Card>
+ 
+@@ -2743,7 +3002,13 @@ export default function CreateInvoicePage() {
+                   </TabsContent>
+ 
+                   {/* TAB 2: PRODUCTS & ITEMS */}
+-                  <TabsContent value="items" className="space-y-4 focus-visible:outline-none focus-visible:ring-0">
++                  <TabsContent 
++                    value="items" 
++                    className={cn(
++                      "space-y-4 focus-visible:outline-none focus-visible:ring-0",
++                      invoiceData.invoice_type === "sale" && "!block !opacity-100"
++                    )}
++                  >
+                     
+                     {/* Selection Mode Toggle */}
+                     {invoiceData.invoice_type === "rental" && (
+@@ -3098,7 +3363,13 @@ export default function CreateInvoicePage() {
+                   </TabsContent>
+ 
+                     {/* TAB 3: SETTLEMENT */}
+-                    <TabsContent value="settlement" className="space-y-4 focus-visible:outline-none focus-visible:ring-0">
++                    <TabsContent 
++                      value="settlement" 
++                      className={cn(
++                        "space-y-4 focus-visible:outline-none focus-visible:ring-0",
++                        invoiceData.invoice_type === "sale" && "hidden"
++                      )}
++                    >
+                       
+                       {/* Payment Method & Staff Attribution */}
+                       <Card className="p-4 shadow-sm border-l-4 border-l-indigo-500 bg-white">
+@@ -3358,10 +3629,13 @@ export default function CreateInvoicePage() {
+                       </Card>
+                     </TabsContent>
+                   </Tabs>
++              </div>
+ 
+-                  {/* CHECKOUT SECTION */}
+-                  <div className="space-y-4 mt-6">
+-                    <Card className="shadow-sm border border-slate-200 bg-white overflow-hidden">
++              {/* Right Column / POS checkout container OR bottom checkout container */}
++              <div className={cn(
++                invoiceData.invoice_type === "sale" ? "col-span-12 lg:col-span-4 lg:sticky lg:top-20" : "space-y-4 mt-6"
++              )}>
++                <Card className="shadow-sm border border-slate-200 bg-white overflow-hidden">
+                       {/* Sidebar Header */}
+                       <div className="p-3 bg-slate-900 text-white flex justify-between items-center">
+                         <div>
+@@ -3375,7 +3649,10 @@ export default function CreateInvoicePage() {
+                         </Badge>
+                       </div>
+ 
+-                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
++                      <div className={cn(
++                        "p-4 grid gap-6 items-start",
++                        invoiceData.invoice_type === "sale" ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
++                      )}>
+                         {/* Left Column: Added Items & package/lost/damaged details */}
+                         <div className="space-y-4">
+                           {/* Added Items / Cart List */}
+@@ -3697,6 +3974,7 @@ export default function CreateInvoicePage() {
+               </div>
+             </div>
+           </div>
++        </div>
+         {/* ================= END WEB-ONLY CONTENT ================= */}
+ 
+         {/* ================= PRINT-ONLY ITEMS & SUMMARY SECTION ================= */}
+@@ -4191,6 +4469,47 @@ export default function CreateInvoicePage() {
+           </div>
+         </DialogContent>
+       </Dialog>
++
++      {/* Lead Conversion Confirmation Dialog */}
++      <Dialog open={!!selectedLeadToConvert} onOpenChange={(open) => !open && setSelectedLeadToConvert(null)}>
++        <DialogContent className="sm:max-w-md bg-white">
++          <DialogHeader>
++            <DialogTitle className="text-gray-900 font-bold">Convert Lead to Customer</DialogTitle>
++          </DialogHeader>
++          <div className="space-y-4">
++            <p className="text-sm text-gray-500">
++              Are you sure you want to convert the lead <strong>{selectedLeadToConvert?.name}</strong> to a customer profile and select it for this booking?
++            </p>
++            {selectedLeadToConvert && (
++              <div className="p-3 bg-slate-50 rounded-lg text-xs space-y-1 text-slate-700 border border-slate-100">
++                <div><strong>Name:</strong> {selectedLeadToConvert.name}</div>
++                <div><strong>WhatsApp:</strong> {selectedLeadToConvert.phone}</div>
++                {selectedLeadToConvert.event_date && (
++                  <div><strong>Event Date:</strong> {new Date(selectedLeadToConvert.event_date).toLocaleDateString()}</div>
++                )}
++                {selectedLeadToConvert.location && (
++                  <div><strong>Location/Venue:</strong> {selectedLeadToConvert.location}</div>
++                )}
++                {selectedLeadToConvert.package_interest && (
++                  <div><strong>Package Interest:</strong> {selectedLeadToConvert.package_interest}</div>
++                )}
++              </div>
++            )}
++            <div className="flex justify-end gap-2">
++              <Button variant="outline" onClick={() => setSelectedLeadToConvert(null)} disabled={convertingLead} className="text-xs">
++                Cancel
++              </Button>
++              <Button 
++                onClick={() => handleConvertLead(selectedLeadToConvert)} 
++                disabled={convertingLead}
++                className="bg-[#113c2c] hover:bg-[#0c2e22] text-white text-xs font-semibold"
++              >
++                {convertingLead ? "Converting..." : "Convert & Select"}
++              </Button>
++            </div>
++          </div>
++        </DialogContent>
++      </Dialog>
+     </div>
+     </>
+   )

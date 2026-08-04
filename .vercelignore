@@ -1,0 +1,15 @@
+.next
+.puppeteer-chrome-profile
+.vscode
+.git
+.claude
+node_modules
+test-reports
+test-results
+tests
+_archive
+INVENTORY DATA
+SafaWala_CRM_QA_Audit_Report.pdf
+SafaWala_CRM_UX_Audit_Report.pdf
+SafaWala_Deep_Micro_Bug_Audit.pdf
+SafaWala_UI_Redesign_Plan.pdf

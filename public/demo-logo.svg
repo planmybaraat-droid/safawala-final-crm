@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" fill="none">
+  <!-- Background -->
+  <rect width="300" height="80" fill="#F5E6D3" rx="8"/>
+  
+  <!-- Crown Icon -->
+  <g transform="translate(20, 20)">
+    <path d="M20 5 L15 15 L10 12 L8 20 L12 18 L20 28 L28 18 L32 20 L30 12 L25 15 L20 5 Z" 
+          fill="#8B4513" 
+          stroke="#654321" 
+          stroke-width="1"/>
+    <rect x="8" y="28" width="24" height="4" fill="#8B4513" stroke="#654321" stroke-width="1"/>
+  </g>
+  
+  <!-- LOGO Text -->
+  <text x="60" y="35" font-family="serif" font-size="20" font-weight="bold" fill="#2C1810">
+    LOGO
+  </text>
+  
+  <!-- SAFAWALA.com Text -->
+  <text x="60" y="55" font-family="serif" font-size="16" font-weight="600" fill="#654321">
+    SAFAWALA.com
+  </text>
+</svg>

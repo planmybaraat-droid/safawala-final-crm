@@ -1,0 +1,171 @@
+import { NextRequest, NextResponse } from "next/server"
+import { authenticateRequest } from "@/lib/auth-middleware"
+import { createClient } from "@/lib/supabase/server"
+
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await authenticateRequest(req, { minRole: 'staff', requirePermission: 'bookings' })
+    if (!auth.authorized) {
+      return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
+    }
+
+    const franchiseId = auth.user!.franchise_id
+    if (!franchiseId) {
+      return NextResponse.json({ error: "No franchise assigned to your account" }, { status: 403 })
+    }
+
+    const body = await req.json()
+    const {
+      customer_id,
+      booking_type = 'rental',
+      is_quote = false,
+      event_date,
+      event_time,
+      delivery_date,
+      delivery_time,
+      return_date,
+      return_time,
+      event_type = 'wedding',
+      event_participant = 'both',
+      venue_address = '',
+      groom_name = '',
+      groom_whatsapp,
+      groom_address = '',
+      bride_name = '',
+      bride_whatsapp,
+      bride_address = '',
+      sales_staff_id,
+      total_amount = 0,
+      subtotal_amount = 0,
+      amount_paid = 0,
+      discount_amount = 0,
+      tax_amount = 0,
+      gst_percentage = 0,
+      payment_method = 'Cash',
+      notes = '',
+      items = [],
+    } = body
+
+    if (!customer_id) {
+      return NextResponse.json({ error: "Customer is required" }, { status: 400 })
+    }
+    // For rental bookings, event_date is required. For sales, delivery_date or no date is fine.
+    if (booking_type === 'rental' && !is_quote && !event_date) {
+      return NextResponse.json({ error: "Event date is required for rental bookings" }, { status: 400 })
+    }
+
+    const supabase = createClient()
+
+    // Generate a unique order number
+    const prefix = is_quote ? 'QUO' : (booking_type === 'sale' ? 'SAL' : 'ORD')
+    const ts = Date.now().toString().slice(-7)
+    let order_number = `${prefix}-${ts}`
+
+    const { data: existing } = await supabase
+      .from('product_orders')
+      .select('id')
+      .eq('order_number', order_number)
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      order_number = `${order_number}-${Math.floor(Math.random() * 100)}`
+    }
+
+    const orderData: any = {
+      order_number,
+      customer_id,
+      franchise_id: franchiseId,
+      booking_type,
+      event_type: booking_type === 'sale' ? null : event_type,
+      event_date: event_date || null,
+      event_time: event_time || null,
+      delivery_date: delivery_date || null,
+      delivery_time: delivery_time || null,
+      return_date: return_date || null,
+      return_time: return_time || null,
+      event_participant: booking_type === 'sale' ? null : (event_participant || 'both'),
+      venue_address: booking_type === 'sale' ? '' : venue_address,
+      groom_name: booking_type === 'sale' ? '' : groom_name,
+      groom_whatsapp: booking_type === 'sale' ? null : (groom_whatsapp || null),
+      groom_address: booking_type === 'sale' ? '' : (groom_address || ''),
+      bride_name: booking_type === 'sale' ? '' : bride_name,
+      bride_whatsapp: booking_type === 'sale' ? null : (bride_whatsapp || null),
+      bride_address: booking_type === 'sale' ? '' : (bride_address || ''),
+      sales_closed_by_id: sales_staff_id || null,
+      payment_method,
+      amount_paid: Number(amount_paid) || 0,
+      total_amount: Number(total_amount) || 0,
+      subtotal_amount: Number(subtotal_amount) || Number(total_amount) || 0,
+      tax_amount: Number(tax_amount) || 0,
+      gst_percentage: Number(gst_percentage) || 0,
+      discount_amount: Number(discount_amount) || 0,
+      status: is_quote ? 'generated' : 'confirmed',
+      is_quote: Boolean(is_quote),
+      notes,
+      selection_mode: 'products',
+    }
+
+    const { data: order, error: orderError } = await supabase
+      .from('product_orders')
+      .insert(orderData)
+      .select()
+      .single()
+
+    if (orderError) {
+      console.error('[Portal Create Booking] Order error:', orderError)
+      return NextResponse.json({ error: orderError.message }, { status: 500 })
+    }
+
+    // Insert items
+    if (items.length > 0) {
+      const itemRows = items.map((item: any) => ({
+        order_id: order.id,
+        product_id: item.product_id || null,
+        product_name: item.product_name || item.name || '',
+        quantity: Number(item.quantity) || 1,
+        unit_price: Number(item.unit_price) || Number(item.rental_price) || 0,
+        total_price: Number(item.total_price) || (Number(item.unit_price || item.rental_price) * Number(item.quantity)) || 0,
+        category: item.category || null,
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('product_order_items')
+        .insert(itemRows)
+
+      if (itemsError) {
+        console.error('[Portal Create Booking] Items error (non-fatal):', itemsError)
+      }
+    }
+
+    if (!is_quote) {
+      try {
+        const { NotificationService } = await import("@/lib/notification-service")
+        const { data: customer } = await supabase
+          .from("customers")
+          .select("name, phone")
+          .eq("id", customer_id)
+          .eq("franchise_id", franchiseId)
+          .single()
+
+        await NotificationService.notifyBookingCreated({
+          ...order,
+          customer_name: customer?.name || null,
+          customer_phone: customer?.phone || null,
+          venue: venue_address || null,
+          booking_type,
+          type: booking_type,
+        })
+      } catch (notificationError) {
+        console.error('[Portal Create Booking] Notification failed:', notificationError)
+      }
+    }
+
+    return NextResponse.json({ success: true, data: order }, { status: 201 })
+  } catch (error) {
+    console.error('[Portal Create Booking] Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

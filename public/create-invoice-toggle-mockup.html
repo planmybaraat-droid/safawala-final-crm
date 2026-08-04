@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create invoice — Sale/Rental toggle mockup</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
+    --sale:#4f46e5; --sale-light:#eef2ff;
+    --rental:#059669; --rental-light:#ecfdf5;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  .wrap{max-width:900px;margin:0 auto;padding:24px;}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .topbar h1{font-size:19px;font-weight:600;margin:0;}
+
+  /* Segmented toggle */
+  .toggle{
+    position:relative;display:inline-flex;background:#eceef1;border-radius:999px;padding:4px;width:220px;
+  }
+  .toggle .thumb{
+    position:absolute;top:4px;left:4px;width:calc(50% - 4px);height:calc(100% - 8px);
+    background:#fff;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.12);
+    transition:transform .22s ease, background .22s ease;
+  }
+  .toggle.rental .thumb{ transform:translateX(100%); }
+  .toggle button{
+    position:relative;z-index:1;flex:1;border:none;background:transparent;padding:8px 0;
+    font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border-radius:999px;
+    display:flex;align-items:center;justify-content:center;gap:5px;transition:color .2s ease;
+  }
+  .toggle button.active.sale{ color:var(--sale); }
+  .toggle button.active.rental{ color:var(--rental); }
+
+  .lockrow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:8px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;transition:border-color .2s ease;}
+  .card.sale{border-top:3px solid var(--sale);}
+  .card.rental{border-top:3px solid var(--rental);}
+  .card h2{font-size:13px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:6px;}
+  .card.sale h2{color:var(--sale);}
+  .card.rental h2{color:var(--rental);}
+
+  .fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:11px;color:var(--muted);}
+  .field input, .field select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fafbff;}
+
+  .extra-row{grid-column:1 / -1;display:none;}
+  .toggle.rental ~ .content .extra-row{display:flex;}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;}
+  .badge.sale{background:var(--sale-light);color:var(--sale);}
+  .badge.rental{background:var(--rental-light);color:var(--rental);}
+
+  .catlabel{font-size:12px;color:var(--muted);margin:16px 0 8px;}
+  .catgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .catcard{border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;font-size:11px;font-weight:500;background:#fff;}
+  .catcard.hidden-cat{display:none;}
+
+  .totalrow{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+  .totalrow .lbl{font-size:12px;color:var(--muted);}
+  .totalrow .val{font-size:18px;font-weight:700;}
+
+  .footnote{margin-top:16px;font-size:11px;color:var(--muted);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1>New invoice</h1>
+    <div style="text-align:right;">
+      <div class="toggle sale" id="toggle">
+        <div class="thumb"></div>
+        <button class="active sale" data-mode="sale">🏷️ Sale</button>
+        <button data-mode="rental">📦 Rental</button>
+      </div>
+      <div class="lockrow">🔒 Locks once you add the first item</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="card sale" id="typecard">
+      <h2 id="cardtitle">🏷️ Sale details</h2>
+      <div class="fieldgrid">
+        <div class="field"><label>Delivery date</label><input type="date"></div>
+        <div class="field"><label>Payment mode</label><select><option>Cash</option><option>UPI</option><option>Card</option></select></div>
+        <div class="field extra-row">
+          <label style="grid-column:1/-1">Event date</label>
+          <input type="date" style="grid-column:1/-1">
+        </div>
+        <div class="field extra-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-column:1/-1;">
+          <div><label>Return date</label><input type="date"></div>
+          <div><label>Security deposit</label><input type="text" placeholder="₹0"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="catlabel">Categories shown for this type</div>
+    <div class="catgrid" id="catgrid">
+      <div class="catcard both">Sherwani</div>
+      <div class="catcard both">Kurta set</div>
+      <div class="catcard both">Footwear</div>
+      <div class="catcard both">Jewellery</div>
+      <div class="catcard both">Accessories</div>
+      <div class="catcard rental-only">Barati safa</div>
+      <div class="catcard rental-only">Groom safa</div>
+      <div class="catcard rental-only">Bride safa</div>
+    </div>
+
+    <div class="card" style="border-top:3px solid var(--border);">
+      <div class="totalrow">
+        <span class="lbl">Total<span id="depositnote"></span></span>
+        <span class="val"><span id="modebadge" class="badge sale">SALE</span> &nbsp;₹5,000</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">Toggling before any item is added swaps the whole form — fields, categories, and totals all follow the selected type.</div>
+
+</div>
+
+<script>
+  const toggle = document.getElementById('toggle');
+  const buttons = toggle.querySelectorAll('button');
+  const typecard = document.getElementById('typecard');
+  const cardtitle = document.getElementById('cardtitle');
+  const modebadge = document.getElementById('modebadge');
+  const depositnote = document.getElementById('depositnote');
+  const catgrid = document.getElementById('catgrid');
+
+  function setMode(mode) {
+    toggle.classList.toggle('rental', mode === 'rental');
+    toggle.classList.toggle('sale', mode === 'sale');
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+
+    typecard.classList.toggle('sale', mode === 'sale');
+    typecard.classList.toggle('rental', mode === 'rental');
+    cardtitle.textContent = mode === 'sale' ? '🏷️ Sale details' : '📦 Rental details';
+
+    modebadge.textContent = mode.toUpperCase();
+    modebadge.classList.toggle('sale', mode === 'sale');
+    modebadge.classList.toggle('rental', mode === 'rental');
+    depositnote.textContent = mode === 'rental' ? ' + deposit' : '';
+
+    catgrid.querySelectorAll('.rental-only').forEach(el => {
+      el.classList.toggle('hidden-cat', mode !== 'rental');
+    });
+  }
+
+  buttons.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  setMode('sale');
+</script>
+</body>
+</html>

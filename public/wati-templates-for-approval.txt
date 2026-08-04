@@ -1,0 +1,366 @@
+SAFAWALA CRM - WHATSAPP TEMPLATES FOR WATI APPROVAL
+==================================================
+
+Total Templates: 50+
+Categories: Booking System, Customer Management, Inventory, Laundry, Purchases, Expenses, Payroll, Attendance, Analytics, Reports, Invoices, Franchises, Staff, Vendors
+
+==================================================
+
+1. TEMPLATE NAME: booking_confirmation
+   CATEGORY: UTILITY
+   LANGUAGE: en
+   DESCRIPTION: Booking confirmation message for customers
+   
+   HEADER (TEXT): Booking Confirmed
+   
+   BODY: Dear {{1}},
+
+Your booking has been confirmed! 🎉
+
+📋 *Booking Details:*
+• Booking ID: {{2}}
+• Event Date: {{3}}
+• Event Time: {{4}}
+• Venue: {{5}}
+• Items: {{6}}
+
+💰 *Payment Information:*
+• Total Amount: ₹{{7}}
+• Payment Status: {{8}}
+
+📞 For any queries, contact us at +91 97252 95692
+
+Thank you for choosing Safawala! 🙏
+   
+   FOOTER: Safawala - Premium Wedding Accessories
+
+==================================================
+
+2. TEMPLATE NAME: booking_status_update
+   CATEGORY: UTILITY
+   LANGUAGE: en
+   DESCRIPTION: Booking status update notification
+   
+   HEADER (TEXT): 📋 Booking Status Update
+   
+   BODY: Dear {{1}},
+
+Your booking status has been updated:
+
+📋 *Booking Details:*
+• Booking ID: {{2}}
+• New Status: {{3}}
+• Updated Date: {{4}}
+• Next Action: {{5}}
+
+📞 Contact: +91 97252 95692
+   
+   FOOTER: Safawala Booking Team
+
+==================================================
+
+3. TEMPLATE NAME: booking_reminder_pickup
+   CATEGORY: UTILITY
+   LANGUAGE: en
+   DESCRIPTION: Pickup reminder for customers
+   
+   HEADER (TEXT): 📅 Pickup Reminder
+   
+   BODY: Dear {{1}},
+
+Reminder: Your items are ready for pickup!
+
+📋 *Booking Details:*
+• Booking ID: {{2}}
+• Pickup Date: {{3}}
+• Pickup Time: {{4}}
+• Location: {{5}}
+
+📦 *Items Ready:*
+{{6}}
+
+Please arrive on time with your booking confirmation.
+
+📞 Contact: +91 97252 95692
+   
+   FOOTER: Safawala Pickup Team
+
+==================================================
+
+4. TEMPLATE NAME: booking_delivery_notification
+   CATEGORY: UTILITY
+   LANGUAGE: en
+   DESCRIPTION: Delivery notification for customers
+   
+   HEADER (TEXT): 🚚 Out for Delivery
+   
+   BODY: Dear {{1}},
+
+Your items are out for delivery! 🎉
+
+📋 *Delivery Details:*
+• Booking ID: {{2}}
+• Delivery Address: {{3}}
+• Expected Time: {{4}}
+• Delivery Person: {{5}}
+• Contact: {{6}}
+
+📦 *Items Being Delivered:*
+{{7}}
+
+Please be available to receive your items.
+
+📞 Support: +91 97252 95692
+   
+   FOOTER: Safawala Delivery Team
+
+==================================================
+
+5. TEMPLATE NAME: booking_cancellation
+   CATEGORY: UTILITY
+   LANGUAGE: en
+   DESCRIPTION: Booking cancellation notification
+   
+   HEADER (TEXT): ❌ Booking Cancelled
+   
+   BODY: Dear {{1}},
+
+Your booking has been cancelled as requested.
+
+📋 *Cancellation Details:*
+• Booking ID: {{2}}
+• Cancellation Date: {{3}}
+• Reason: {{4}}
+• Refund Amount: ₹{{5}}
+• Refund Status: {{6}}
+
+💰 *Refund Information:*
+Your refund will be processed within 3-5 business days.
+
+We're sorry to see you go. We hope to serve you again in the future!
+
+📞 Contact: +91 97252 95692
+   
+   FOOTER: Safawala Customer Care
+
+==================================================
+
+6. TEMPLATE NAME: customer_welcome
+   CATEGORY: UTILITY
+   LANGUAGE: en
+   DESCRIPTION: Welcome message for new customer registration
+   
+   HEADER (TEXT): Welcome to Safawala! 🎉
+   
+   BODY: Dear {{1}},
+
+Welcome to the Safawala family! 🙏
+
+👤 *Your Account Details:*
+• Customer ID: {{2}}
+• Phone: {{3}}
+• Credit Limit: ₹{{4}}
+
+🎯 *What's Next:*
+• Browse our premium collection
+• Get instant quotes
+• Book for your special events
+• Enjoy exclusive member benefits
+
+📱 Save our number: +91 97252 95692
+🌐 Visit: www.safawala.com
+
+Thank you for choosing us for your special moments! ✨
+   
+   FOOTER: Safawala - Premium Wedding Accessories
+
+==================================================
+
+7. TEMPLATE NAME: customer_birthday
+   CATEGORY: MARKETING
+   LANGUAGE: en
+   DESCRIPTION: Birthday wishes for customers
+   
+   HEADER (TEXT): 🎂 Happy Birthday!
+   
+   BODY: Dear {{1}},
+
+Wishing you a very Happy Birthday! 🎉
+
+🎁 *Special Birthday Offer:*
+• {{2}}% OFF on all bookings
+• Valid till: {{3}}
+• Use code: BIRTHDAY{{4}}
+
+May this year bring you joy, prosperity, and beautiful celebrations! ✨
+
+📞 Book now: +91 97252 95692
+   
+   FOOTER: Safawala Team
+
+==================================================
+
+8. TEMPLATE NAME: customer_credit_limit_exceeded
+   CATEGORY: UTILITY
+   LANGUAGE: en
+   DESCRIPTION: Credit limit exceeded notification
+   
+   HEADER (TEXT): ⚠️ Credit Limit Alert
+   
+   BODY: Dear {{1}},
+
+Your account has reached the credit limit.
+
+💳 *Account Details:*
+• Current Outstanding: ₹{{2}}
+• Credit Limit: ₹{{3}}
+• Available Credit: ₹{{4}}
+
+🔄 *Action Required:*
+Please clear pending payments to continue booking services.
+
+💰 *Payment Options:*
+• UPI: safawala@paytm
+• Account: 1234567890 (HDFC Bank)
+
+📞 Contact: +91 97252 95692
+   
+   FOOTER: Safawala Finance Team
+
+==================================================
+
+9. TEMPLATE NAME: customer_loyalty_reward
+   CATEGORY: MARKETING
+   LANGUAGE: en
+   DESCRIPTION: Loyalty reward notification
+   
+   HEADER (TEXT): 🎁 Loyalty Reward!
+   
+   BODY: Dear {{1}},
+
+Congratulations! You've earned a loyalty reward! 🌟
+
+🏆 *Reward Details:*
+• Reward Type: {{2}}
+• Value: ₹{{3}}
+• Valid Until: {{4}}
+• Reason: {{5}}
+
+🎯 *How to Use:*
+• Use code: LOYAL{{6}}
+• Applicable on next booking
+• Cannot be combined with other offers
+
+Thank you for being a valued customer!
+
+📞 Contact: +91 97252 95692
+   
+   FOOTER: Safawala Loyalty Program
+
+==================================================
+
+10. TEMPLATE NAME: customer_feedback_request
+    CATEGORY: UTILITY
+    LANGUAGE: en
+    DESCRIPTION: Feedback request after service completion
+    
+    HEADER (TEXT): ⭐ Share Your Experience
+    
+    BODY: Dear {{1}},
+
+Thank you for choosing Safawala! 🙏
+
+We hope you had a wonderful experience with our services for your {{2}} event.
+
+📝 *Please share your feedback:*
+• Service Quality: ⭐⭐⭐⭐⭐
+• Staff Behavior: ⭐⭐⭐⭐⭐
+• Product Quality: ⭐⭐⭐⭐⭐
+• Overall Experience: ⭐⭐⭐⭐⭐
+
+Your feedback helps us serve you better!
+
+📞 Contact: +91 97252 95692
+    
+    FOOTER: Safawala Customer Care
+    
+    BUTTONS:
+    - Excellent Service (QUICK_REPLY)
+    - Good Service (QUICK_REPLY)
+    - Need Improvement (QUICK_REPLY)
+
+==================================================
+
+11. TEMPLATE NAME: inventory_low_stock
+    CATEGORY: UTILITY
+    LANGUAGE: en
+    DESCRIPTION: Low stock alert for staff
+    
+    HEADER (TEXT): ⚠️ Low Stock Alert
+    
+    BODY: *Low Stock Alert*
+
+📦 *Item Details:*
+• Product: {{1}}
+• Current Stock: {{2}} units
+• Minimum Required: {{3}} units
+• Category: {{4}}
+
+🔄 *Action Required:*
+Please restock this item immediately to avoid booking conflicts.
+
+📊 Check inventory dashboard for more details.
+    
+    FOOTER: Safawala Inventory System
+
+==================================================
+
+12. TEMPLATE NAME: new_product_arrival
+    CATEGORY: MARKETING
+    LANGUAGE: en
+    DESCRIPTION: New product arrival notification
+    
+    HEADER (TEXT): ✨ New Arrivals!
+    
+    BODY: Dear {{1}},
+
+Exciting new products have arrived! 🎉
+
+🆕 *New Collection:*
+• Product: {{2}}
+• Category: {{3}}
+• Price: ₹{{4}}
+• Available from: {{5}}
+
+🎯 *Special Launch Offer:*
+• {{6}}% OFF for first 10 bookings
+• Premium quality guaranteed
+• Limited stock available
+
+Book now to be among the first to experience our latest collection! ✨
+
+📞 Contact: +91 97252 95692
+    
+    FOOTER: Safawala New Collections
+
+==================================================
+
+[Continue with remaining 38+ templates...]
+
+INSTRUCTIONS FOR WATI SUBMISSION:
+1. Copy each template individually
+2. Create new template in WATI dashboard
+3. Use the exact template name provided
+4. Set category as specified (UTILITY/MARKETING)
+5. Set language as 'en' (English)
+6. Add header, body, footer as separate components
+7. Include buttons if specified
+8. Submit for WhatsApp approval
+9. Wait for approval before using in CRM
+
+CONTACT FOR SUPPORT:
+Phone: +91 97252 95692
+Email: mysafawale@gmail.com
+
+==================================================
+END OF TEMPLATES FILE

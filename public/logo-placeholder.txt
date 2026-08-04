@@ -1,0 +1,19 @@
+=====================================
+  PLACEHOLDER FOR YOUR LOGO
+=====================================
+
+To add your logo:
+
+1. Save your logo as: logo.png
+2. Place it in: /public/logo.png
+3. Requirements:
+   - Format: PNG (recommended)
+   - Size: 512x512px (square)
+   - Background: Transparent
+   - File size: Under 1MB
+
+4. Your logo will automatically appear on the login page!
+
+Current branding config: /public/branding.json
+
+=====================================
