@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyPdfToken } from "@/lib/pdf-token"
 
 // Unified middleware: protect all pages by default; allow public paths and API
 const PUBLIC_PATH_PREFIXES = [
@@ -30,6 +29,42 @@ function hasSupabaseCookie(req: NextRequest): boolean {
 
 function isAuthDisabled() {
   return false
+}
+
+const PDF_TOKEN_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(-32) || "safawala-pdf-secret-2026"
+
+async function hmacHex(payload: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(PDF_TOKEN_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  )
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload))
+  return Array.from(new Uint8Array(sig), (byte) => byte.toString(16).padStart(2, "0")).join("")
+}
+
+function decodeBase64Url(value: string): string {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
+  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=")
+  return atob(padded)
+}
+
+async function verifyPdfToken(token: string): Promise<boolean> {
+  try {
+    const decoded = decodeBase64Url(token)
+    const parts = decoded.split(":")
+    if (parts.length !== 4) return false
+    const [orderId, orderType, expiry, sig] = parts
+    if (Date.now() > Number(expiry)) return false
+    const payload = `${orderId}:${orderType}:${expiry}`
+    const expected = (await hmacHex(payload)).slice(0, 16)
+    return sig === expected
+  } catch {
+    return false
+  }
 }
 
 export async function middleware(request: NextRequest) {
