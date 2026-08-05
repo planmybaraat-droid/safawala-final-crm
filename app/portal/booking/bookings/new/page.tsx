@@ -296,8 +296,8 @@ function NewBookingInner() {
   }
 
   const canGoStep2 = !!selectedCustomer
-  const canGoStep3 = !!eventDate
-  const canSave    = !!selectedCustomer && !!eventDate
+  const canGoStep3 = bookingType === "sale" ? true : !!eventDate
+  const canSave    = !!selectedCustomer && (bookingType === "sale" || !!eventDate)
 
   const stepLabels = ["Customer","Details","Products","Review"]
 
@@ -451,18 +451,20 @@ function NewBookingInner() {
                   style={{ width:"100%", padding:"11px 12px", borderRadius:12, border:`1.5px solid ${eventDate?COLOR:"rgba(0,0,0,0.1)"}`, fontSize:14, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
               </div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-                <div>
-                  <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.5)", letterSpacing:0.5 }}>DELIVERY DATE</p>
-                  <input type="date" value={deliveryDate} onChange={e=>setDeliveryDate(e.target.value)}
-                    style={{ width:"100%", padding:"11px 12px", borderRadius:12, border:"1.5px solid rgba(0,0,0,0.1)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
+              {bookingType === "rental" && (
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+                  <div>
+                    <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.5)", letterSpacing:0.5 }}>DELIVERY DATE</p>
+                    <input type="date" value={deliveryDate} onChange={e=>setDeliveryDate(e.target.value)}
+                      style={{ width:"100%", padding:"11px 12px", borderRadius:12, border:"1.5px solid rgba(0,0,0,0.1)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
+                  </div>
+                  <div>
+                    <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.5)", letterSpacing:0.5 }}>RETURN DATE</p>
+                    <input type="date" value={returnDate} onChange={e=>setReturnDate(e.target.value)}
+                      style={{ width:"100%", padding:"11px 12px", borderRadius:12, border:"1.5px solid rgba(0,0,0,0.1)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
+                  </div>
                 </div>
-                <div>
-                  <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.5)", letterSpacing:0.5 }}>RETURN DATE</p>
-                  <input type="date" value={returnDate} onChange={e=>setReturnDate(e.target.value)}
-                    style={{ width:"100%", padding:"11px 12px", borderRadius:12, border:"1.5px solid rgba(0,0,0,0.1)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
-                </div>
-              </div>
+              )}
 
               <div style={{ marginBottom:12 }}>
                 <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.5)", letterSpacing:0.5 }}>VENUE ADDRESS</p>
