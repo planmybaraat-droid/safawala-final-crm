@@ -18,7 +18,6 @@ function canViewOtherUsers(user: any) {
 
 async function getOrInitLedger(targetUserId: string, authUser: any) {
   try {
-    // 1. Check existing ledger by targetUserId
     let { data: ledger } = await supabaseServer
       .from("staff_ledgers")
       .select("id, credit_limit, utilized_credit")
@@ -27,7 +26,6 @@ async function getOrInitLedger(targetUserId: string, authUser: any) {
 
     if (ledger) return { ledger, userId: targetUserId }
 
-    // 2. Try creating ledger for targetUserId
     const { data: created } = await supabaseServer
       .from("staff_ledgers")
       .insert({ user_id: targetUserId, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
@@ -36,7 +34,6 @@ async function getOrInitLedger(targetUserId: string, authUser: any) {
 
     if (created) return { ledger: created, userId: targetUserId }
 
-    // 3. Fallback lookup by email/id
     const { data: dbUser } = await supabaseServer
       .from("users")
       .select("id")
@@ -63,10 +60,9 @@ async function getOrInitLedger(targetUserId: string, authUser: any) {
       if (dbUserLedger) return { ledger: dbUserLedger, userId: dbUser.id }
     }
   } catch (err) {
-    console.warn("getOrInitLedger warning, continuing with null ledger_id:", err)
+    console.warn("getOrInitLedger warning:", err)
   }
 
-  // Never fail: return null ledger so loan application creation always succeeds
   return { ledger: null, userId: targetUserId }
 }
 
@@ -81,23 +77,48 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
   }
 
   try {
+    // 1. Primary: staff_loan_requests table
     const { data, error } = await supabaseServer
       .from("staff_loan_requests")
       .select("*")
       .or(`user_id.eq.${params.userId},user_id.eq.${auth.user.id}`)
       .order("created_at", { ascending: false })
 
-    if (error) {
-      const missingTable = error.code === "42P01" || error.code === "PGRST205"
-      return NextResponse.json({
-        success: false,
-        error: missingTable ? "Loan ledger database table is not created yet." : error.message,
-        code: missingTable ? "MIGRATION_REQUIRED" : error.code,
-        data: []
-      }, { status: missingTable ? 200 : 500 })
+    if (!error) {
+      return NextResponse.json({ success: true, data: data || [] })
     }
 
-    return NextResponse.json({ success: true, data: data || [] })
+    const missingTable = error.code === "42P01" || error.code === "PGRST205" || error.message?.includes("schema cache") || error.message?.includes("staff_loan_requests")
+
+    if (missingTable) {
+      // Fallback: Query staff_expense_requests where category = 'loan'
+      const { data: expData } = await supabaseServer
+        .from("staff_expense_requests")
+        .select("*")
+        .or(`user_id.eq.${params.userId},user_id.eq.${auth.user.id}`)
+        .eq("category", "loan")
+        .order("created_at", { ascending: false })
+
+      const mappedLoans = (expData || []).map((e: any) => ({
+        id: e.id,
+        user_id: e.user_id,
+        ledger_id: e.ledger_id,
+        franchise_id: e.franchise_id,
+        amount: e.amount,
+        purpose: "personal",
+        reason: e.notes || "Salary Loan / Advance",
+        tenure_months: 1,
+        monthly_emi: e.amount,
+        status: e.status || "pending",
+        repaid_amount: 0,
+        created_at: e.created_at,
+        updated_at: e.created_at,
+      }))
+
+      return NextResponse.json({ success: true, data: mappedLoans })
+    }
+
+    return NextResponse.json({ success: false, error: error.message, data: [] }, { status: 500 })
   } catch (err: any) {
     console.error(`Error fetching loans for user ${params.userId}:`, err)
     return NextResponse.json({ success: false, error: err.message || "Failed to fetch loan requests", data: [] }, { status: 500 })
@@ -128,17 +149,32 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       return NextResponse.json({ success: false, error: "Select a valid loan purpose." }, { status: 400 })
     }
 
-    // Resolve ledger & valid user ID without blocking on ledger creation errors
     const { ledger, userId: effectiveUserId } = await getOrInitLedger(params.userId, auth.user)
 
     // Check if user already has an active or pending loan (Single Loan Policy)
-    const { data: activeLoans } = await supabaseServer
+    let activeLoans: any[] = []
+    const { data: primaryActive } = await supabaseServer
       .from("staff_loan_requests")
       .select("id, amount, status")
       .or(`user_id.eq.${params.userId},user_id.eq.${effectiveUserId}`)
       .in("status", ["pending", "approved", "active"])
+      .maybeSingle()
 
-    if (activeLoans && activeLoans.length > 0) {
+    if (primaryActive) {
+      activeLoans = [primaryActive]
+    } else {
+      // Check fallback table
+      const { data: expActive } = await supabaseServer
+        .from("staff_expense_requests")
+        .select("id, amount, status")
+        .or(`user_id.eq.${params.userId},user_id.eq.${effectiveUserId}`)
+        .eq("category", "loan")
+        .in("status", ["pending", "approved", "active"])
+        .maybeSingle()
+      if (expActive) activeLoans = [expActive]
+    }
+
+    if (activeLoans.length > 0) {
       const existing = activeLoans[0]
       return NextResponse.json({
         success: false,
@@ -173,17 +209,69 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       repaid_amount: 0
     }
 
-    const { data, error } = await supabaseServer
+    // 1. Try primary staff_loan_requests table
+    const { data: createdLoan, error: primaryErr } = await supabaseServer
       .from("staff_loan_requests")
       .insert(payload)
       .select("*")
-      .single()
+      .maybeSingle()
 
-    if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    if (createdLoan) {
+      return NextResponse.json({ success: true, data: createdLoan })
     }
 
-    return NextResponse.json({ success: true, data })
+    const missingTable = primaryErr && (
+      primaryErr.code === "42P01" ||
+      primaryErr.code === "PGRST205" ||
+      primaryErr.message?.includes("schema cache") ||
+      primaryErr.message?.includes("staff_loan_requests")
+    )
+
+    if (missingTable) {
+      // 2. Fallback: Save in staff_expense_requests table with category 'loan'
+      const expPayload = {
+        user_id: effectiveUserId,
+        ledger_id: ledger?.id || null,
+        franchise_id: auth.user.franchise_id || null,
+        amount,
+        category: "loan",
+        notes: reason ? `[LOAN REQUEST: ${purpose.toUpperCase()}] ${reason}` : `Loan request (${purpose})`,
+        status: "pending",
+        expense_date: new Date().toISOString().slice(0, 10),
+        order_reference: `LOAN-${Date.now()}`,
+        vendor_name: "Staff Loan / Salary Advance"
+      }
+
+      const { data: expLoan, error: expErr } = await supabaseServer
+        .from("staff_expense_requests")
+        .insert(expPayload)
+        .select("*")
+        .single()
+
+      if (expErr) {
+        return NextResponse.json({ success: false, error: expErr.message }, { status: 500 })
+      }
+
+      const mappedLoan = {
+        id: expLoan.id,
+        user_id: expLoan.user_id,
+        ledger_id: expLoan.ledger_id,
+        franchise_id: expLoan.franchise_id,
+        amount: expLoan.amount,
+        purpose,
+        reason: expLoan.notes,
+        tenure_months: 1,
+        monthly_emi: expLoan.amount,
+        status: expLoan.status || "pending",
+        repaid_amount: 0,
+        created_at: expLoan.created_at,
+        updated_at: expLoan.created_at,
+      }
+
+      return NextResponse.json({ success: true, data: mappedLoan })
+    }
+
+    return NextResponse.json({ success: false, error: primaryErr?.message || "Failed to submit loan request" }, { status: 500 })
   } catch (err: any) {
     console.error(`Error submitting loan request for user ${params.userId}:`, err)
     return NextResponse.json({ success: false, error: err.message || "Failed to submit loan request" }, { status: 500 })

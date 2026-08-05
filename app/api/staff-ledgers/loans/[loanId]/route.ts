@@ -27,14 +27,45 @@ export async function PATCH(request: NextRequest, { params }: { params: { loanId
       return NextResponse.json({ success: false, error: "Invalid status option provided." }, { status: 400 })
     }
 
-    // 1. Fetch loan request
-    const { data: loan, error: loanErr } = await supabaseServer
+    const now = new Date().toISOString()
+    const newStatus = status === "approved" ? "active" : status
+
+    // 1. Try fetching from staff_loan_requests
+    let loan: any = null
+    const { data: primaryLoan } = await supabaseServer
       .from("staff_loan_requests")
       .select("*")
       .eq("id", params.loanId)
-      .single()
+      .maybeSingle()
 
-    if (loanErr || !loan) {
+    if (primaryLoan) {
+      loan = primaryLoan
+    } else {
+      // Check fallback table staff_expense_requests
+      const { data: expLoan } = await supabaseServer
+        .from("staff_expense_requests")
+        .select("*")
+        .eq("id", params.loanId)
+        .maybeSingle()
+
+      if (expLoan) {
+        loan = {
+          id: expLoan.id,
+          user_id: expLoan.user_id,
+          ledger_id: expLoan.ledger_id,
+          franchise_id: expLoan.franchise_id,
+          amount: expLoan.amount,
+          purpose: "personal",
+          reason: expLoan.notes,
+          tenure_months: 1,
+          monthly_emi: expLoan.amount,
+          status: expLoan.status,
+          is_fallback: true
+        }
+      }
+    }
+
+    if (!loan) {
       return NextResponse.json({ success: false, error: "Loan request not found." }, { status: 404 })
     }
 
@@ -42,68 +73,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { loanId
       return NextResponse.json({ success: false, error: "This loan has already been fully repaid." }, { status: 400 })
     }
 
-    const now = new Date().toISOString()
-    const newStatus = status === "approved" ? "active" : status
+    // 2. Update loan record in correct table
+    if (loan.is_fallback) {
+      const { data: updatedExp, error: expErr } = await supabaseServer
+        .from("staff_expense_requests")
+        .update({
+          status: newStatus === "active" ? "approved" : newStatus,
+          notes: reviewNotes ? `${loan.reason || ""} | Note: ${reviewNotes}` : loan.reason
+        })
+        .eq("id", params.loanId)
+        .select("*")
+        .single()
 
-    // 2. If approving loan, update staff ledger & record transaction
-    if (newStatus === "active" && loan.status !== "active") {
-      // Find staff ledger
-      let { data: ledger, error: ledgerErr } = await supabaseServer
-        .from("staff_ledgers")
-        .select("id, utilized_credit, credit_limit")
-        .eq("user_id", loan.user_id)
-        .maybeSingle()
-
-      if (!ledger) {
-        const { data: existingUser } = await supabaseServer
-          .from("users")
-          .select("id")
-          .eq("id", loan.user_id)
-          .maybeSingle()
-
-        if (!existingUser) {
-          await supabaseServer.from("users").upsert(
-            {
-              id: loan.user_id,
-              email: `${loan.user_id}@safawala.com`,
-              name: "Warehouse Staff",
-              role: "staff",
-              department: "warehouse",
-              franchise_id: loan.franchise_id || null,
-            },
-            { onConflict: "id" }
-          )
-        }
-
-        const { data: newLedger, error: createErr } = await supabaseServer
-          .from("staff_ledgers")
-          .insert({ user_id: loan.user_id, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
-          .select()
-          .single()
-        if (createErr) throw createErr
-        ledger = newLedger
-      }
-
-      const newUtilized = (ledger.utilized_credit || 0) + loan.amount
-
-      // Update staff ledger
-      await supabaseServer
-        .from("staff_ledgers")
-        .update({ utilized_credit: newUtilized })
-        .eq("id", ledger.id)
-
-      // Post transaction record
-      await supabaseServer.from("staff_ledger_transactions").insert({
-        ledger_id: ledger.id,
-        type: "loan",
-        amount: -Math.abs(loan.amount),
-        title: `Loan Disbursed (${loan.purpose.toUpperCase()}) - ${loan.tenure_months} Mo. EMI`,
-        notes: reviewNotes || `Loan disbursed to staff. EMI: ₹${loan.monthly_emi}/month`,
-        created_at: now,
-      })
+      if (expErr) throw expErr
+      return NextResponse.json({ success: true, data: updatedExp })
     }
 
-    // 3. Update loan record
+    // Update primary staff_loan_requests
     const { data: updatedLoan, error: updateErr } = await supabaseServer
       .from("staff_loan_requests")
       .update({
