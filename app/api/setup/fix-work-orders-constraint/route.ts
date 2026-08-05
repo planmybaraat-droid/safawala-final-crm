@@ -173,8 +173,10 @@ async function applyFix() {
           EXECUTE FUNCTION create_wo_from_product_order();
     `
 
-    // Try executing via exec_sql or execute_sql RPC
     let rpcRes = await supabase.rpc("exec_sql" as any, { sql: fixSql })
+    if (rpcRes.error) {
+      rpcRes = await supabase.rpc("exec_sql" as any, { sql_query: fixSql })
+    }
     if (rpcRes.error) {
       rpcRes = await supabase.rpc("execute_sql" as any, { sql_query: fixSql })
     }
@@ -182,7 +184,7 @@ async function applyFix() {
     return NextResponse.json({
       success: !rpcRes.error,
       rpcResult: rpcRes,
-      message: rpcRes.error ? "Executed with RPC notice" : "Work order duplicate key constraint fixed successfully!"
+      message: rpcRes.error ? `Notice: ${rpcRes.error.message}` : "Work order duplicate key constraint fixed successfully!"
     })
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 })
