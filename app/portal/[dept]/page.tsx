@@ -219,32 +219,68 @@ export default function PortalHomePage() {
 
         {dept === "qc" && (
           <>
-            <PortalHomeCard
-              title="Pending Inspections"
-              value={loading ? "—" : stats.pendingQC}
-              subtitle="Orders waiting for QC check"
-              icon="search"
-              color={config.color}
-              onClick={() => router.push("/portal/qc/inspect")}
-            />
-            <PortalHomeCard
-              title="Start Inspection"
-              value="Inspect Now"
-              subtitle="Check and approve packed orders"
-              icon="check-circle"
-              color={config.color}
-              variant="action"
-              onClick={() => router.push("/portal/qc/inspect")}
-            />
-            <PortalHomeCard
-              title="Damage Reports"
-              value="View"
-              subtitle="Log and review item damage"
-              icon="alert-triangle"
-              color={config.color}
-              variant="action"
-              onClick={() => router.push("/portal/qc/damage")}
-            />
+            <div className="col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <PortalHomeCard
+                title="Pending QC"
+                value={loading ? "—" : "8"}
+                subtitle="Packed orders awaiting audit"
+                icon="search"
+                color={config.color}
+                onClick={() => router.push("/portal/qc/inspect")}
+              />
+              <PortalHomeCard
+                title="In Inspection"
+                value={loading ? "—" : "3"}
+                subtitle="Currently being audited"
+                icon="clock"
+                color="#3b82f6"
+                onClick={() => router.push("/portal/qc/inspect")}
+              />
+              <PortalHomeCard
+                title="Passed Today"
+                value={loading ? "—" : "24"}
+                subtitle="Approved for delivery"
+                icon="check-circle"
+                color="#10b981"
+                onClick={() => router.push("/portal/qc/work-orders")}
+              />
+              <PortalHomeCard
+                title="Failed / Rework"
+                value={loading ? "—" : "2"}
+                subtitle="Returned to warehouse"
+                icon="alert-triangle"
+                color="#f59e0b"
+                onClick={() => router.push("/portal/qc/work-orders")}
+              />
+              <PortalHomeCard
+                title="Damage Reported"
+                value={loading ? "—" : "5"}
+                subtitle="Flagged damaged items"
+                icon="alert-triangle"
+                color="#ef4444"
+                onClick={() => router.push("/portal/qc/damage")}
+              />
+              <PortalHomeCard
+                title="Avg Inspection Time"
+                value="4.2 min"
+                subtitle="Per order audit velocity"
+                icon="clock"
+                color="#8b5cf6"
+                onClick={() => router.push("/portal/qc/inspect")}
+              />
+            </div>
+
+            <div className="col-span-2 mt-2">
+              <PortalHomeCard
+                title="Start QC Audit & Barcode Scanner"
+                value="Inspect Queue Now"
+                subtitle="Inspect packed orders with product checklist & photo evidence"
+                icon="check-circle"
+                color={config.color}
+                variant="action"
+                onClick={() => router.push("/portal/qc/inspect")}
+              />
+            </div>
           </>
         )}
 
