@@ -65,7 +65,6 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     const amount = Number(body.amount)
     const purpose = String(body.purpose || "personal").trim().toLowerCase()
     const reason = String(body.reason || "").trim()
-    const tenureMonths = Math.max(1, Math.min(24, parseInt(String(body.tenureMonths || 1), 10)))
 
     if (!Number.isFinite(amount) || amount <= 0 || amount > 500000) {
       return NextResponse.json({ success: false, error: "Enter a valid loan amount up to ₹5,00,000." }, { status: 400 })
