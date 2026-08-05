@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { getPortalConfig } from "@/lib/portal-config"
 import { PortalPageHeader, PortalSearchBar, PortalSkeleton, PortalEmptyState, PortalListCard, PortalSectionLabel } from "@/components/portal/portal-shared"
+import { ExpenseApprovalList, WarehouseExpenseLedger, type WarehouseExpense } from "@/components/portal/warehouse-expense-ledger"
 import { toast } from "sonner"
 
 const CREDIT_LIMIT = 25000
@@ -27,6 +28,9 @@ export default function LedgerPage() {
   const [staffData, setStaffData] = useState<any[]>([])
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null)
   const [myLedger, setMyLedger] = useState<any | null>(null)
+  const [expenses, setExpenses] = useState<WarehouseExpense[]>([])
+  const [selectedExpenses, setSelectedExpenses] = useState<WarehouseExpense[]>([])
+  const [loadingExpenses, setLoadingExpenses] = useState(false)
 
   const [showAdvanceModal, setShowAdvanceModal] = useState(false)
   const [showPayoutModal, setShowPayoutModal] = useState(false)
@@ -38,6 +42,24 @@ export default function LedgerPage() {
   const [errorMsg, setErrorMsg] = useState("")
   const [successMsg, setSuccessMsg] = useState("")
   const [submitting, setSubmitting] = useState(false)
+
+  const fetchExpenses = useCallback(async (userId: string, selected = false) => {
+    setLoadingExpenses(true)
+    try {
+      const res = await fetch(`/api/staff-ledgers/${userId}/expenses`)
+      const json = await res.json()
+      if (res.ok && json.success) {
+        if (selected) setSelectedExpenses(json.data || [])
+        else setExpenses(json.data || [])
+      } else if (json.code !== "MIGRATION_REQUIRED") {
+        toast.error(json.error || "Failed to load expense requests")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load expense requests")
+    } finally {
+      setLoadingExpenses(false)
+    }
+  }, [])
 
   const fetchLedgers = useCallback(async (currentUser: any, adminAccess: boolean) => {
     try {
@@ -55,6 +77,7 @@ export default function LedgerPage() {
         const json = await res.json()
         if (json.success) {
           setMyLedger(json.data)
+          if (dept === "warehouse") await fetchExpenses(currentUser.id)
         } else {
           toast.error(json.error || "Failed to load your ledger")
         }
@@ -64,7 +87,7 @@ export default function LedgerPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [dept, fetchExpenses])
 
   const fetchSelectedStaffLedger = async (userId: string) => {
     try {
@@ -72,11 +95,29 @@ export default function LedgerPage() {
       const json = await res.json()
       if (json.success) {
         setSelectedStaff(json.data)
+        if (json.data?.department === "warehouse") await fetchExpenses(userId, true)
       } else {
         toast.error(json.error || "Failed to load staff ledger details")
       }
     } catch (err: any) {
       toast.error(err.message || "An error occurred")
+    }
+  }
+
+  async function handleExpenseReview(expenseId: string, status: "approved" | "rejected") {
+    try {
+      const res = await fetch(`/api/staff-ledgers/expenses/${expenseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error || "Could not review expense")
+      toast.success(status === "approved" ? "Expense approved and posted to ledger" : "Expense rejected")
+      if (selectedStaff) await fetchSelectedStaffLedger(selectedStaff.id)
+      await fetchLedgers(user, isAdminView)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not review expense")
     }
   }
 
@@ -206,7 +247,7 @@ export default function LedgerPage() {
     <div style={{ fontFamily: "'Inter', sans-serif", color: "#1e1208", minHeight: "100vh" }}>
       <PortalPageHeader 
         title={isAdminView ? "Staff Ledgers" : "My Ledger"} 
-        subtitle="Khatabook Credit Score" 
+        subtitle={!isAdminView && dept === "warehouse" ? "Warehouse Advance & Expense Ledger" : "Staff advance and settlement ledger"}
         color={config.color} 
         backHref={`/portal/${dept}`} 
       />
@@ -221,6 +262,14 @@ export default function LedgerPage() {
         <div className="mx-4 mt-4">
           <PortalSkeleton rows={6} />
         </div>
+      ) : !isAdminView && myLedger && dept === "warehouse" ? (
+        <WarehouseExpenseLedger
+          user={user}
+          ledger={myLedger}
+          expenses={expenses}
+          loadingExpenses={loadingExpenses}
+          onRefresh={() => fetchLedgers(user, false)}
+        />
       ) : !isAdminView && myLedger ? (
         /* ==================== PERSONAL STAFF VIEW ==================== */
         <div className="px-4 py-4 space-y-4">
@@ -460,6 +509,9 @@ export default function LedgerPage() {
                 </div>
 
                 {/* Individual Transactions history list */}
+                {selectedStaff.department === "warehouse" && (
+                  <ExpenseApprovalList expenses={selectedExpenses} onReview={handleExpenseReview} />
+                )}
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Transaction Ledger</p>
                   <div className="rounded-xl overflow-hidden border border-gray-100 max-h-48 overflow-y-auto">
