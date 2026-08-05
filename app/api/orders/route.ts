@@ -19,15 +19,48 @@ export async function POST(req: NextRequest) {
 
     const supabase = createClient()
 
+    // Ensure order_number exists and is unique
+    if (!orderData.order_number) {
+      const prefix = orderData.booking_type === "sale" ? "SAL" : "ORD"
+      orderData.order_number = `${prefix}-${Date.now().toString().slice(-7)}`
+    }
+
     // Create the order
-    const { data: order, error: orderError } = await supabase
+    let { data: order, error: orderError } = await supabase
       .from("product_orders")
       .insert([{ ...orderData, franchise_id: franchiseId }])
       .select()
       .single()
 
+    // Resilient fallback for duplicate key / work order constraint collisions
     if (orderError) {
-      console.error("[Orders API] Insert error:", orderError)
+      console.error("[Orders API] Primary Insert error:", orderError)
+
+      if (orderError.message?.includes("duplicate key") || orderError.message?.includes("work_orders") || orderError.code === "23505") {
+        const prefix = orderData.booking_type === "sale" ? "SAL" : "ORD"
+        const fallbackOrderNumber = `${prefix}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`
+        
+        const retryRes = await supabase
+          .from("product_orders")
+          .insert([{
+            ...orderData,
+            order_number: fallbackOrderNumber,
+            franchise_id: franchiseId
+          }])
+          .select()
+          .single()
+
+        if (retryRes.data) {
+          order = retryRes.data
+          orderError = null
+        } else if (retryRes.error) {
+          console.error("[Orders API] Retry Insert error:", retryRes.error)
+          orderError = retryRes.error
+        }
+      }
+    }
+
+    if (orderError) {
       return NextResponse.json({ error: orderError.message }, { status: 500 })
     }
 
@@ -42,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create the warehouse work order (Pick & Pack) for real, confirmed bookings —
-    // quotes don't need picking yet. Failure here shouldn't fail the booking itself.
+    // quotes don't need picking yet. Failure here is non-fatal to the booking itself.
     const CONFIRMED_STATUSES = ["confirmed", "picked_up", "delivered", "in_progress"]
     if (!order.is_quote && CONFIRMED_STATUSES.includes(order.status)) {
       try {
@@ -119,9 +152,6 @@ export async function PUT(req: NextRequest) {
 
     const supabase = createClient()
 
-    // First, get existing order column info by fetching one row
-    // Build a safe update payload by trying all fields and catching unknown column errors
-    // Pick only known-safe columns from orderData
     const KNOWN_COLUMNS = [
       "order_number","invoice_date","customer_id","franchise_id","booking_type","event_type",
       "event_participant","event_date","event_time","delivery_date","delivery_time",
@@ -140,7 +170,6 @@ export async function PUT(req: NextRequest) {
     updatePayload.franchise_id = franchiseId || orderData.franchise_id
     updatePayload.updated_at = new Date().toISOString()
 
-    // Try update — if unknown column error, retry with minimal safe set
     let { error: updateError } = await supabase
       .from("product_orders")
       .update(updatePayload)
@@ -148,7 +177,6 @@ export async function PUT(req: NextRequest) {
       .eq("franchise_id", franchiseId)
 
     if (updateError && updateError.message?.includes("column")) {
-      // Fallback: minimal safe columns only
       const safePayload: any = {
         order_number: orderData.order_number,
         customer_id: orderData.customer_id,
@@ -199,8 +227,6 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    // A quote being converted/confirmed here also needs a work order — the
-    // RPC is idempotent (no-ops if one already exists for this booking).
     const CONFIRMED_STATUSES = ["confirmed", "picked_up", "delivered", "in_progress"]
     const { data: finalOrder } = await supabase
       .from("product_orders")
