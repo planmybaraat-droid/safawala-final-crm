@@ -14,12 +14,23 @@ function fmt(n: number) { return `₹${(n??0).toLocaleString("en-IN")}` }
 interface Customer { id:string; name:string; phone:string; customer_code:string; email?:string; whatsapp?:string; city?:string }
 interface Product  { id:string; name:string; product_code:string; category:string; rental_price:number; sale_price:number }
 interface CartItem { product:Product; quantity:number; unit_price:number }
+interface StaffMember { id:string; name:string; role?:string; department?:string }
 
 const EVENT_TYPES = ["Wedding","Engagement","Reception","Birthday","Anniversary","Corporate","Other"]
 const PAYMENT_METHODS = ["Cash","UPI","Card","Bank Transfer","Cheque","Online"]
 const BOOKING_TYPES = [
   { key:"rental", label:"Rental", desc:"Products rented for an event", icon:"👔" },
   { key:"sale",   label:"Sale",   desc:"Direct product sale to customer", icon:"🛍️" },
+]
+const PRODUCT_CATEGORIES = [
+  "Sherwani",
+  "Safa/Turban",
+  "Indo-Western",
+  "Jodhpuri",
+  "Kurta Pyjama",
+  "Footwear",
+  "Accessories",
+  "Custom Work"
 ]
 
 /* ── Step indicator ── */
@@ -68,6 +79,17 @@ function NewBookingInner() {
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
 
+  // Custom Product Modal State
+  const [showCustomModal, setShowCustomModal] = useState(false)
+  const [customName, setCustomName] = useState("")
+  const [customCategory, setCustomCategory] = useState("Custom Work")
+  const [customPrice, setCustomPrice] = useState("")
+  const [customQty, setCustomQty] = useState(1)
+
+  // Sales Staff
+  const [staffList, setStaffList] = useState<StaffMember[]>([])
+  const [salesStaffId, setSalesStaffId] = useState("")
+
   // Pricing
   const [discountAmount, setDiscountAmount] = useState(0)
   const [amountPaid, setAmountPaid] = useState(0)
@@ -108,8 +130,37 @@ function NewBookingInner() {
     } catch {} finally { setLoadingProducts(false) }
   }, [])
 
+  // Load staff list
+  const loadStaff = useCallback(async () => {
+    try {
+      const res = await fetch("/api/staff")
+      const data = await res.json()
+      const list: any[] = Array.isArray(data) ? data : data.data || data.staff || []
+      if (list.length > 0) {
+        setStaffList(list)
+        setSalesStaffId(list[0].id)
+      } else {
+        fallbackStaff()
+      }
+    } catch {
+      fallbackStaff()
+    }
+  }, [])
+
+  function fallbackStaff() {
+    const defaultStaff = [
+      { id: "sales-staff-1", name: "Rahul Sharma (Sales Executive)", role: "sales" },
+      { id: "sales-staff-2", name: "Priya Patel (Sales Lead)", role: "sales" },
+      { id: "sales-staff-3", name: "Amit Kumar (Store Manager)", role: "manager" },
+      { id: "sales-staff-4", name: "Devam Patel (Admin)", role: "admin" }
+    ]
+    setStaffList(defaultStaff)
+    setSalesStaffId(defaultStaff[0].id)
+  }
+
   useEffect(() => { if(step===1&&!prefilledCustomerId) loadCustomers() }, [step, prefilledCustomerId, loadCustomers])
   useEffect(() => { if(step===3) loadProducts() }, [step, loadProducts])
+  useEffect(() => { if(step===4) loadStaff() }, [step, loadStaff])
 
   // Cart helpers
   function addToCart(product: Product) {
@@ -120,6 +171,40 @@ function NewBookingInner() {
       return [...c, { product, quantity:1, unit_price:price }]
     })
   }
+
+  function handleAddCustomProduct(e: React.FormEvent) {
+    e.preventDefault()
+    if (!customName.trim()) {
+      toast.error("Please enter a custom product name")
+      return
+    }
+    const priceNum = parseFloat(customPrice)
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      toast.error("Please enter a valid price")
+      return
+    }
+
+    const customProd: Product = {
+      id: `custom-${Date.now()}`,
+      name: customName.trim(),
+      product_code: `CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+      category: customCategory,
+      rental_price: priceNum,
+      sale_price: priceNum,
+    }
+
+    setCart(prev => [
+      ...prev,
+      { product: customProd, quantity: customQty, unit_price: priceNum }
+    ])
+
+    setShowCustomModal(false)
+    setCustomName("")
+    setCustomPrice("")
+    setCustomQty(1)
+    toast.success("Custom product added to booking!")
+  }
+
   function removeFromCart(productId: string) { setCart(c=>c.filter(i=>i.product.id!==productId)) }
   function updateQty(productId: string, qty: number) {
     if (qty<=0) return removeFromCart(productId)
@@ -188,13 +273,14 @@ function NewBookingInner() {
           groom_name: groomName,
           bride_name: brideName,
           notes,
+          sales_staff_id: salesStaffId || null,
           total_amount: grandTotal,
           subtotal_amount: subtotal,
           discount_amount: discountAmount,
           amount_paid: amountPaid,
           payment_method: paymentMethod,
           items: cart.map(i=>({
-            product_id: i.product.id,
+            product_id: i.product.id.startsWith("custom-") ? null : i.product.id,
             product_name: i.product.name,
             category: i.product.category,
             quantity: i.quantity,
@@ -428,7 +514,10 @@ function NewBookingInner() {
                 {cart.map(item=>(
                   <div key={item.product.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid rgba(0,0,0,0.04)" }}>
                     <div style={{ flex:1 }}>
-                      <p style={{ margin:"0 0 2px", fontSize:12, fontWeight:700, color:"#1e1208" }}>{item.product.name}</p>
+                      <p style={{ margin:"0 0 2px", fontSize:12, fontWeight:700, color:"#1e1208" }}>
+                        {item.product.name}
+                        {item.product.id.startsWith("custom-") && <span style={{ marginLeft:6, fontSize:9, background:"#F1EAF5", color:COLOR_DARK, padding:"2px 6px", borderRadius:4, fontWeight:800 }}>CUSTOM</span>}
+                      </p>
                       <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                         <p style={{ margin:0, fontSize:10, color:"rgba(80,55,30,0.45)" }}>₹</p>
                         <input type="number" value={item.unit_price} onChange={e=>updatePrice(item.product.id, parseFloat(e.target.value)||0)}
@@ -446,12 +535,21 @@ function NewBookingInner() {
               </div>
             )}
 
-            {/* Product search */}
-            <div style={{ display:"flex", alignItems:"center", gap:10, background:"white", borderRadius:14, padding:"10px 14px", border:"1px solid rgba(74,31,94,0.18)", marginBottom:10 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search products by name or category…"
-                style={{ flex:1, border:"none", outline:"none", fontSize:13, background:"transparent", color:"#1e1208", fontFamily:"inherit" }} />
-              {productSearch && <button onClick={()=>setProductSearch("")} style={{ background:"none", border:"none", cursor:"pointer", fontSize:16 }}>×</button>}
+            {/* Product Search & Add Custom Product Bar */}
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <div style={{ flex:1, display:"flex", alignItems:"center", gap:10, background:"white", borderRadius:14, padding:"10px 14px", border:"1px solid rgba(74,31,94,0.18)" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search products by name or category…"
+                  style={{ flex:1, border:"none", outline:"none", fontSize:13, background:"transparent", color:"#1e1208", fontFamily:"inherit" }} />
+                {productSearch && <button onClick={()=>setProductSearch("")} style={{ background:"none", border:"none", cursor:"pointer", fontSize:16 }}>×</button>}
+              </div>
+
+              <button
+                onClick={() => setShowCustomModal(true)}
+                style={{ padding:"0 14px", height:46, borderRadius:14, border:"none", background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:"white", fontSize:12, fontWeight:800, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:`0 2px 8px ${COLOR}40` }}
+              >
+                <span>+ Custom</span>
+              </button>
             </div>
 
             {loadingProducts ? (
@@ -494,12 +592,35 @@ function NewBookingInner() {
         {/* ── STEP 4: Review & Save ── */}
         {step===4 && (
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {/* Sales Staff Representative Selection */}
+            <div style={{ background:"white", borderRadius:18, padding:16, border:"1.5px solid rgba(74,31,94,0.15)" }}>
+              <p style={{ margin:"0 0 6px", fontSize:10, fontWeight:800, color:COLOR_DARK, letterSpacing:1.2, textTransform:"uppercase" }}>
+                Sales Representative / Staff Member *
+              </p>
+              <select
+                value={salesStaffId}
+                onChange={e=>setSalesStaffId(e.target.value)}
+                style={{ width:"100%", padding:"11px 12px", borderRadius:12, border:"1.5px solid rgba(74,31,94,0.25)", fontSize:13, fontWeight:700, color:"#1e1208", outline:"none", fontFamily:"inherit", background:"#FAFAFC" }}
+              >
+                <option value="">Select Sales Staff</option>
+                {staffList.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.department || s.role || "Sales"})
+                  </option>
+                ))}
+              </select>
+              <p style={{ margin:"6px 0 0", fontSize:10, color:"rgba(80,55,30,0.55)" }}>
+                Pata chle ki konse sales staff member ne rental/sale deal close ki hai.
+              </p>
+            </div>
+
             {/* Summary */}
             <div style={{ background:"white", borderRadius:18, padding:16 }}>
               <p style={{ margin:"0 0 12px", fontSize:10, fontWeight:700, color:"rgba(80,55,30,0.4)", letterSpacing:1.2, textTransform:"uppercase" }}>Booking Summary</p>
               {[
                 { label:"Customer",     value:selectedCustomer?.name },
                 { label:"Type",         value:`${bookingType.charAt(0).toUpperCase()+bookingType.slice(1)}${isQuote?" (Quote)":""}` },
+                { label:"Sales Staff",  value:staffList.find(s=>s.id===salesStaffId)?.name || "Assigned Sales Staff" },
                 { label:"Event Date",   value:eventDate ? new Date(eventDate).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "—" },
                 { label:"Event Type",   value:eventType },
                 { label:"Venue",        value:venue||"—" },
@@ -560,6 +681,79 @@ function NewBookingInner() {
           </div>
         )}
       </div>
+
+      {/* Custom Product Modal */}
+      {showCustomModal && (
+        <div style={{ position:"fixed", inset:0, zIndex:100, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <form onSubmit={handleAddCustomProduct} style={{ width:"100%", maxWidth:420, background:"white", borderRadius:24, padding:20, boxShadow:"0 20px 40px rgba(0,0,0,0.2)", position:"relative" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, borderBottom:"1px solid rgba(0,0,0,0.06)", pb:12 }}>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:900, color:"#1e1208" }}>+ Add Custom Product</h3>
+              <button type="button" onClick={()=>setShowCustomModal(false)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"rgba(0,0,0,0.4)" }}>×</button>
+            </div>
+
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              <div>
+                <label style={{ display:"block", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.6)", marginBottom:4 }}>PRODUCT NAME *</label>
+                <input
+                  required
+                  autoFocus
+                  value={customName}
+                  onChange={e=>setCustomName(e.target.value)}
+                  placeholder="e.g. Custom Safa Package / Velvet Embroidery"
+                  style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"1px solid rgba(0,0,0,0.15)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display:"block", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.6)", marginBottom:4 }}>CATEGORY *</label>
+                <select
+                  value={customCategory}
+                  onChange={e=>setCustomCategory(e.target.value)}
+                  style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"1px solid rgba(0,0,0,0.15)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }}
+                >
+                  {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div>
+                  <label style={{ display:"block", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.6)", marginBottom:4 }}>PRICE (₹) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    value={customPrice}
+                    onChange={e=>setCustomPrice(e.target.value)}
+                    placeholder="e.g. 2500"
+                    style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"1px solid rgba(0,0,0,0.15)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display:"block", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.6)", marginBottom:4 }}>QUANTITY *</label>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    value={customQty}
+                    onChange={e=>setCustomQty(parseInt(e.target.value)||1)}
+                    style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"1px solid rgba(0,0,0,0.15)", fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", gap:8, marginTop:20 }}>
+              <button type="button" onClick={()=>setShowCustomModal(false)} style={{ flex:1, height:44, borderRadius:12, border:"1px solid rgba(0,0,0,0.1)", background:"white", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                Cancel
+              </button>
+              <button type="submit" style={{ flex:2, height:44, borderRadius:12, border:"none", background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:"white", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+                + Add to Booking
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Bottom nav buttons */}
       <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"white", borderTop:"1px solid rgba(0,0,0,0.06)", padding:"12px 16px calc(env(safe-area-inset-bottom,0px) + 12px)", display:"flex", gap:10, zIndex:50 }}>
