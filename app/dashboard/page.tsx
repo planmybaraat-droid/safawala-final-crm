@@ -623,12 +623,12 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
               {[
-                { label: "New Lead", href: "/leads", icon: Users, className: "bg-orange-500 hover:bg-orange-600" },
-                { label: "New Quotation", href: "/quotes", icon: FileText, className: "bg-blue-500 hover:bg-blue-600" },
-                { label: "New Order", href: "/create-invoice", icon: Package, className: "bg-emerald-500 hover:bg-emerald-600" },
-                { label: "New Invoice", href: "/create-invoice", icon: ClipboardList, className: "bg-purple-500 hover:bg-purple-600" },
-                { label: "Add Customer", href: "/customers", icon: Plus, className: "bg-orange-500 hover:bg-orange-600" },
-                { label: "Add Employee", href: "/staff", icon: Plus, className: "bg-blue-500 hover:bg-blue-600" },
+                { label: "New Lead", href: "/leads", icon: Users, className: "bg-[#4A1F5E] hover:bg-[#5C2A72]" },
+                { label: "New Quotation", href: "/quotes", icon: FileText, className: "bg-[#80658F] hover:bg-[#6F527F]" },
+                { label: "New Order", href: "/create-invoice", icon: Package, className: "bg-[#0E6B63] hover:bg-[#0A5A53]" },
+                { label: "New Invoice", href: "/create-invoice", icon: ClipboardList, className: "bg-[#9A70C2] hover:bg-[#8459AE]" },
+                { label: "Add Customer", href: "/customers", icon: Plus, className: "bg-[#C8A33D] hover:bg-[#B48F2F]" },
+                { label: "Add Employee", href: "/staff", icon: Plus, className: "bg-[#506A8C] hover:bg-[#425A78]" },
               ].map((action) => (
                 <Link key={action.label} href={action.href}>
                   <Button className={`w-full justify-start text-white font-semibold ${action.className}`}>

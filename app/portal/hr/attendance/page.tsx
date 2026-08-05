@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { PortalPageHeader, PortalSectionLabel, PortalEmptyState, PortalSkeleton } from "@/components/portal/portal-shared"
 import { PortalIcon } from "@/components/portal/portal-icons"
+import { useAutoRefresh } from "@/lib/hooks/use-auto-refresh"
 
 const COLOR = "#6366f1"
 const COLOR_DARK = "#4f46e5"
@@ -46,8 +47,8 @@ export default function HrAttendancePage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 3000) }
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const [staffRes, attRes, leaveRes] = await Promise.allSettled([
         fetch("/api/users?limit=200").then(r => r.json()),
@@ -63,10 +64,14 @@ export default function HrAttendancePage() {
       setAttendance(attData)
       setLeaves(leaveData)
     } catch {}
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [today])
 
   useEffect(() => { load() }, [load])
+
+  // Reflects attendance/leave changes made from elsewhere without a manual
+  // refresh; silent so it doesn't flash the loading skeleton every cycle.
+  useAutoRefresh(() => load(true), 15000)
 
   // Build a map of today's attendance by user_id
   const attMap = new Map(attendance.map((a: any) => [a.user_id, a]))

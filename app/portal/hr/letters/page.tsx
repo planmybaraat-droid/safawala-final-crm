@@ -1,10 +1,24 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { PortalPageHeader, PortalSectionLabel } from "@/components/portal/portal-shared"
+import { useRouter } from "next/navigation"
+import { PortalSectionLabel } from "@/components/portal/portal-shared"
 import { PortalIcon } from "@/components/portal/portal-icons"
 
 const COLOR = "#6366f1"
+
+const LETTER_DESCRIPTIONS: Record<string, string> = {
+  offer: "Generate offer letter for new employees",
+  appointment: "Generate appointment letter",
+  joining: "Generate joining letter for employees",
+  internship: "Generate internship letter",
+  experience: "Generate experience certificate",
+  relieving: "Generate relieving letter",
+  salary: "Generate salary increment letter",
+  noc: "Generate NOC letter",
+  warning: "Generate warning letter",
+  termination: "Generate termination letter",
+}
 
 const LETTER_TYPES = [
   { key: "offer",        label: "Offer Letter",        icon: "handshake",      color: "#22c55e" },
@@ -420,6 +434,7 @@ const FIELD_SETS: Record<string, { key: string; label: string; type?: string; re
 }
 
 export default function LettersPage() {
+  const router = useRouter()
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
   const [staffList, setStaffList] = useState<any[]>([])
@@ -459,21 +474,44 @@ export default function LettersPage() {
   const selectedMeta = LETTER_TYPES.find(l => l.key === selectedType)
 
   return (
-    <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", paddingBottom: 40 }}>
-      <PortalPageHeader title="HR Letters" subtitle="Generate & print professional letters" color={COLOR} backHref="/portal/hr" />
+    <div className="hr-payroll-ui" style={{ paddingBottom: 40, background: "#f8f9fc", minHeight: "100vh" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, padding: "18px 24px", background: "#ffffff", borderBottom: "1px solid #e2e8f0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+          <button
+            onClick={() => router.push("/hr")}
+            aria-label="Back to HR & Staff"
+            style={{ width: 40, height: 40, borderRadius: 6, border: "1px solid #d9dfea", background: "#fff", color: "#334155", fontFamily: "inherit", fontSize: 26, fontWeight: 400, lineHeight: 1, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 2px rgba(15,23,42,0.06)" }}
+          >←</button>
+          <div style={{ width: 50, height: 50, borderRadius: 12, background: "#4f2a9d", color: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <PortalIcon name="users" size={24} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, color: "#172033", fontSize: 22, lineHeight: 1.2, fontWeight: 800 }}>HR Letters</h1>
+            <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 13 }}>Generate &amp; print professional letters</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <button style={{ height: 40, padding: "0 18px", borderRadius: 9, border: "1px solid #e2e8f0", background: "#fff", color: "#334155", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>▣&nbsp; Lock Date</button>
+          <button onClick={() => { setSelectedType("offer"); setFields({}) }} style={{ height: 40, padding: "0 18px", borderRadius: 9, border: "none", background: "#4f2a9d", color: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>＋&nbsp; Create Letter</button>
+        </div>
+      </div>
 
       {/* Letter type grid */}
       {!selectedType && (
         <>
           <PortalSectionLabel label="Select Letter Type" />
-          <div style={{ padding: "0 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ padding: "0 16px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
             {LETTER_TYPES.map(l => (
               <button key={l.key} onClick={() => { setSelectedType(l.key); setFields({}) }}
-                style={{ padding: "16px 12px", borderRadius: 18, border: `2px solid ${l.color}20`, background: `${l.color}10`, cursor: "pointer", fontFamily: "inherit", textAlign: "center", color: l.color }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
-                  <PortalIcon name={l.icon} size={26} />
+                style={{ padding: "16px 18px", minHeight: 86, borderRadius: 12, border: "1px solid #e2e8f0", background: "#ffffff", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: "#172033", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: `${l.color}16`, color: l.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <PortalIcon name={l.icon} size={24} />
                 </div>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: l.color }}>{l.label}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "#172033" }}>{l.label}</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.35, color: "#64748b" }}>{LETTER_DESCRIPTIONS[l.key]}</p>
+                </div>
+                <span style={{ color: "#64748b", fontSize: 22, lineHeight: 1 }}>→</span>
               </button>
             ))}
           </div>

@@ -32,9 +32,12 @@ import { useSessionGuard } from "@/hooks/use-session-guard"
 interface DashboardLayoutProps {
   children: React.ReactNode
   userRole?: string
+  compactHeader?: boolean
+  hideSidebar?: boolean
+  hideHeader?: boolean
 }
 
-export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
+export function DashboardLayout({ children, userRole, compactHeader = false, hideSidebar = false, hideHeader = false }: DashboardLayoutProps) {
   useSessionGuard() // Single-device login enforcement
   const [user, setUser] = useState<User | null>(null)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -131,37 +134,41 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
   }
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      <AppSidebar userRole={user.role} />
-      <SidebarInset>
-        <header className="bg-[#18181b] border-b border-zinc-800 flex h-12 shrink-0 items-center justify-between px-3 sm:px-4">
+    <SidebarProvider
+      defaultOpen={true}
+      className="bg-[#F7F6F9]"
+      style={{ backgroundColor: "#F7F6F9" }}
+    >
+      {!hideSidebar && <AppSidebar userRole={user.role} />}
+      <SidebarInset className="bg-[#F7F6F9]">
+        {!hideHeader && <header className="print:hidden bg-white border-b border-[#E7E2EA] flex h-12 shrink-0 items-center justify-between px-3 sm:px-4">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="p-1 h-8 w-8 sm:h-9 sm:w-9 text-zinc-300 hover:text-white hover:bg-zinc-700" />
-            <CompanyHeader className="hidden sm:flex" />
-            <div className="sm:hidden">
+            {!compactHeader && <SidebarTrigger className="p-1 h-8 w-8 sm:h-9 sm:w-9 text-[#6F6878] hover:text-[#4A1F5E] hover:bg-[#F1EAF5]" />}
+            {!compactHeader && <CompanyHeader className="hidden sm:flex" />}
+            {!compactHeader && <div className="sm:hidden">
               <CompanyHeader className="text-sm" />
-            </div>
+            </div>}
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
             {/* Lock Date button */}
-            <Button
+            {!compactHeader && <Button
               variant="outline"
               size="sm"
               onClick={() => setShowLockDate(true)}
-              className="gap-1 text-xs px-2 text-green-400 border-zinc-700 bg-zinc-800 hover:bg-green-900/30 hover:text-green-300 hover:border-green-700"
+              className="gap-1 text-xs px-2 text-[#F1D696] border-[#4A1F5E] bg-[#4A1F5E] hover:bg-[#5C2A72] hover:text-white hover:border-[#5C2A72]"
               title="Lock a date"
             >
               <Lock className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Lock Date</span>
-            </Button>
+            </Button>}
 
-            <DropdownMenu>
+            {!compactHeader && <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700 hover:text-white"
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 bg-[#4A1F5E] border-[#4A1F5E] text-white hover:bg-[#5C2A72] hover:text-white"
                 >
                   <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">Create Order</span>
@@ -177,17 +184,17 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
 
             {/* New Notification Bell Component */}
             <NotificationBell />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0 hover:bg-zinc-700">
+                <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0 hover:bg-[#F1EAF5]">
                   <Avatar className="h-6 w-6 sm:h-8 sm:w-8">
                     {profilePhoto && <AvatarImage src={profilePhoto} alt={user.name} />}
-                    <AvatarFallback className="text-xs sm:text-sm bg-primary text-primary-foreground">
+                    <AvatarFallback className="text-xs sm:text-sm bg-[#F1EAF5] text-[#4A1F5E] border border-[#E7E2EA]">
                       {user.name
                         .split(" ")
                         .map((n) => n[0])
@@ -215,12 +222,12 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </header>
+        </header>}
 
-        <main className="bg-slate-50 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-20 md:pb-6">{children}</main>
+        <main className="bg-slate-50 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-20 md:pb-6 print:p-0 print:bg-white">{children}</main>
 
         {/* Mobile bottom navigation */}
-        <MobileBottomNav />
+        {!hideHeader && <MobileBottomNav />}
       </SidebarInset>
 
       {/* Lock Date Dialog */}
@@ -232,9 +239,9 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
         onUnlocked={(id) => setLockedDates(prev => prev.filter(d => d.id !== id))}
       />
       {/* Safawala AI Floating Assistant - Only visible to Franchise Admin */}
-      {user?.role === "franchise_admin" && <SafawalaAIAssistant />}
+      {user?.role === "franchise_admin" && <div className="print:hidden"><SafawalaAIAssistant /></div>}
       {/* Team Chat Floating Assistant */}
-      <TeamChat />
+      <div className="print:hidden"><TeamChat /></div>
     </SidebarProvider>
   )
 }
@@ -249,7 +256,7 @@ function MobileBottomNav() {
     { href: "/create-invoice", icon: "➕", label: "New" },
   ]
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 flex items-center justify-around h-14 px-1 safe-b">
+    <nav className="print:hidden md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 flex items-center justify-around h-14 px-1 safe-b">
       {tabs.map(tab => {
         const isActive = pathname === tab.href || (tab.href !== "/dashboard" && tab.href !== "/create-invoice" && pathname.startsWith(tab.href))
         return (

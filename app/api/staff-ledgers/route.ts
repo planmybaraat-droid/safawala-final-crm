@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
 import { authenticateRequest } from "@/lib/auth-middleware"
+import { supabaseServer } from "@/lib/supabase-server-simple"
 
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request, { minRole: 'franchise_admin' })
@@ -9,7 +8,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(auth.error, { status: auth.statusCode })
   }
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    // Same fix as [userId]/route.ts: staff_ledgers/staff_ledger_transactions
+    // have RLS enabled, and the anon-key session client silently returns
+    // zero rows instead of erroring when its own Supabase session isn't
+    // valid — authenticateRequest above is the real authorization check.
+    const supabase = supabaseServer
 
     // Fetch all users
     const { data: users, error: usersError } = await supabase
@@ -29,8 +32,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Map users to ledgers, defaulting to 0 balances if ledger doesn't exist
-    const staffWithLedgers = (users || []).map(user => {
-      const ledger = ledgers?.find(l => l.user_id === user.id) || {
+    const staffWithLedgers = (users || []).map((user: any) => {
+      const ledger = ledgers?.find((l: any) => l.user_id === user.id) || {
         base_salary: 0,
         utilized_credit: 0,
         credit_limit: 25000,

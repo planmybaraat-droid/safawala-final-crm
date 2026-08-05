@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 /* ── Types ── */
 interface Lead {
@@ -29,7 +30,7 @@ const STATUS_CONFIG = {
   new:        { label: "New",         bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6" },
   contacted:  { label: "Contacted",   bg: "#fef9c3", text: "#a16207", dot: "#eab308" },
   interested: { label: "Interested",  bg: "#f3e8ff", text: "#6d28d9", dot: "#8b5cf6" },
-  converted:  { label: "Converted ✓", bg: "#dcfce7", text: "#15803d", dot: "#22c55e" },
+  converted:  { label: "Converted ✓", bg: "#F1EAF5", text: "#15803d", dot: "#22c55e" },
   lost:       { label: "Lost",        bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444" },
 }
 
@@ -186,18 +187,20 @@ function AddLeadSheet({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 
 /* ── Lead Detail Sheet ── */
 function LeadDetailSheet({ lead, onClose, onUpdated }: { lead: Lead; onClose: () => void; onUpdated: () => void }) {
+  const router = useRouter()
   const [updating, setUpdating] = useState(false)
   const [note, setNote] = useState(lead.notes || "")
   const [savingNote, setSavingNote] = useState(false)
-  const [toast, setToast] = useState("")
-
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500) }
 
   async function updateStatus(newStatus: string) {
     setUpdating(true)
     try {
       const res = await fetch("/api/leads", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: lead.id, status: newStatus }) })
-      if (res.ok) { showToast(`Status → ${newStatus}`); onUpdated() }
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Failed to update status")
+      toast.success(`Status → ${newStatus}`); onUpdated()
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update status")
     } finally { setUpdating(false) }
   }
 
@@ -205,16 +208,30 @@ function LeadDetailSheet({ lead, onClose, onUpdated }: { lead: Lead; onClose: ()
     setSavingNote(true)
     try {
       const res = await fetch("/api/leads", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: lead.id, notes: note }) })
-      if (res.ok) { showToast("Note saved ✓"); onUpdated() }
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Failed to save note")
+      toast.success("Note saved"); onUpdated()
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save note")
     } finally { setSavingNote(false) }
+  }
+
+  async function createBooking() {
+    try {
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(lead.phone)}`)
+      const data = await res.json()
+      const customer = data.data?.find((item: any) => item.lead_id === lead.id) || data.data?.[0]
+      if (!res.ok || !customer?.id) throw new Error("Converted customer record was not found")
+      router.push(`/portal/booking/bookings/new?customer_id=${customer.id}`)
+    } catch (e: any) {
+      toast.error(e.message || "Unable to create booking")
+    }
   }
 
   const cfg = STATUS_CONFIG[lead.status] ?? STATUS_CONFIG.new
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column" }}>
-      {toast && <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", background: COLOR, color: "white", borderRadius: 12, padding: "8px 20px", fontSize: 12, fontWeight: 700, zIndex: 200, boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>{toast}</div>}
-
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }} onClick={onClose} />
       <div style={{ position: "relative", marginTop: "auto", background: "white", borderRadius: "24px 24px 0 0", maxHeight: "90vh", overflowY: "auto", zIndex: 1, paddingBottom: "env(safe-area-inset-bottom, 20px)" }}>
 
@@ -256,7 +273,7 @@ function LeadDetailSheet({ lead, onClose, onUpdated }: { lead: Lead; onClose: ()
             </a>
             {lead.email && (
               <a href={`mailto:${lead.email}`}
-                style={{ flex: 1, height: 44, borderRadius: 12, background: "#f0fdf4", border: "none", color: "#15803d", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none" }}>
+                style={{ flex: 1, height: 44, borderRadius: 12, background: "#F1EAF5", border: "none", color: "#15803d", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none" }}>
                 ✉️ Email
               </a>
             )}
@@ -309,7 +326,7 @@ function LeadDetailSheet({ lead, onClose, onUpdated }: { lead: Lead; onClose: ()
 
           {/* Convert to Booking */}
           {lead.status === "converted" && (
-            <button style={{ width: "100%", height: 50, borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`, color: "white", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 20px ${COLOR}50` }}>
+            <button onClick={createBooking} style={{ width: "100%", height: 50, borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`, color: "white", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 20px ${COLOR}50` }}>
               📋 Create Booking from this Lead
             </button>
           )}
@@ -338,6 +355,7 @@ export default function LeadsPage() {
       if (sourceFilter !== "all") params.set("source", sourceFilter)
       const res = await fetch(`/api/leads?${params}`)
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to load leads")
       setLeads(data.data ?? data ?? [])
     } catch { setLeads([]) }
     finally { setLoading(false) }
@@ -363,7 +381,7 @@ export default function LeadsPage() {
   }), [leads])
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%)", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #F1EAF5 0%, #F1EAF5 100%)", fontFamily: "var(--font-inter), Inter, sans-serif" }}>
 
       {/* ── Header ── */}
       <div style={{ background: `linear-gradient(135deg, ${COLOR_DARK}, ${COLOR})`, padding: "20px 16px 28px", position: "relative", overflow: "hidden" }}>
@@ -405,7 +423,7 @@ export default function LeadsPage() {
 
       {/* ── Search + Source Filter ── */}
       <div style={{ padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(34,197,94,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(74,31,94,0.18)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone..."
             style={{ flex: 1, border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#1e1208", fontFamily: "inherit" }} />
@@ -432,10 +450,10 @@ export default function LeadsPage() {
         {loading ? (
           [...Array(7)].map((_, i) => (
             <div key={i} style={{ background: "white", borderRadius: 18, padding: "14px 16px", display: "flex", gap: 12, opacity: 1 - i * 0.1 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f0fdf4", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#F1EAF5", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
               <div style={{ flex: 1 }}>
-                <div style={{ height: 12, background: "#f0fdf4", borderRadius: 6, width: "60%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
-                <div style={{ height: 10, background: "#f0fdf4", borderRadius: 6, width: "40%", animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div style={{ height: 12, background: "#F1EAF5", borderRadius: 6, width: "60%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div style={{ height: 10, background: "#F1EAF5", borderRadius: 6, width: "40%", animation: "pulse 1.5s ease-in-out infinite" }} />
               </div>
             </div>
           ))
@@ -473,7 +491,7 @@ export default function LeadsPage() {
               {/* Quick call/WA */}
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                 <a href={`tel:${lead.phone}`} style={{ width: 34, height: 34, borderRadius: 10, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", fontSize: 16 }}>📞</a>
-                <a href={waLink(lead.phone)} target="_blank" rel="noreferrer" style={{ width: 34, height: 34, borderRadius: 10, background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", fontSize: 16 }}>💬</a>
+                <a href={waLink(lead.phone)} target="_blank" rel="noreferrer" style={{ width: 34, height: 34, borderRadius: 10, background: "#F1EAF5", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", fontSize: 16 }}>💬</a>
               </div>
             </div>
           )

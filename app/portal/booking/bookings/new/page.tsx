@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { validatePhoneWithCountry } from "@/lib/form-validation"
+import { toast } from "sonner"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 function fmt(n: number) { return `₹${(n??0).toLocaleString("en-IN")}` }
 
@@ -150,7 +151,7 @@ function NewBookingInner() {
     if (!newCust.name.trim()) return
     const phoneValidation = validatePhoneWithCountry(newCust.phone)
     if (!phoneValidation.isValid) {
-      alert(phoneValidation.error || "Please enter a valid phone number")
+      toast.error(phoneValidation.error || "Please enter a valid phone number")
       return
     }
     setSavingCust(true)
@@ -165,7 +166,7 @@ function NewBookingInner() {
       setSelectedCustomer(c)
       setShowNewCust(false)
       setNewCust({name:"",phone:"+91",email:"",city:""})
-    } catch(e:any) { alert(e.message) } finally { setSavingCust(false) }
+    } catch(e:any) { toast.error(e.message) } finally { setSavingCust(false) }
   }
 
   // Save booking
@@ -215,7 +216,7 @@ function NewBookingInner() {
   const stepLabels = ["Customer","Details","Products","Review"]
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4 0%,#dcfce7 100%)", fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5 0%,#F1EAF5 100%)", fontFamily:"var(--font-inter), Inter, sans-serif" }}>
       {/* Header */}
       <div style={{ background:`linear-gradient(135deg,${COLOR_DARK},${COLOR})`, padding:"20px 16px 16px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:-30, right:-30, width:130, height:130, borderRadius:"50%", background:"rgba(255,255,255,0.07)" }} />
@@ -248,7 +249,7 @@ function NewBookingInner() {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
               {BOOKING_TYPES.map(t=>(
                 <button key={t.key} onClick={()=>setBookingType(t.key as any)}
-                  style={{ padding:"14px 10px", borderRadius:16, border:`2px solid ${bookingType===t.key?COLOR:"rgba(0,0,0,0.08)"}`, background:bookingType===t.key?"#f0fdf4":"white", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                  style={{ padding:"14px 10px", borderRadius:16, border:`2px solid ${bookingType===t.key?COLOR:"rgba(0,0,0,0.08)"}`, background:bookingType===t.key?"#F1EAF5":"white", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
                   <p style={{ margin:"0 0 4px", fontSize:22 }}>{t.icon}</p>
                   <p style={{ margin:"0 0 2px", fontSize:14, fontWeight:800, color:bookingType===t.key?COLOR_DARK:"#1e1208" }}>{t.label}</p>
                   <p style={{ margin:0, fontSize:10, color:"rgba(80,55,30,0.5)" }}>{t.desc}</p>
@@ -287,7 +288,7 @@ function NewBookingInner() {
               </div>
             ) : (
               <div>
-                <div style={{ display:"flex", alignItems:"center", gap:10, background:"white", borderRadius:14, padding:"10px 14px", border:"1px solid rgba(34,197,94,0.2)", marginBottom:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, background:"white", borderRadius:14, padding:"10px 14px", border:"1px solid rgba(74,31,94,0.18)", marginBottom:10 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input type="text" value={custSearch} onChange={e=>{ setCustSearch(e.target.value); if(!customers.length) loadCustomers() }}
                     placeholder="Search by name or phone…"
@@ -296,7 +297,7 @@ function NewBookingInner() {
 
                 {!showNewCust && (
                   <button onClick={()=>setShowNewCust(true)}
-                    style={{ width:"100%", padding:"12px 0", borderRadius:14, border:`1.5px dashed ${COLOR}`, background:"#f0fdf4", color:COLOR_DARK, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginBottom:10 }}>
+                    style={{ width:"100%", padding:"12px 0", borderRadius:14, border:`1.5px dashed ${COLOR}`, background:"#F1EAF5", color:COLOR_DARK, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginBottom:10 }}>
                     + Add New Customer
                   </button>
                 )}
@@ -446,7 +447,7 @@ function NewBookingInner() {
             )}
 
             {/* Product search */}
-            <div style={{ display:"flex", alignItems:"center", gap:10, background:"white", borderRadius:14, padding:"10px 14px", border:"1px solid rgba(34,197,94,0.2)", marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, background:"white", borderRadius:14, padding:"10px 14px", border:"1px solid rgba(74,31,94,0.18)", marginBottom:10 }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input type="text" value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="Search products by name or category…"
                 style={{ flex:1, border:"none", outline:"none", fontSize:13, background:"transparent", color:"#1e1208", fontFamily:"inherit" }} />
@@ -538,7 +539,7 @@ function NewBookingInner() {
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                   {PAYMENT_METHODS.map(m=>(
                     <button key={m} onClick={()=>setPaymentMethod(m)}
-                      style={{ padding:"5px 12px", borderRadius:16, border:`1.5px solid ${paymentMethod===m?COLOR:"rgba(0,0,0,0.08)"}`, background:paymentMethod===m?"#f0fdf4":"white", color:paymentMethod===m?COLOR_DARK:"rgba(80,55,30,0.5)", fontSize:11, fontWeight:paymentMethod===m?700:500, cursor:"pointer", fontFamily:"inherit" }}>
+                      style={{ padding:"5px 12px", borderRadius:16, border:`1.5px solid ${paymentMethod===m?COLOR:"rgba(0,0,0,0.08)"}`, background:paymentMethod===m?"#F1EAF5":"white", color:paymentMethod===m?COLOR_DARK:"rgba(80,55,30,0.5)", fontSize:11, fontWeight:paymentMethod===m?700:500, cursor:"pointer", fontFamily:"inherit" }}>
                       {m}
                     </button>
                   ))}
@@ -586,7 +587,7 @@ function NewBookingInner() {
 export default function NewBookingPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4,#dcfce7)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5,#F1EAF5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
         <div style={{ width:40, height:40, borderRadius:"50%", border:"3px solid #22c55e30", borderTopColor:"#22c55e", animation:"spin 1s linear infinite" }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>

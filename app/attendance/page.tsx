@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, Users, Plus, Search, Download, CheckCircle, XCircle, AlertCircle, LogIn, LogOut, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Clock, Users, Plus, Search, Download, CheckCircle, XCircle, AlertCircle, LogIn, LogOut, Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { getCurrentUser } from "@/lib/auth"
@@ -653,19 +654,26 @@ export default function AttendancePage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 bg-[#FAF9F6] p-6 rounded-2xl border border-stone-200">
+      <div className="hr-payroll-ui space-y-6 bg-[#F7F6FF] p-6 rounded-2xl border border-[#E7E2EA]">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200/60">
-          <div>
-            <h1 className="text-4xl font-light tracking-tight text-[#113c2c] font-serif">Attendance</h1>
-            <p className="text-xs text-stone-400 mt-1.5 font-sans font-light">Track employee attendance, working hours, and time management</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E7E2EA]">
+          <div className="flex items-start gap-3">
+            <Button asChild variant="outline" size="icon" className="mt-1 h-10 w-10 shrink-0 rounded-md border-[#D8D2E2] bg-white text-[#334155] shadow-sm hover:bg-[#F1EAF5]" aria-label="Back to HR & Staff">
+              <Link href="/hr">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div>
+            <h1 className="text-4xl font-medium tracking-tight text-[#4A1F5E] font-sans">Attendance</h1>
+            <p className="text-xs text-stone-400 mt-1.5 font-sans font-medium">Track employee attendance, working hours, and time management</p>
+            </div>
           </div>
           <div className="flex gap-2.5 flex-wrap items-center">
-            <Button variant="outline" onClick={handleExportReport} className="border-stone-200 bg-white text-stone-700 hover:bg-stone-50/50 hover:border-stone-300 transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
+            <Button variant="outline" onClick={handleExportReport} className="border-[#DCCFE4] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5] hover:border-[#BFA8CC] transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
               <Download className="h-3.5 w-3.5 mr-2 text-stone-400" />
               CSV
             </Button>
-            <Button variant="outline" onClick={handleExportPDF} className="border-stone-200 bg-white text-stone-700 hover:bg-stone-50/50 hover:border-stone-300 transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
+            <Button variant="outline" onClick={handleExportPDF} className="border-[#DCCFE4] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5] hover:border-[#BFA8CC] transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
               <Download className="h-3.5 w-3.5 mr-2 text-stone-400" />
               PDF
             </Button>
@@ -680,17 +688,17 @@ export default function AttendancePage() {
                 setDialogDate("")
               }
             }}>
-              <Button onClick={handleNewAttendance} className="bg-[#113c2c] hover:bg-[#0c2e22] text-white hover:shadow-md transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium">
+              <Button onClick={handleNewAttendance} className="bg-[#4A1F5E] hover:bg-[#5C2A72] text-white hover:shadow-md transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium">
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
                 Mark Attendance
               </Button>
               <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-md">
                 <DialogHeader className="border-b border-stone-100 pb-4">
-                  <DialogTitle className="flex items-center gap-2.5 text-[#113c2c] text-2xl font-light font-serif">
-                    <Clock className="h-5 w-5 text-[#113c2c] stroke-[1.5]" />
+                  <DialogTitle className="flex items-center gap-2.5 text-[#4A1F5E] text-2xl font-medium font-sans">
+                    <Clock className="h-5 w-5 text-[#4A1F5E] stroke-[1.5]" />
                     {editingRecord ? 'Edit Attendance' : 'Mark Attendance'}
                   </DialogTitle>
-                  <DialogDescription className="text-stone-400 font-sans font-light text-xs mt-1.5">
+                  <DialogDescription className="text-stone-400 font-sans font-medium text-xs mt-1.5">
                     Confirm employee details, dates, and check-in/out times.
                   </DialogDescription>
                 </DialogHeader>
@@ -722,7 +730,7 @@ export default function AttendancePage() {
                       type="date"
                       value={dialogDate}
                       onChange={(e) => setDialogDate(e.target.value)}
-                      className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-10 rounded-lg text-sm shadow-sm"
+                      className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-10 rounded-lg text-sm shadow-sm"
                     />
                   </div>
 
@@ -753,7 +761,7 @@ export default function AttendancePage() {
                       type="time"
                       value={checkInTime}
                       onChange={(e) => setCheckInTime(e.target.value)}
-                      className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-10 rounded-lg px-3 text-sm font-mono shadow-sm"
+                      className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-10 rounded-lg px-3 text-sm font-mono shadow-sm"
                     />
                   </div>
 
@@ -766,7 +774,7 @@ export default function AttendancePage() {
                       type="time"
                       value={checkOutTime}
                       onChange={(e) => setCheckOutTime(e.target.value)}
-                      className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-10 rounded-lg px-3 text-sm font-mono shadow-sm"
+                      className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-10 rounded-lg px-3 text-sm font-mono shadow-sm"
                     />
                   </div>
                 </div>
@@ -774,7 +782,7 @@ export default function AttendancePage() {
                   <Button variant="outline" onClick={() => setShowMarkDialog(false)} className="border-stone-200 text-stone-600 hover:bg-stone-50 rounded-lg">
                     Cancel
                   </Button>
-                  <Button disabled={submitting} onClick={handleMarkAttendance} className="bg-[#113c2c] hover:bg-[#0c2e22] text-white rounded-lg px-5 shadow-sm">
+                  <Button disabled={submitting} onClick={handleMarkAttendance} className="bg-[#4A1F5E] hover:bg-[#3B164B] text-white rounded-lg px-5 shadow-sm">
                     {submitting ? 'Saving...' : (editingRecord ? 'Save Changes' : 'Mark Attendance')}
                   </Button>
                 </DialogFooter>
@@ -787,27 +795,27 @@ export default function AttendancePage() {
         <div className="grid gap-5 md:grid-cols-5">
           {[
             { title: "Total Employees", value: stats.total_employees, sub: "Active staff", color: "text-stone-850", icon: <Users className="h-4 w-4 text-stone-300 stroke-[1.5]" /> },
-            { title: "Present Today", value: stats.present_today, sub: "On time & working", color: "text-[#113c2c]", icon: <CheckCircle className="h-4 w-4 text-green-500 stroke-[1.5]" /> },
+            { title: "Present Today", value: stats.present_today, sub: "On time & working", color: "text-[#4A1F5E]", icon: <CheckCircle className="h-4 w-4 text-green-500 stroke-[1.5]" /> },
             { title: "Absent Today", value: stats.absent_today, sub: "Not present", color: "text-rose-600", icon: <XCircle className="h-4 w-4 text-rose-400 stroke-[1.5]" /> },
             { title: "Late Today", value: stats.late_today, sub: "Late arrivals", color: "text-amber-600", icon: <AlertCircle className="h-4 w-4 text-amber-400 stroke-[1.5]" /> },
             { title: "Avg Hours", value: `${stats.average_hours}h`, sub: "Daily average", color: "text-stone-850", icon: <Clock className="h-4 w-4 text-stone-300 stroke-[1.5]" /> },
           ].map((item, idx) => (
-            <div key={idx} className="bg-white border border-stone-200/70 rounded-xl p-5 shadow-[0_2px_12px_-5px_rgba(0,0,0,0.03)] hover:border-stone-300/80 transition-all duration-300">
+            <div key={idx} className="bg-white border border-[#E7E2EA] rounded-xl p-5 shadow-[0_2px_12px_-5px_rgba(74,31,94,0.08)] hover:border-[#CDB8D8] transition-all duration-300">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-semibold text-stone-400 uppercase tracking-widest">{item.title}</span>
                 {item.icon}
               </div>
-              <div className={`text-3xl font-light font-serif ${item.color} mt-2.5`}>{item.value}</div>
-              <div className="text-[10px] text-stone-400 font-light mt-1.5">{item.sub}</div>
+              <div className={`text-3xl font-medium font-sans ${item.color} mt-2.5`}>{item.value}</div>
+              <div className="text-[10px] text-stone-400 font-medium mt-1.5">{item.sub}</div>
             </div>
           ))}
         </div>
 
         {/* Attendance Records */}
-        <div className="bg-white border border-stone-200/70 rounded-xl shadow-[0_4px_20px_-10px_rgba(0,0,0,0.03)] p-6 space-y-6">
+        <div className="bg-white border border-[#E7E2EA] rounded-xl shadow-[0_4px_20px_-10px_rgba(74,31,94,0.08)] p-6 space-y-6">
           <div className="flex flex-col gap-4 pb-2 border-b border-stone-100">
-            <h2 className="text-xl font-light font-serif text-stone-900">Daily Records</h2>
-            <p className="text-xs text-stone-400 font-sans font-light">Filter, search, and manage daily employee logs</p>
+            <h2 className="text-xl font-medium font-sans text-stone-900">Daily Records</h2>
+            <p className="text-xs text-stone-400 font-sans font-medium">Filter, search, and manage daily employee logs</p>
           </div>
 
           <div className="flex gap-4 items-center flex-wrap justify-between">
@@ -819,7 +827,7 @@ export default function AttendancePage() {
                   placeholder="Search employees..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-9 rounded-lg text-xs"
+                  className="pl-9 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-9 rounded-lg text-xs"
                 />
               </div>
               <div className="w-[180px]">
@@ -905,8 +913,8 @@ export default function AttendancePage() {
                 type="button"
                 onClick={()=> setStatusFilter(prev => prev.includes(st) ? prev.filter(x=>x!==st) : [...prev, st])}
                 className={`px-3 py-1 rounded-full border text-[11px] font-sans transition-all duration-250 ${
-                  statusFilter.includes(st) 
-                    ? 'bg-[#113c2c] text-white border-transparent shadow-sm' 
+                  statusFilter.includes(st)
+                    ? 'bg-[#4A1F5E] text-white border-transparent shadow-sm'
                     : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
                 }`}
               >
@@ -941,7 +949,7 @@ export default function AttendancePage() {
               <TableBody>
                 {filteredRecords.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-stone-400 font-sans font-light text-sm">
+                    <TableCell colSpan={7} className="text-center py-12 text-stone-400 font-sans font-medium text-sm">
                       No attendance records found.
                     </TableCell>
                   </TableRow>
@@ -952,7 +960,7 @@ export default function AttendancePage() {
                         <div className="flex items-center gap-3.5">
                           <div className="shrink-0">{getStatusIcon(record.status)}</div>
                           <div>
-                            <div className="font-light text-stone-900 font-serif text-sm leading-tight">{record.employee_name}</div>
+                            <div className="font-medium text-stone-900 font-sans text-sm leading-tight">{record.employee_name}</div>
                             <div className="text-[10px] text-stone-400 font-mono tracking-wider mt-0.5">{record.employee_id}</div>
                           </div>
                         </div>
@@ -1019,8 +1027,8 @@ export default function AttendancePage() {
       <AlertDialog open={showDeleteDialog} onOpenChange={(o)=>{ if(!o){ setShowDeleteDialog(false); setRecordPendingDelete(null);} }}>
         <AlertDialogContent className="bg-white border border-stone-250 rounded-2xl max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif font-light text-xl text-[#113c2c]">Delete Attendance</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-stone-500 font-sans font-light mt-1">
+            <AlertDialogTitle className="font-sans font-medium text-xl text-[#4A1F5E]">Delete Attendance</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-stone-500 font-sans font-medium mt-1">
               {recordPendingDelete ? `Delete attendance for ${recordPendingDelete.employee_name} on ${recordPendingDelete.date}? This action cannot be undone.` : 'No record selected.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

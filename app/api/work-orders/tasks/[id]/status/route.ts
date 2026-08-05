@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth-middleware"
+import { getRbacContext, requireRbacPermission, writeAuditLog } from "@/lib/rbac"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -19,6 +20,7 @@ export async function POST(
       return NextResponse.json(authResult.response, { status: 401 })
     }
     const supabase = createClient()
+    const rbacContext = await getRbacContext(request)
 
     const body = await request.json()
     const { status, checklist, photos, metadata, assigned_to } = body
@@ -37,6 +39,21 @@ export async function POST(
     const workOrderId = task.work_order_id
     const department = task.department
     const workOrder = task.work_order
+
+    if (rbacContext?.user.department === "warehouse") {
+      const denied = await requireRbacPermission(request, "warehouse.update")
+      if ("response" in denied) return denied.response
+      if (!["warehouse", "packing"].includes(department)) {
+        return NextResponse.json({ error: "Warehouse users can only update warehouse and packing tasks" }, { status: 403 })
+      }
+      if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      const isWarehouseStaff = !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+      if (task.assigned_to && task.assigned_to !== rbacContext.user.id && isWarehouseStaff) {
+        return NextResponse.json({ error: "This task is assigned to another warehouse user" }, { status: 403 })
+      }
+    }
 
     // 2. Validate checklists and photos before marking task as completed
     if (status === "completed" || status === "picked") {
@@ -87,6 +104,16 @@ export async function POST(
     if (updateError) {
       console.error("[Task Update Status POST] Update error:", updateError)
       return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    if (rbacContext) {
+      await writeAuditLog(request, rbacContext, {
+        module: department === "warehouse" || department === "packing" ? "warehouse" : department,
+        action: "status_change",
+        resourceType: "work_order_task",
+        resourceId: taskId,
+        metadata: { status, work_order_id: workOrderId },
+      })
     }
 
     // 5. Run sequential task transition logic

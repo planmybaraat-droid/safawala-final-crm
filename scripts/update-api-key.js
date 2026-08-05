@@ -10,7 +10,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function updateApiKey() {
-  const newApiKey = "REDACTED_JWT";
+  const newApiKey = "";
 
   console.log("Updating WATI API key in integration_settings...");
   const { data, error } = await supabase

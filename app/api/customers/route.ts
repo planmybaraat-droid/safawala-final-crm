@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth-middleware"
 import { supabaseServer } from "@/lib/supabase-server-simple"
 import type { UserPermissions } from "@/lib/types"
+import { validateEmail, validatePhoneWithCountry, validatePincode } from "@/lib/form-validation"
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,17 @@ async function getUserPermissions(userId: string): Promise<UserPermissions | nul
 function hasModuleAccess(perms: UserPermissions | null, key: keyof UserPermissions) {
   if (!perms) return false
   return Boolean(perms[key])
+}
+
+function normalizePhone(value: string) {
+  const compact = value.trim().replace(/[\s\-()]/g, "")
+  if (/^\d{10}$/.test(compact)) return `+91${compact}`
+  if (/^91\d{10}$/.test(compact)) return `+${compact}`
+  return compact
+}
+
+function sanitizeSearch(value: string) {
+  return value.replace(/[,%()"'\\]/g, " ").trim()
 }
 
 export async function GET(request: NextRequest) {
@@ -51,6 +63,13 @@ export async function GET(request: NextRequest) {
     const franchiseId = authContext!.user.franchise_id
     const isSuperAdmin = authContext!.user.role === 'super_admin'
     const role = authContext!.user.role
+
+    if (!isSuperAdmin && !franchiseId) {
+      return NextResponse.json(
+        { error: "Your account isn't linked to a franchise. Contact an admin to fix your account setup." },
+        { status: 403 }
+      )
+    }
     
     // Use service role client but manually enforce franchise filtering
     const supabase = createClient()
@@ -80,8 +99,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply search filter if provided
-    if (search && search.trim()) {
-      query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`)
+    const safeSearch = search ? sanitizeSearch(search) : ""
+    if (safeSearch) {
+      query = query.or(`name.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`)
     }
 
     let { data, error } = await query
@@ -168,8 +188,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 })
     }
 
-    if (!phone || phone.trim().length < 10) {
+    if (!phone || !validatePhoneWithCountry(phone).isValid) {
       return NextResponse.json({ error: "Valid phone number is required" }, { status: 400 })
+    }
+
+    if (email && !validateEmail(email.trim())) {
+      return NextResponse.json({ error: "Valid email address is required" }, { status: 400 })
+    }
+
+    if (pincode && !validatePincode(pincode.trim())) {
+      return NextResponse.json({ error: "Pincode must contain exactly 6 digits" }, { status: 400 })
     }
 
     if (!franchiseId) {
@@ -181,12 +209,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const normalizedPhone = normalizePhone(phone)
+    const { data: phoneMatches, error: duplicateError } = await supabase
+      .from("customers")
+      .select("id, phone")
+      .eq("franchise_id", franchiseId)
+
+    if (duplicateError) {
+      return NextResponse.json({ error: duplicateError.message }, { status: 500 })
+    }
+    if (phoneMatches?.some((customer) => normalizePhone(customer.phone || "") === normalizedPhone)) {
+      return NextResponse.json(
+        { error: "A customer with this phone number already exists in this franchise" },
+        { status: 409 }
+      )
+    }
+
     // Insert new customer with franchise_id
     // Build insert payload conditionally to avoid referencing dropped columns (e.g., notes)
     const insertPayload: any = {
       name: name.trim(),
-      phone: phone.trim(),
-      whatsapp: whatsapp?.trim() || null,
+      phone: normalizedPhone,
+      whatsapp: whatsapp?.trim() ? normalizePhone(whatsapp) : null,
       email: email?.trim() || null,
       address: address?.trim() || null,
       city: city?.trim() || null,
@@ -247,8 +291,17 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 })
     }
 
-    if (!phone || phone.trim().length < 10) {
+    if (!phone || !validatePhoneWithCountry(phone).isValid) {
       return NextResponse.json({ error: "Valid phone number is required" }, { status: 400 })
+    }
+
+
+    if (email && !validateEmail(email.trim())) {
+      return NextResponse.json({ error: "Valid email address is required" }, { status: 400 })
+    }
+
+    if (pincode && !validatePincode(pincode.trim())) {
+      return NextResponse.json({ error: "Pincode must contain exactly 6 digits" }, { status: 400 })
     }
 
     // Fetch existing to verify and enforce franchise isolation
@@ -266,10 +319,27 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied to this franchise' }, { status: 403 })
     }
 
+    const normalizedPhone = normalizePhone(phone)
+    const { data: phoneMatches, error: duplicateError } = await supabase
+      .from('customers')
+      .select('id, phone')
+      .eq('franchise_id', existing.franchise_id)
+      .neq('id', id)
+
+    if (duplicateError) {
+      return NextResponse.json({ error: duplicateError.message }, { status: 500 })
+    }
+    if (phoneMatches?.some((customer) => normalizePhone(customer.phone || '') === normalizedPhone)) {
+      return NextResponse.json(
+        { error: 'A customer with this phone number already exists in this franchise' },
+        { status: 409 }
+      )
+    }
+
     const updateData: any = {
       name: name.trim(),
-      phone: phone.trim(),
-      whatsapp: whatsapp?.trim() || null,
+      phone: normalizedPhone,
+      whatsapp: whatsapp?.trim() ? normalizePhone(whatsapp) : null,
       email: email?.trim() || null,
       address: address?.trim() || null,
       city: city?.trim() || null,

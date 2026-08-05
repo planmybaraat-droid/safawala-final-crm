@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth-middleware"
 import { supabaseServer } from "@/lib/supabase-server-simple"
+import { logAudit } from "@/lib/audit-log"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -66,6 +67,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       if (error.code === '42P01') return NextResponse.json({ error: 'KYC table not set up. Run database migration.' }, { status: 422 })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    await logAudit(request, { id: auth.user!.id, email: auth.user!.email, franchise_id: auth.user!.franchise_id }, {
+      module: "hr", action: "employee.document_upload", resourceType: "employee_kyc", resourceId: data.id,
+      metadata: { employee_id: params.id, doc_type, status: upsertData.status },
+    })
 
     return NextResponse.json({ data })
   } catch (e: any) {

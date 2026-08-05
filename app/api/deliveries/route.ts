@@ -6,7 +6,7 @@ import { requireAuth } from "@/lib/auth-middleware"
 export async function GET(request: NextRequest) {
   try {
     // Require authentication and derive franchise context
-    const auth = await requireAuth(request, 'readonly')
+    const auth = await requireAuth(request, 'readonly', 'delivery.view')
     if (!auth.success) {
       return NextResponse.json(auth.response, { status: 401 })
     }
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Require authentication and derive franchise context
-    const auth = await requireAuth(request, 'staff')
+    const auth = await requireAuth(request, 'staff', 'delivery.update')
     if (!auth.success) {
       return NextResponse.json(auth.response, { status: 401 })
     }

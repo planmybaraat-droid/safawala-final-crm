@@ -2,18 +2,19 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 const STATUS_META: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  confirmed:         { bg: "#dcfce7", text: "#15803d", dot: "#22c55e",  label: "Confirmed" },
+  confirmed:         { bg: "#F1EAF5", text: "#15803d", dot: "#22c55e",  label: "Confirmed" },
   pending:           { bg: "#fef9c3", text: "#a16207", dot: "#eab308",  label: "Pending" },
   pending_payment:   { bg: "#fef9c3", text: "#a16207", dot: "#eab308",  label: "Pending Payment" },
   pending_selection: { bg: "#fff7ed", text: "#c2410c", dot: "#f97316",  label: "Pending Selection" },
   delivered:         { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6",  label: "Delivered" },
   returned:          { bg: "#f3e8ff", text: "#6d28d9", dot: "#8b5cf6",  label: "Returned" },
-  order_complete:    { bg: "#dcfce7", text: "#15803d", dot: "#22c55e",  label: "Complete" },
+  order_complete:    { bg: "#F1EAF5", text: "#15803d", dot: "#22c55e",  label: "Complete" },
   cancelled:         { bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444",  label: "Cancelled" },
   generated:         { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6",  label: "Quote" },
 }
@@ -67,7 +68,7 @@ function PaymentSheet({ booking, onClose, onSaved }: { booking: any; onClose: ()
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
           {PAYMENT_METHODS.map(m=>(
             <button key={m} onClick={()=>setMethod(m)}
-              style={{ padding:"10px 0", borderRadius:12, border:`2px solid ${method===m?COLOR:"rgba(0,0,0,0.08)"}`, background:method===m?"#f0fdf4":"white", color:method===m?COLOR_DARK:"rgba(80,55,30,0.6)", fontSize:12, fontWeight:method===m?800:600, cursor:"pointer", fontFamily:"inherit" }}>
+              style={{ padding:"10px 0", borderRadius:12, border:`2px solid ${method===m?COLOR:"rgba(0,0,0,0.08)"}`, background:method===m?"#F1EAF5":"white", color:method===m?COLOR_DARK:"rgba(80,55,30,0.6)", fontSize:12, fontWeight:method===m?800:600, cursor:"pointer", fontFamily:"inherit" }}>
               {m}
             </button>
           ))}
@@ -140,11 +141,10 @@ export default function BookingDetailPage() {
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [toast, setToast] = useState("")
   const [showPayment, setShowPayment] = useState(false)
   const [showStatus, setShowStatus] = useState(false)
 
-  function showToast(msg: string) { setToast(msg); setTimeout(()=>setToast(""), 3000) }
+  function showToast(msg: string) { toast.success(msg) }
 
   const load = useCallback(async () => {
     if (!id) return
@@ -172,17 +172,21 @@ export default function BookingDetailPage() {
 
   async function downloadPDF() {
     try {
-      const res = await fetch(`/api/quotes/download-pdf?id=${id}`)
-      if (!res.ok) throw new Error()
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a"); a.href=url; a.download=`${booking?.order_number||id}.pdf`; a.click()
-      URL.revokeObjectURL(url); showToast("PDF downloaded ✓")
-    } catch { showToast("PDF not available") }
+      const orderType = kind === "package" ? "package_booking" : "product_order"
+      const res = await fetch("/api/generate-invoice-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: id, orderType }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.pdfUrl) throw new Error(data.error || "Failed to generate PDF")
+      const a = document.createElement("a"); a.href = data.pdfUrl; a.target = "_blank"; a.rel = "noreferrer"; a.download = `${booking?.order_number || id}.pdf`; a.click()
+      toast.success("PDF ready")
+    } catch (e: any) { toast.error(e.message || "PDF not available") }
   }
 
   if (loading) return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4,#dcfce7)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12, fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5,#F1EAF5)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12, fontFamily:"var(--font-inter), Inter, sans-serif" }}>
       <div style={{ width:40, height:40, borderRadius:"50%", border:`3px solid ${COLOR}30`, borderTopColor:COLOR, animation:"spin 1s linear infinite" }} />
       <p style={{ color:"rgba(80,55,30,0.5)", fontSize:13 }}>Loading booking…</p>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -190,7 +194,7 @@ export default function BookingDetailPage() {
   )
 
   if (error||!booking) return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4,#dcfce7)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16, padding:20, fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5,#F1EAF5)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16, padding:20, fontFamily:"var(--font-inter), Inter, sans-serif" }}>
       <div style={{ fontSize:48 }}>😕</div>
       <p style={{ fontWeight:700, fontSize:16, color:"#1e1208" }}>{error||"Booking not found"}</p>
       <p style={{ fontSize:12, color:"rgba(80,55,30,0.5)", textAlign:"center", maxWidth:280 }}>
@@ -207,9 +211,7 @@ export default function BookingDetailPage() {
   const initials = (customer.name||"?").split(" ").map((w:string)=>w[0]).join("").slice(0,2).toUpperCase()
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4 0%,#dcfce7 100%)", fontFamily:"'Inter','Segoe UI',sans-serif", paddingBottom:100 }}>
-      {toast && <div style={{ position:"fixed", top:60, left:"50%", transform:"translateX(-50%)", background:COLOR_DARK, color:"white", borderRadius:12, padding:"8px 20px", fontSize:12, fontWeight:700, zIndex:200, whiteSpace:"nowrap" }}>{toast}</div>}
-
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5 0%,#F1EAF5 100%)", fontFamily:"var(--font-inter), Inter, sans-serif", paddingBottom:100 }}>
       {/* Hero */}
       <div style={{ background:`linear-gradient(135deg,${COLOR_DARK},${COLOR})`, padding:"20px 16px 24px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:-30, right:-30, width:150, height:150, borderRadius:"50%", background:"rgba(255,255,255,0.07)" }} />
@@ -325,7 +327,7 @@ export default function BookingDetailPage() {
             </div>
           ))}
           <button onClick={()=>router.push(`/portal/booking/customers/${booking.customer_id}`)}
-            style={{ marginTop:12, width:"100%", height:40, borderRadius:12, border:`1px solid ${COLOR}`, background:"#f0fdf4", color:COLOR_DARK, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            style={{ marginTop:12, width:"100%", height:40, borderRadius:12, border:`1px solid ${COLOR}`, background:"#F1EAF5", color:COLOR_DARK, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
             View Customer Profile →
           </button>
         </div>

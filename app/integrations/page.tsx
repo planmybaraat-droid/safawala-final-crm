@@ -144,7 +144,7 @@ export default function IntegrationsPage() {
   )
   const [watiConfig, setWatiConfig] = useState({
     apiKey:
-      "REDACTED_JWT",
+      "",
     baseUrl: "https://live-mt-server.wati.io/481455",
     instanceId: "481455",
     testPhone: "919725295692",

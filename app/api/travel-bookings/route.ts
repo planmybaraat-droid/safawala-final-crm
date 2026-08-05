@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth-middleware"
 import { supabaseServer } from "@/lib/supabase-server-simple"
+import { logAudit } from "@/lib/audit-log"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -22,15 +23,14 @@ export async function GET(request: NextRequest) {
     const franchiseId = auth.user!.franchise_id
 
     // 1. Fetch confirmed bookings with event dates
-    // (assigned_stylist_id has no FK constraint in the DB, so it's batch-fetched
-    // separately below rather than using a PostgREST embedded-resource join)
+    // (product_orders has no assigned_stylist_id column or venue_name column —
+    // only venue_address. Stylist assignment isn't tracked on this table.)
     let orderQ = supabaseServer
       .from("product_orders")
       .select(`
         id, order_number, status, event_date, event_time, event_type,
-        venue_name, venue_address,
-        customer:customers(id, name, phone),
-        assigned_stylist_id
+        venue_address,
+        customer:customers(id, name, phone)
       `)
       .in("status", ["confirmed", "picked_up", "delivered", "in_progress"])
       .not("event_date", "is", null)
@@ -56,16 +56,6 @@ export async function GET(request: NextRequest) {
     const { data: orders, error: ordersErr } = await orderQ
     if (ordersErr) throw ordersErr
 
-    const stylistIds = [...new Set((orders ?? []).map((o: any) => o.assigned_stylist_id).filter(Boolean))]
-    const stylistMap = new Map<string, any>()
-    if (stylistIds.length > 0) {
-      const { data: stylists } = await supabaseServer
-        .from("users")
-        .select("id, name, phone, department")
-        .in("id", stylistIds)
-      for (const s of stylists ?? []) stylistMap.set(s.id, s)
-    }
-
     // 2. Fetch travel bookings for these orders
     const orderIds = (orders ?? []).map((o: any) => o.id)
     let travelQ = supabaseServer
@@ -76,7 +66,9 @@ export async function GET(request: NextRequest) {
     if (orderIds.length > 0) {
       travelQ = travelQ.in("booking_id", orderIds)
     } else if (franchiseId) {
-      travelQ = travelQ.eq("franchise_id", franchiseId)
+      travelQ = travelQ.eq("franchise_id", franchiseId).not("booking_id", "is", null)
+    } else {
+      travelQ = travelQ.not("booking_id", "is", null)
     }
 
     if (status) travelQ = travelQ.eq("status", status)
@@ -84,27 +76,59 @@ export async function GET(request: NextRequest) {
 
     const { data: travels } = await travelQ
 
+    let standaloneQ = supabaseServer
+      .from("travel_bookings")
+      .select(`*, stylist:users!stylist_id(id, name, phone, department)`)
+      .is("booking_id", null)
+      .order("event_date", { ascending: true })
+      .limit(limit)
+    if (franchiseId && auth.user!.role !== "super_admin") standaloneQ = standaloneQ.eq("franchise_id", franchiseId)
+    if (month) standaloneQ = standaloneQ.gte("event_date", `${month}-01`).lte("event_date", `${month}-31`)
+    else {
+      const windowStart = new Date()
+      windowStart.setDate(windowStart.getDate() - 30)
+      standaloneQ = standaloneQ.gte("event_date", windowStart.toISOString().slice(0, 10))
+    }
+    if (status) standaloneQ = standaloneQ.eq("status", status)
+    if (stylistId) standaloneQ = standaloneQ.eq("stylist_id", stylistId)
+    const { data: standalone } = await standaloneQ
+
     // 3. Merge: one row per order with travel data attached
     const merged = (orders ?? []).map((order: any) => {
       const travel = (travels ?? []).find((t: any) => t.booking_id === order.id) ?? null
       return {
         id: order.id,
+        booking_id: order.id,
         order_number: order.order_number,
         event_date: order.event_date,
         event_time: order.event_time,
         event_type: order.event_type,
-        venue: order.venue_name ? `${order.venue_name}${order.venue_address ? `, ${order.venue_address}` : ""}` : order.venue_address,
+        venue: order.venue_address,
         customer_name: order.customer?.name ?? "—",
         customer_phone: order.customer?.phone,
-        assigned_stylist: order.assigned_stylist_id ? stylistMap.get(order.assigned_stylist_id) ?? null : null,
+        assigned_stylist: null,
         travel,
       }
     })
 
-    return NextResponse.json({ success: true, data: merged })
+    const standaloneRows = (standalone ?? []).map((travel: any) => ({
+      id: travel.id,
+      booking_id: null,
+      order_number: travel.order_number,
+      event_date: travel.event_date,
+      event_time: null,
+      event_type: null,
+      venue: travel.venue,
+      customer_name: travel.customer_name ?? travel.event_name ?? "—",
+      customer_phone: null,
+      assigned_stylist: travel.stylist ?? null,
+      travel,
+    }))
+
+    return NextResponse.json({ success: true, data: [...merged, ...standaloneRows] })
   } catch (err: any) {
     console.error("travel-bookings GET error:", err)
-    return NextResponse.json({ success: true, data: [] })
+    return NextResponse.json({ success: false, error: err.message || "Failed to load travel bookings", data: [] }, { status: 500 })
   }
 }
 
@@ -117,7 +141,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       booking_id, order_number, event_date, event_name, venue,
-      customer_name, stylist_id, status, notes, documents,
+      customer_name, stylist_id, status, notes, documents, travel_mode,
+      ticket_ref, pnr, departure_from, arrival_at, departure_date, departure_time,
+      return_date, return_time, hotel_name, hotel_address, hotel_checkin,
+      hotel_checkout, hotel_ref, hotel_contact, ticket_cost, hotel_cost,
+      other_cost, advance_given,
     } = body
 
     const franchiseId = auth.user!.franchise_id
@@ -137,11 +165,24 @@ export async function POST(request: NextRequest) {
         // Update instead
         const { data, error } = await supabaseServer
           .from("travel_bookings")
-          .update({ stylist_id, status, notes, documents })
+          .update({
+            stylist_id, status, notes, documents, travel_mode, ticket_ref, pnr,
+            departure_from, arrival_at, departure_date, departure_time, return_date,
+            return_time, hotel_name, hotel_address, hotel_checkin, hotel_checkout,
+            hotel_ref, hotel_contact, ticket_cost: ticket_cost ?? 0,
+            hotel_cost: hotel_cost ?? 0, other_cost: other_cost ?? 0,
+            advance_given: advance_given ?? 0,
+          })
           .eq("id", existing.id)
           .select()
           .single()
         if (error) throw error
+
+        await logAudit(request, { id: auth.user!.id, email: auth.user!.email, franchise_id: auth.user!.franchise_id }, {
+          module: "travels", action: "booking.update", resourceType: "travel_booking", resourceId: existing.id,
+          metadata: { status, stylist_id, travel_mode },
+        })
+
         return NextResponse.json({ success: true, data })
       }
     }
@@ -151,13 +192,23 @@ export async function POST(request: NextRequest) {
       .from("travel_bookings")
       .insert({
         booking_id, order_number, event_date, event_name, venue,
-        customer_name, stylist_id, franchise_id: franchiseId,
-        notes, documents: documents ?? [], status: status || "pending",
+        customer_name, stylist_id, franchise_id: franchiseId, travel_mode,
+        ticket_ref, pnr, departure_from, arrival_at, departure_date, departure_time,
+        return_date, return_time, hotel_name, hotel_address, hotel_checkin,
+        hotel_checkout, hotel_ref, hotel_contact, ticket_cost: ticket_cost ?? 0,
+        hotel_cost: hotel_cost ?? 0, other_cost: other_cost ?? 0,
+        advance_given: advance_given ?? 0, notes, documents: documents ?? [], status: status || "pending",
       })
       .select()
       .single()
 
     if (error) throw error
+
+    await logAudit(request, { id: auth.user!.id, email: auth.user!.email, franchise_id: auth.user!.franchise_id }, {
+      module: "travels", action: "booking.create", resourceType: "travel_booking", resourceId: data.id,
+      metadata: { status: status || "pending", stylist_id, travel_mode },
+    })
+
     return NextResponse.json({ success: true, data }, { status: 201 })
   } catch (err: any) {
     console.error("travel-bookings POST error:", err)
@@ -195,6 +246,12 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (error) throw error
+
+    await logAudit(request, { id: auth.user!.id, email: auth.user!.email, franchise_id: auth.user!.franchise_id }, {
+      module: "travels", action: "booking.status_change", resourceType: "travel_booking", resourceId: id,
+      metadata: { status, stylist_id },
+    })
+
     return NextResponse.json({ success: true, data })
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 })

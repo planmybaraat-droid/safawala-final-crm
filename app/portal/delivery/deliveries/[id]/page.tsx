@@ -13,6 +13,15 @@ const STATUSES = [
   { value: "failed", label: "Failed" },
 ]
 
+function hasDeliveryUpdatePermission(): boolean {
+  try {
+    const user = JSON.parse(localStorage.getItem("safawala_user") || "null")
+    if (!user) return false
+    if (user.is_super_admin || user.role === "franchise_admin" || user.role === "delivery_staff") return true
+    return user.department === "delivery" && user.permissions?.["delivery.update"] === true
+  } catch { return false }
+}
+
 export default function DeliveryDetailPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
@@ -21,8 +30,9 @@ export default function DeliveryDetailPage() {
   const [updating, setUpdating] = useState(false)
   const [awb, setAwb] = useState("")
   const [toast, setToast] = useState<string | null>(null)
+  const [canUpdate, setCanUpdate] = useState(false)
 
-  useEffect(() => { if (id) load() }, [id])
+  useEffect(() => { if (id) load(); setCanUpdate(hasDeliveryUpdatePermission()) }, [id])
   useEffect(() => { if (toast) setTimeout(() => setToast(null), 3000) }, [toast])
 
   async function load() {
@@ -110,7 +120,7 @@ export default function DeliveryDetailPage() {
       </div>
 
       {/* Status Actions */}
-      <PortalSectionLabel label="Update Status" />
+      {canUpdate && <><PortalSectionLabel label="Update Status" />
       <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
         <div className="p-3 flex gap-2 flex-wrap">
           {STATUSES.map(s => (
@@ -121,10 +131,10 @@ export default function DeliveryDetailPage() {
             </button>
           ))}
         </div>
-      </div>
+      </div></>}
 
       {/* AWB Entry */}
-      <PortalSectionLabel label="AWB / Tracking Number" />
+      {canUpdate && <><PortalSectionLabel label="AWB / Tracking Number" />
       <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
         <div className="px-4 pt-3 pb-1">
           <input
@@ -140,7 +150,7 @@ export default function DeliveryDetailPage() {
             Save AWB
           </button>
         </div>
-      </div>
+      </div></>}
 
       {/* Delivery Info */}
       <PortalSectionLabel label="Delivery Details" />

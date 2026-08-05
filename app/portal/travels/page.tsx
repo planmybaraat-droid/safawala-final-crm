@@ -1,7 +1,8 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { PortalIcon } from "@/components/portal/portal-icons"
+import { useAutoRefresh } from "@/lib/hooks/use-auto-refresh"
 
 const COLOR = "#0891b2"
 
@@ -29,7 +30,8 @@ export default function TravelsHomePage() {
     if (raw) try { setUser(JSON.parse(raw)) } catch {}
   }, [])
 
-  useEffect(() => {
+  const loadStats = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
     fetch("/api/travel-bookings")
       .then(r => r.json())
       .then(({ data = [] }) => {
@@ -49,8 +51,14 @@ export default function TravelsHomePage() {
         }).slice(0, 5))
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
+      .finally(() => { if (!silent) setLoading(false) })
   }, [])
+
+  useEffect(() => { loadStats() }, [loadStats])
+
+  // Reflects bookings/status changes made from the Main CRM or another
+  // travel staff member without a manual refresh.
+  useAutoRefresh(() => loadStats(true), 15000)
 
   const statCards = [
     { label: "Total", value: stats.total, color: "#6366f1" },

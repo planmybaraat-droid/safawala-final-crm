@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth-middleware"
 import { supabaseServer } from "@/lib/supabase-server-simple"
+import { logAudit } from "@/lib/audit-log"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
       (auth.user!.role as string) === 'hr_staff'
 
     let query = supabaseServer
-      .from('attendance')
-      .select('*, user:users(id,name,email,role,department)')
+      .from('attendance_records')
+      .select('*, user:users!attendance_records_user_id_fkey(id,name,email,role,department)')
       .order('date', { ascending: false })
       .limit(limit)
 
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     const franchiseId = auth.user!.franchise_id
 
     const { data: existing } = await supabaseServer
-      .from('attendance')
+      .from('attendance_records')
       .select('id')
       .eq('user_id', userId)
       .eq('date', date)
@@ -80,36 +81,50 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       const { data, error } = await supabaseServer
-        .from('attendance')
+        .from('attendance_records')
         .update({
           status,
-          check_in: check_in ?? null,
-          check_out: check_out ?? null,
+          check_in_time: check_in ?? null,
+          check_out_time: check_out ?? null,
           notes: notes ?? null,
+          approved_by: auth.user!.id,
           updated_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
-        .select('*, user:users(id,name,email,role,department)')
+        .select('*, user:users!attendance_records_user_id_fkey(id,name,email,role,department)')
         .single()
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+      await logAudit(request, { id: auth.user!.id, email: auth.user!.email, franchise_id: auth.user!.franchise_id }, {
+        module: "hr", action: "attendance.update", resourceType: "attendance_record", resourceId: existing.id,
+        metadata: { user_id: userId, date, status },
+      })
+
       return NextResponse.json({ data, updated: true })
     }
 
     const { data, error } = await supabaseServer
-      .from('attendance')
+      .from('attendance_records')
       .insert({
         user_id: userId,
         franchise_id: franchiseId,
         date,
         status,
-        check_in: check_in ?? null,
-        check_out: check_out ?? null,
+        check_in_time: check_in ?? null,
+        check_out_time: check_out ?? null,
         notes: notes ?? null,
+        approved_by: auth.user!.id,
       })
-      .select('*, user:users(id,name,email,role,department)')
+      .select('*, user:users!attendance_records_user_id_fkey(id,name,email,role,department)')
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    await logAudit(request, { id: auth.user!.id, email: auth.user!.email, franchise_id: auth.user!.franchise_id }, {
+      module: "hr", action: "attendance.update", resourceType: "attendance_record", resourceId: data.id,
+      metadata: { user_id: userId, date, status },
+    })
+
     return NextResponse.json({ data }, { status: 201 })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })

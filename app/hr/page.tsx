@@ -40,7 +40,7 @@ const HR_SECTIONS = [
   {
     title: "KYC & Documents",
     description: "Manage staff KYC records, ID proofs, and document uploads",
-    href: "/customers",
+    href: "/hr/kyc",
     icon: UserCheck,
     color: "#0891b2",
   },
@@ -56,9 +56,9 @@ const HR_SECTIONS = [
 export default function HRPage() {
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="hr-payroll-ui space-y-6">
         <div>
-          <h1 className="text-3xl font-serif font-semibold text-gray-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-3xl font-sans font-semibold text-gray-900 tracking-tight flex items-center gap-2">
             <Award className="w-8 h-8 text-[#6366f1]" />
             HR & Staff
           </h1>

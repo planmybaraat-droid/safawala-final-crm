@@ -6,9 +6,9 @@ export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
 /**
- * Checks if the current session token in the cookie matches
- * the latest session_token stored in the DB for this user.
- * If they don't match, another device has logged in → this session is invalid.
+ * Verifies that the current cookie belongs to an active user. Sessions are
+ * intentionally independent, so signing in elsewhere does not invalidate
+ * this browser.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, reason: "bad_cookie" })
     }
 
-    const { id: userId, session_token: cookieToken } = parsed
+    const { id: userId } = parsed
 
-    if (!userId || !cookieToken) {
-      return NextResponse.json({ valid: false, reason: "legacy_session_missing_token" })
+    if (!userId) {
+      return NextResponse.json({ valid: false, reason: "legacy_session_missing_user" })
     }
 
     const serviceAdmin = createServiceClient(
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     const { data: user, error } = await serviceAdmin
       .from("users")
-      .select("session_token, is_active")
+      .select("is_active")
       .eq("id", userId)
       .single()
 
@@ -47,48 +47,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, reason: "user_not_found" })
     }
 
-    console.log("[verify-session] userId:", userId, "cookieToken:", cookieToken, "dbToken:", user.session_token)
-
     if (!user.is_active) {
       return NextResponse.json({ valid: false, reason: "account_inactive" })
     }
-
-    if (!user.session_token) {
-      return NextResponse.json({
-        valid: false,
-        reason: "missing_db_session_token",
-        message: "Your session is incomplete. Please sign in again.",
-      })
-    }
-
-    const [dbDevice, dbUuid] = user.session_token.includes(":") ? user.session_token.split(":") : ["legacy", user.session_token]
-    const [cookieDevice, cookieUuid] = cookieToken.includes(":") ? cookieToken.split(":") : ["legacy", cookieToken]
-
-    if (dbDevice === cookieDevice) {
-      const response = NextResponse.json({ valid: true })
-      
-      // If session tokens differ (e.g. user logged in again in another tab), update cookie
-      if (user.session_token !== cookieToken) {
-        const updatedPayload = {
-          ...parsed,
-          session_token: user.session_token
-        }
-        response.cookies.set('safawala_user', JSON.stringify(updatedPayload), {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          path: '/',
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-        })
-      }
-      return response
-    }
-
-    return NextResponse.json({
-      valid: false,
-      reason: "session_replaced",
-      message: "You have been logged out because your account was accessed from another device.",
-    })
+    return NextResponse.json({ valid: true })
   } catch (err) {
     console.error("[verify-session]", err)
     return NextResponse.json({ valid: false, reason: "verification_error" }, { status: 500 })

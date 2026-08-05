@@ -818,9 +818,9 @@ export default function LaundryPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-6 bg-[#F8F7FA] p-4 pt-6 md:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between space-y-2">
+      <div className="flex items-center justify-between gap-4 border-b border-[#E7E2EA] pb-5">
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
@@ -831,19 +831,22 @@ export default function LaundryPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Laundry Management</h1>
-            <p className="text-muted-foreground">Manage laundry batches and vendor relationships</p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F1EAF5] text-[#4A1F5E]"><Package className="h-6 w-6" /></div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-[#1F1B24]">Laundry Management</h1>
+              <p className="text-sm text-[#6F6878]">Manage laundry batches and vendor relationships</p>
+            </div>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="flex items-center">
+          <Button variant="outline" size="sm" className="border-[#E7E2EA] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5]" onClick={() => window.location.reload()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
           <Dialog open={showCreateBatch} onOpenChange={setShowCreateBatch}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-[#4A1F5E] text-white hover:bg-[#5C2A72]">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Batch
               </Button>
@@ -971,20 +974,15 @@ export default function LaundryPage() {
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                              value={productSearchTerm}
+                              value={productSearchTerm || (selectedProduct ? products.find(p => p.id === selectedProduct)?.name || "" : "")}
                               onChange={(e) => {
                                 setProductSearchTerm(e.target.value)
                                 setProductSearchOpen(true)
                               }}
                               onFocus={() => setProductSearchOpen(true)}
-                              placeholder={selectedProduct ? products.find(p => p.id === selectedProduct)?.name || "Search products..." : "Search products..."}
+                              placeholder="Search products..."
                               className="pl-9"
                             />
-                            {selectedProduct && !productSearchTerm && (
-                              <div className="absolute inset-0 flex items-center pl-9 pointer-events-none">
-                                <span className="text-sm">{products.find(p => p.id === selectedProduct)?.name}</span>
-                              </div>
-                            )}
                           </div>
                           {productSearchOpen && (
                             <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-auto">
@@ -1160,56 +1158,22 @@ export default function LaundryPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{batches.length}</div>
-            <p className="text-xs text-muted-foreground">Active laundry batches</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{batches.filter((b) => b.status === "in_progress").length}</div>
-            <p className="text-xs text-muted-foreground">Currently being processed</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{batches.reduce((sum, batch) => sum + batch.total_items, 0)}</div>
-            <p className="text-xs text-muted-foreground">Items in all batches</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₹{batches.reduce((sum, batch) => sum + batch.total_cost, 0).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">Total laundry costs</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        {[
+          { label: "Total Batches", value: batches.length, hint: "Active laundry batches", icon: Package, tone: "bg-[#EAF1FF] text-[#4469C5]" },
+          { label: "In Progress", value: batches.filter((b) => b.status === "in_progress").length, hint: "Currently being processed", icon: Truck, tone: "bg-[#FFF3E5] text-[#C47A20]" },
+          { label: "Total Items", value: batches.reduce((sum, batch) => sum + batch.total_items, 0), hint: "Items in all batches", icon: Package, tone: "bg-[#E9F7EE] text-[#25864A]" },
+          { label: "Total Cost", value: `₹${batches.reduce((sum, batch) => sum + batch.total_cost, 0).toFixed(2)}`, hint: "Total laundry costs", icon: DollarSign, tone: "bg-[#F1EAF5] text-[#4A1F5E]" },
+        ].map(({ label, value, hint, icon: Icon, tone }) => (
+          <Card key={label} className="border-[#E5DFE8] bg-white shadow-sm"><CardContent className="flex items-center gap-4 p-4"><div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="h-6 w-6" /></div><div><p className="text-xs font-medium text-[#6F6878]">{label}</p><p className="text-2xl font-semibold text-[#1F1B24]">{value}</p><p className="text-xs text-[#8C8492]">{hint}</p></div></CardContent></Card>
+        ))}
       </div>
 
       {/* Filters and Batches Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Laundry Batches</CardTitle>
-          <CardDescription>Track and manage all laundry batches sent to vendors</CardDescription>
+      <Card className="overflow-hidden border-[#E5DFE8] shadow-sm">
+        <CardHeader className="border-b border-[#E7E2EA] bg-white">
+          <CardTitle className="text-base text-[#1F1B24]">Laundry Batches</CardTitle>
+          <CardDescription className="text-sm text-[#6F6878]">Track and manage all laundry batches sent to vendors</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -1220,12 +1184,12 @@ export default function LaundryPage() {
                   placeholder="Search batches..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
+                  className="h-10 border-[#E7E2EA] bg-white pl-8"
                 />
               </div>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48">
+              <SelectTrigger className="h-10 w-full border-[#E7E2EA] bg-white sm:w-48">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -1239,7 +1203,7 @@ export default function LaundryPage() {
             </Select>
             <Dialog open={showDateFilter} onOpenChange={setShowDateFilter}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full border-[#E7E2EA] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5] sm:w-auto">
                   <CalendarRange className="h-4 w-4 mr-2" />
                   {dateFilter?.from || dateFilter?.to ? "Date Filtered" : "Date Filter"}
                 </Button>
@@ -1768,20 +1732,15 @@ export default function LaundryPage() {
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
-                            value={editProductSearchTerm}
+                            value={editProductSearchTerm || (editSelectedProduct ? products.find(p => p.id === editSelectedProduct)?.name || "" : "")}
                             onChange={(e) => {
                               setEditProductSearchTerm(e.target.value)
                               setEditProductSearchOpen(true)
                             }}
                             onFocus={() => setEditProductSearchOpen(true)}
-                            placeholder={editSelectedProduct ? products.find(p => p.id === editSelectedProduct)?.name || "Search products..." : "Search products..."}
+                            placeholder="Search products..."
                             className="pl-9"
                           />
-                          {editSelectedProduct && !editProductSearchTerm && (
-                            <div className="absolute inset-0 flex items-center pl-9 pointer-events-none">
-                              <span className="text-sm">{products.find(p => p.id === editSelectedProduct)?.name}</span>
-                            </div>
-                          )}
                         </div>
                         {editProductSearchOpen && (
                           <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-auto">

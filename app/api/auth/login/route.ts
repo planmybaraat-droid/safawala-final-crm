@@ -11,11 +11,64 @@ const ALLOW_LEGACY_DEPT_LOGIN_BYPASS =
   process.env.NODE_ENV !== "production" &&
   process.env.ALLOW_LEGACY_DEPT_LOGIN_BYPASS === "true"
 
+const MAX_FAILED_LOGIN_ATTEMPTS = 5
+const LOCKOUT_MINUTES = 15
+
 /**
  * Get default permissions based on role
  */
 function getDefaultPermissions(role: string): Record<string, boolean> {
   switch (role) {
+    case 'warehouse_staff':
+      return {
+        dashboard: false,
+        bookings: false,
+        customers: false,
+        inventory: true,
+        packages: false,
+        vendors: false,
+        quotes: false,
+        invoices: false,
+        laundry: true,
+        expenses: false,
+        deliveries: false,
+        productArchive: false,
+        payroll: false,
+        attendance: false,
+        reports: false,
+        financials: false,
+        franchises: false,
+        staff: false,
+        integrations: false,
+        settings: false,
+        'warehouse.view': true,
+        'warehouse.update': true,
+      }
+    case 'qc_staff':
+      return {
+        dashboard: false,
+        bookings: false,
+        customers: false,
+        inventory: false,
+        packages: false,
+        vendors: false,
+        quotes: false,
+        invoices: false,
+        laundry: false,
+        expenses: false,
+        deliveries: false,
+        productArchive: false,
+        payroll: false,
+        attendance: false,
+        reports: false,
+        financials: false,
+        franchises: false,
+        staff: false,
+        integrations: false,
+        settings: false,
+        'qc.view': true,
+        'qc.update': true,
+      }
     case 'super_admin':
       return {
         dashboard: true,
@@ -149,10 +202,23 @@ export async function POST(request: NextRequest) {
     const host = request.nextUrl.hostname
     const isLocalDevHost = host === "localhost" || host === "127.0.0.1" || host === "::1"
 
-    // Accept master password OR dept-specific password only when explicitly enabled.
-    const isBypassPassword = password === 'Warehouse@5678' || password === `${deptCap}@5678`;
+    // Local department login passwords are supplied through ignored environment
+    // variables. Never keep a real password in source code or migrations.
+    const configuredDepartmentPassword = deptPrefix === "warehouse"
+      ? process.env.WAREHOUSE_LOGIN_PASSWORD
+      : process.env[`${(deptPrefix || "").toUpperCase()}_LOGIN_PASSWORD`]
+    const isBypassPassword = Boolean(
+      configuredDepartmentPassword && password === configuredDepartmentPassword
+    )
 
-    if (ALLOW_LEGACY_DEPT_LOGIN_BYPASS && isLocalDevHost && deptPrefix && validDepartments.includes(deptPrefix) && isBypassPassword) {
+    // Keep the department shortcut strictly development-only. Hostname checks
+    // are unreliable behind local proxies (for example, 0.0.0.0 or ::ffff),
+    // while NODE_ENV is stable and production deployments never enable it.
+    const localDepartmentBypassEnabled =
+      process.env.NODE_ENV !== "production" &&
+      process.env.ALLOW_LEGACY_DEPT_LOGIN_BYPASS === "true"
+
+    if (localDepartmentBypassEnabled && deptPrefix && validDepartments.includes(deptPrefix) && isBypassPassword) {
       console.log(`[v0] Bypassing auth for default ${deptPrefix} user`);
 
       // Stable valid UUIDs per department (all lowercase hex, valid v4 format)
@@ -176,6 +242,8 @@ export async function POST(request: NextRequest) {
         admin: 'super_admin',
         manager: 'franchise_admin',
         franchise: 'franchise_admin',
+        warehouse: 'warehouse_staff',
+        qc: 'qc_staff',
       };
       const userRole = roleMapping[deptPrefix] || 'staff';
 
@@ -186,49 +254,59 @@ export async function POST(request: NextRequest) {
         admin: 'admin',
       };
       const portalSlug = deptToPortalSlug[deptPrefix] || deptPrefix;
-
-      // Look up real franchise_id from DB so queries return actual data
-      const serviceForFranchise = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
-      let realFranchiseId = "00000000-0000-4000-8001-000000000099"
-      let realFranchiseName = "Safawala Main"
-      let realFranchiseCode = "SFW-MAIN"
-      try {
-        const { data: fData } = await serviceForFranchise
-          .from('franchises')
-          .select('id, name, code')
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .single()
-        if (fData?.id) {
-          realFranchiseId = fData.id
-          realFranchiseName = fData.name || realFranchiseName
-          realFranchiseCode = fData.code || realFranchiseCode
-        }
-      } catch (_) {}
-
       const deptDisplayNames: Record<string, string> = {
         travels: "Travel & Hotels",
       };
-      const displayName = deptDisplayNames[deptPrefix] ? `${deptDisplayNames[deptPrefix]} Manager` : `${deptCap} Manager`;
+      const displayName = deptDisplayNames[deptPrefix]
+        ? `${deptDisplayNames[deptPrefix]} Manager`
+        : `${deptCap} Manager`;
 
-      // Upsert the dept user into users table so auth-middleware can find them
-      try {
-        await serviceForFranchise
-          .from('users')
-          .upsert({
-            id: deptUserId,
-            email: `${deptPrefix}@safawala.com`,
-            name: displayName,
-            role: userRole,
-            franchise_id: realFranchiseId,
-            is_active: true,
-            permissions: getDefaultPermissions(userRole),
-          }, { onConflict: 'email', ignoreDuplicates: false })
-      } catch (upsertErr) {
-        console.warn('[v0] Could not upsert dept user (non-fatal):', upsertErr)
+      // Look up real franchise_id from DB so queries return actual data
+      // The local legacy-login path can run without a service-role key. In
+      // production, the normal Supabase-backed profile flow still requires it.
+      const serviceForFranchise = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+        ? createServiceClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+          )
+        : null
+      let realFranchiseId = "00000000-0000-4000-8001-000000000099"
+      let realFranchiseName = "Safawala Main"
+      let realFranchiseCode = "SFW-MAIN"
+      if (serviceForFranchise) {
+        try {
+          const { data: fData } = await serviceForFranchise
+            .from('franchises')
+            .select('id, name, code')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .single()
+          if (fData?.id) {
+            realFranchiseId = fData.id
+            realFranchiseName = fData.name || realFranchiseName
+            realFranchiseCode = fData.code || realFranchiseCode
+          }
+        } catch (_) {}
+      }
+
+      // Keep the local fallback usable when the service-role key is not present.
+      if (serviceForFranchise) {
+        try {
+          await serviceForFranchise
+            .from('users')
+            .upsert({
+              id: deptUserId,
+              email: `${deptPrefix}@safawala.com`,
+              name: displayName,
+              role: userRole,
+              department: portalSlug,
+              franchise_id: realFranchiseId,
+              is_active: true,
+              permissions: getDefaultPermissions(userRole),
+            }, { onConflict: 'email', ignoreDuplicates: false })
+        } catch (upsertErr) {
+          console.warn('[v0] Could not upsert dept user (non-fatal):', upsertErr)
+        }
       }
 
       const user = {
@@ -290,6 +368,54 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 })
     }
 
+    // Account lockout: track failed attempts per-user and reject while locked.
+    // Best-effort — never let this block login when the service key isn't configured.
+    const lockoutClient = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+      : null
+
+    let lockoutUserRow: { id: string; failed_login_attempts: number | null; locked_until: string | null } | null = null
+    if (lockoutClient) {
+      const { data } = await lockoutClient
+        .from("users")
+        .select("id, failed_login_attempts, locked_until")
+        .ilike("email", email)
+        .maybeSingle()
+      lockoutUserRow = data
+      if (lockoutUserRow?.locked_until && new Date(lockoutUserRow.locked_until).getTime() > Date.now()) {
+        const minutesLeft = Math.ceil((new Date(lockoutUserRow.locked_until).getTime() - Date.now()) / 60000)
+        return NextResponse.json(
+          { error: `Too many failed attempts. Try again in ${minutesLeft} minute(s).` },
+          { status: 423 },
+        )
+      }
+    }
+
+    const requestIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || null
+    const requestUserAgent = request.headers.get("user-agent")
+
+    async function registerFailedLoginAttempt() {
+      if (!lockoutClient || !lockoutUserRow) return
+      const nextAttempts = (lockoutUserRow.failed_login_attempts || 0) + 1
+      const willLock = nextAttempts >= MAX_FAILED_LOGIN_ATTEMPTS
+      const updates: Record<string, unknown> = { failed_login_attempts: nextAttempts }
+      if (willLock) updates.locked_until = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+      try {
+        await lockoutClient.from("users").update(updates).eq("id", lockoutUserRow.id)
+        await lockoutClient.from("audit_logs").insert({
+          user_id: lockoutUserRow.id,
+          user_email: email,
+          module: "auth",
+          action: willLock ? "account_locked" : "login_failed",
+          ip_address: requestIp,
+          user_agent: requestUserAgent,
+          metadata: { failed_attempts: nextAttempts },
+        })
+      } catch (lockoutErr) {
+        console.warn("[Auth] Could not record failed login attempt:", lockoutErr)
+      }
+    }
+
     // Authenticate with Supabase Auth (secure password check by Supabase)
     let { data: signInData, error: signInError } = await authClient.auth.signInWithPassword({
       email,
@@ -299,6 +425,13 @@ export async function POST(request: NextRequest) {
     // Fallback: if user isn't in Supabase Auth yet, verify against legacy users table
     if (signInError || !signInData?.user) {
       console.log("[v0] Supabase Auth sign-in failed, attempting legacy auth fallback:", signInError?.message)
+
+      // Do not turn an invalid login into a 500 when the optional legacy
+      // authentication key is not configured. Department shortcuts above are
+      // development-only; production users must use Supabase Auth.
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
+      }
 
       // Fetch legacy user with hashed password
       const serviceAdminForLegacy = createServiceClient(
@@ -336,6 +469,7 @@ export async function POST(request: NextRequest) {
       const passwordOk = await bcrypt.compare(password, legacyUser.password_hash)
       if (!passwordOk) {
         console.log("[v0] Password mismatch for user:", email)
+        await registerFailedLoginAttempt()
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
       }
       
@@ -392,6 +526,15 @@ export async function POST(request: NextRequest) {
       // Also sign out to clear any partial session
       await authClient.auth.signOut()
       return NextResponse.json({ error: "Account is inactive or missing profile" }, { status: 401 })
+    }
+
+    // Successful password check — clear any accumulated failed-attempt count/lock.
+    if (lockoutClient && (userProfile.failed_login_attempts || userProfile.locked_until)) {
+      try {
+        await lockoutClient.from("users").update({ failed_login_attempts: 0, locked_until: null }).eq("id", userProfile.id)
+      } catch (resetErr) {
+        console.warn("[Auth] Could not reset failed login attempts:", resetErr)
+      }
     }
 
     // Ensure permissions - if null or empty, use role defaults
@@ -461,19 +604,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── SINGLE-DEVICE LOGIN: Generate a unique session token ──
-    // Storing this in DB means any new login from another device
-    // invalidates the previous session token automatically.
-    const deviceId = body?.deviceId || "unknown"
-    const sessionToken = `${deviceId}:${crypto.randomUUID()}`
-    try {
-      await serviceAdmin
-        .from("users")
-        .update({ session_token: sessionToken, session_created_at: new Date().toISOString() })
-        .eq("id", userProfile.id)
-    } catch (tokenErr) {
-      console.warn("[v0] Could not store session token (column may not exist yet):", tokenErr)
-    }
+    // Create a private token for this browser cookie. It is deliberately not
+    // stored on the user row: multiple browsers/devices must be able to stay
+    // signed in with the same account at the same time.
+    const sessionToken = crypto.randomUUID()
 
     // Build response and set an HTTP-only auth cookie for middleware checks
     const res = NextResponse.json({
@@ -507,6 +641,22 @@ export async function POST(request: NextRequest) {
       })
     } catch (cookieErr) {
       console.warn('[v0] Failed to set safawala_user cookie:', cookieErr)
+    }
+
+    // Login history is best-effort so an audit-table rollout never blocks auth.
+    try {
+      await serviceAdmin.from("audit_logs").insert({
+        user_id: user.id,
+        user_email: user.email,
+        franchise_id: user.franchise_id || null,
+        module: "auth",
+        action: "login",
+        ip_address: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip"),
+        user_agent: request.headers.get("user-agent"),
+        metadata: { role: user.role, department: user.department },
+      })
+    } catch (auditError) {
+      console.warn("[Auth] Login audit could not be written:", auditError)
     }
 
     return res

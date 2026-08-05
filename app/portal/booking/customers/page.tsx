@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 function fmtDate(d: string) { return d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—" }
 function waLink(phone: string) {
@@ -18,7 +18,7 @@ function waLink(phone: string) {
 function KycBadge({ status }: { status?: string }) {
   const s = status || "pending"
   const styles: Record<string, { bg: string; text: string }> = {
-    verified:  { bg: "#dcfce7", text: "#15803d" },
+    verified:  { bg: "#F1EAF5", text: "#15803d" },
     submitted: { bg: "#dbeafe", text: "#1d4ed8" },
     rejected:  { bg: "#fee2e2", text: "#b91c1c" },
     pending:   { bg: "#fef9c3", text: "#a16207" },
@@ -69,7 +69,7 @@ export default function CustomerListPage() {
   }).length
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%)", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #F1EAF5 0%, #F1EAF5 100%)", fontFamily: "var(--font-inter), Inter, sans-serif" }}>
       {/* ── Header ── */}
       <div style={{ background: `linear-gradient(135deg, ${COLOR_DARK}, ${COLOR})`, padding: "20px 16px 28px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
@@ -106,7 +106,7 @@ export default function CustomerListPage() {
 
       {/* Search */}
       <div style={{ padding: "12px 16px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(34,197,94,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(74,31,94,0.18)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, phone, or customer code..."
             style={{ flex: 1, border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#1e1208", fontFamily: "inherit" }} />
@@ -119,10 +119,10 @@ export default function CustomerListPage() {
         {loading ? (
           [...Array(8)].map((_, i) => (
             <div key={i} style={{ background: "white", borderRadius: 18, padding: "14px 16px", display: "flex", gap: 12, opacity: 1 - i * 0.1 }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#f0fdf4", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#F1EAF5", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
               <div style={{ flex: 1 }}>
-                <div style={{ height: 12, background: "#f0fdf4", borderRadius: 6, width: "55%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
-                <div style={{ height: 10, background: "#f0fdf4", borderRadius: 6, width: "40%", animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div style={{ height: 12, background: "#F1EAF5", borderRadius: 6, width: "55%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div style={{ height: 10, background: "#F1EAF5", borderRadius: 6, width: "40%", animation: "pulse 1.5s ease-in-out infinite" }} />
               </div>
             </div>
           ))
@@ -157,7 +157,7 @@ export default function CustomerListPage() {
               {/* Quick actions */}
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                 <a href={`tel:${c.phone}`} style={{ width: 34, height: 34, borderRadius: 10, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", fontSize: 16 }}>📞</a>
-                <a href={waLink(c.whatsapp || c.phone)} target="_blank" rel="noreferrer" style={{ width: 34, height: 34, borderRadius: 10, background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", fontSize: 16 }}>💬</a>
+                <a href={waLink(c.whatsapp || c.phone)} target="_blank" rel="noreferrer" style={{ width: 34, height: 34, borderRadius: 10, background: "#F1EAF5", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", fontSize: 16 }}>💬</a>
               </div>
             </div>
           )

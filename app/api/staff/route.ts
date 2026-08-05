@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs"
 import { authenticateRequest } from "@/lib/auth-middleware"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { CRM_ADMIN_ROLES, CRM_USER_ROLES } from "@/lib/user-roles"
+import { logAudit } from "@/lib/audit-log"
+import { isHrOrFranchiseAdmin } from "@/lib/hr-authorization"
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -199,9 +201,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authenticateRequest(request, { minRole: 'franchise_admin', requirePermission: 'staff' })
+    const auth = await authenticateRequest(request, { minRole: 'staff' })
     if (!auth.authorized) {
       return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
+    }
+    if (!isHrOrFranchiseAdmin(auth.user!)) {
+      return NextResponse.json({ error: "Forbidden", message: "Only HR staff or a franchise admin can add employees" }, { status: 403 })
     }
     const { user } = auth
 
@@ -315,6 +320,11 @@ export async function POST(request: NextRequest) {
         console.error("Error creating staff member:", error)
         return NextResponse.json({ error: "Failed to create staff member", details: error.message }, { status: 500 })
       }
+
+      await logAudit(request, { id: user!.id, email: user!.email, franchise_id: user!.franchise_id }, {
+        module: "hr", action: "employee.create", resourceType: "user", resourceId: authUserId,
+        metadata: { name, email, role: normalizedRole, department: department || null },
+      })
 
       return NextResponse.json({
         message: "Staff member created successfully",

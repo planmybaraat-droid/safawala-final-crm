@@ -55,12 +55,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid code — check your authenticator app" }, { status: 400 })
   }
 
-  // 2FA passed — generate session and complete login
-  const sessionToken = `${pending.userId}:${crypto.randomUUID()}`
-  await supabase
-    .from("users")
-    .update({ session_token: sessionToken, session_created_at: new Date().toISOString() } as any)
-    .eq("id", userData.id)
+  // 2FA passed — generate a private cookie token. Do not persist it on the
+  // user row, otherwise a later login would invalidate other active devices.
+  const sessionToken = crypto.randomUUID()
 
   const user = {
     id: userData.id,

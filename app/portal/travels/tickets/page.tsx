@@ -3,8 +3,21 @@ import { useEffect, useState, useCallback, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
 import { TravelsBottomNav } from "@/components/portal/travels-bottom-nav"
+import { uploadWithProgress, type UploadResult } from "@/lib/upload-with-progress"
 
 const COLOR = "#0891b2"
+
+const DOC_LABELS = ["Ticket", "Hotel Booking Confirmation", "ID Proof", "Other"]
+
+interface TravelDoc extends UploadResult {
+  label: string
+  uploaded_at: string
+}
+
+function isSupportedTravelFile(file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? ""
+  return file.type === "application/pdf" || file.type.startsWith("image/") || ["pdf", "jpg", "jpeg", "png", "gif", "webp"].includes(extension)
+}
 
 const TRAVEL_MODES = [
   { key: "train",      label: "Train" },
@@ -32,6 +45,9 @@ function TicketsPageInner() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState("")
   const [form, setForm] = useState({ ...emptyForm })
+  const [documents, setDocuments] = useState<TravelDoc[]>([])
+  const [uploadLabel, setUploadLabel] = useState(DOC_LABELS[0])
+  const [uploading, setUploading] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetch("/api/travel-bookings").then(r => r.json()).catch(() => ({ data: [] }))
@@ -63,9 +79,29 @@ function TicketsPageInner() {
       other_cost: t.other_cost?.toString() ?? "", advance_given: t.advance_given?.toString() ?? "",
       notes: t.notes ?? "",
     })
+    setDocuments(t.documents ?? [])
   }
 
   const set = (k: string) => (e: any) => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ""
+    if (!files.length) return
+    setUploading(true)
+    try {
+      const results = await Promise.all(files.map(async file => {
+        if (!isSupportedTravelFile(file)) throw new Error("Only image and PDF files are allowed")
+        const result = await uploadWithProgress(file, { folder: "travel-documents" })
+        return { ...result, label: uploadLabel, uploaded_at: new Date().toISOString() }
+      }))
+      setDocuments(prev => [...prev, ...results])
+    } catch (error: any) {
+      alert(error.message || "Upload failed")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const save = async () => {
     if (!selected) return
@@ -80,6 +116,7 @@ function TicketsPageInner() {
         hotel_cost: parseFloat(form.hotel_cost) || 0,
         other_cost: parseFloat(form.other_cost) || 0,
         advance_given: parseFloat(form.advance_given) || 0,
+        documents,
       }
       let method = "POST"
       if (selected.travel?.id) { method = "PATCH"; body.id = selected.travel.id }
@@ -197,6 +234,48 @@ function TicketsPageInner() {
               <div style={{ fontSize: 12, fontWeight: 700, color: "#22c55e", textAlign: "right" }}>₹{(parseFloat(form.advance_given) || 0).toFixed(2)}</div>
               <div style={{ fontSize: 12, color: "rgba(30,18,8,0.5)" }}>Balance Due</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: balance > 0 ? "#ef4444" : "#22c55e", textAlign: "right" }}>₹{balance.toFixed(2)}</div>
+            </div>
+
+            {/* Documents */}
+            <div style={{ fontSize: 11, fontWeight: 800, color: COLOR, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Documents</div>
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ fontSize: 11, color: "rgba(30,18,8,0.45)", marginBottom: 8 }}>Upload tickets, hotel confirmations, ID proofs, images, or PDFs.</p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <select value={uploadLabel} onChange={e => setUploadLabel(e.target.value)} style={{ ...inp, flex: 1 }}>
+                  {DOC_LABELS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+                <label style={{ flexShrink: 0 }}>
+                  <input type="file" accept="image/*,application/pdf,.pdf" multiple style={{ display: "none" }} onChange={handleFiles} disabled={uploading} />
+                  <span style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", height: 44, padding: "0 16px",
+                    borderRadius: 12, border: "1.5px solid #e2e8f0", cursor: uploading ? "default" : "pointer",
+                    fontSize: 12, fontWeight: 700, color: uploading ? "rgba(30,18,8,0.4)" : COLOR, background: "white",
+                  }}>
+                    {uploading ? "Uploading…" : "Upload"}
+                  </span>
+                </label>
+              </div>
+              {documents.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {documents.map((doc, index) => (
+                    <div key={`${doc.url}-${index}`} style={{
+                      display: "flex", alignItems: "center", gap: 8, borderRadius: 10,
+                      border: "1px solid #e2e8f0", padding: "8px 10px", background: "white",
+                    }}>
+                      <a href={doc.url} target="_blank" rel="noreferrer" style={{
+                        flex: 1, minWidth: 0, fontSize: 12, color: "#1e1208", textDecoration: "none",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        <span style={{ fontWeight: 700 }}>{doc.label}</span> · {doc.filename}
+                      </a>
+                      <button type="button" onClick={() => setDocuments(prev => prev.filter((_, i) => i !== index))}
+                        style={{ border: "none", background: "none", cursor: "pointer", color: "rgba(30,18,8,0.35)", fontSize: 16, lineHeight: 1 }}>
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Notes */}

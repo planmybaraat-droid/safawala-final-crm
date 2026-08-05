@@ -37,7 +37,7 @@ function WorkOrderSheet({ order, onClose, onUpdated }: { order: any; onClose: ()
       const res = await fetch(`/api/work-orders/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ qc_status: status === "pass" || status === "fail" ? status : "pending" }),
       })
       if (res.ok) { showToast(`Status → ${status}`); onUpdated() }
     } finally { setUpdating(false) }
@@ -52,7 +52,7 @@ function WorkOrderSheet({ order, onClose, onUpdated }: { order: any; onClose: ()
         <div style={{ padding: "12px 20px 16px", borderBottom: "1px solid rgba(0,0,0,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: "#1e1208" }}>{order.order_number || order.id?.slice(0, 8)}</h3>
-            <div style={{ marginTop: 4 }}><StatusBadge status={order.status} /></div>
+            <div style={{ marginTop: 4 }}><StatusBadge status={order.qc_status || "pending"} /></div>
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", fontSize: 18 }}>×</button>
         </div>
@@ -88,20 +88,6 @@ function WorkOrderSheet({ order, onClose, onUpdated }: { order: any; onClose: ()
             </div>
           </div>
 
-          <div>
-            <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "rgba(80,55,30,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>Other Status</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {["pending", "in_progress", "completed"].map(s => {
-                const c = PASS_FAIL[s as keyof typeof PASS_FAIL]
-                return (
-                  <button key={s} onClick={() => updateStatus(s)} disabled={updating}
-                    style={{ padding: "8px 14px", borderRadius: 20, border: "none", background: order.status === s ? c.dot : c.bg, color: order.status === s ? "white" : c.text, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {s.replace("_", " ")}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -130,15 +116,15 @@ export default function QCWorkOrdersPage() {
 
   const filtered = useMemo(() =>
     orders.filter(o =>
-      (filter === "all" || o.status === filter) &&
+      (filter === "all" || (o.qc_status || "pending") === filter) &&
       (!search || o.order_number?.toLowerCase().includes(search.toLowerCase()) || o.customer_name?.toLowerCase().includes(search.toLowerCase()))
     ), [orders, search, filter])
 
   const stats = useMemo(() => ({
     total: orders.length,
-    pass: orders.filter(o => o.status === "pass").length,
-    fail: orders.filter(o => o.status === "fail").length,
-    pending: orders.filter(o => o.status === "pending" || o.status === "in_progress").length,
+    pass: orders.filter(o => o.qc_status === "pass").length,
+    fail: orders.filter(o => o.qc_status === "fail").length,
+    pending: orders.filter(o => (o.qc_status || "pending") === "pending").length,
   }), [orders])
 
   return (
@@ -180,7 +166,7 @@ export default function QCWorkOrdersPage() {
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, padding: "10px 16px", overflowX: "auto" }}>
-        {["all", "pending", "in_progress", "pass", "fail", "completed"].map(f => (
+        {["all", "pending", "pass", "fail"].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             style={{ padding: "6px 14px", borderRadius: 20, border: "none", background: filter === f ? COLOR : "rgba(255,255,255,0.8)", color: filter === f ? "white" : "rgba(80,55,30,0.55)", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", fontFamily: "inherit" }}>
             {f === "all" ? "All" : f.replace("_", " ")}
@@ -205,7 +191,7 @@ export default function QCWorkOrdersPage() {
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#1e1208" }}>{o.order_number || o.id?.slice(0, 8)}</p>
                 <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(80,55,30,0.5)" }}>{o.customer_name}</p>
               </div>
-              <StatusBadge status={o.status} />
+              <StatusBadge status={o.qc_status || "pending"} />
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               {o.type && <span style={{ fontSize: 10, color: "rgba(80,55,30,0.4)", fontWeight: 600 }}>📋 {o.type}</span>}

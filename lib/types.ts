@@ -3,7 +3,7 @@ export interface User {
   id: string
   email: string
   name: string
-  role: "super_admin" | "franchise_admin" | "staff" | "readonly"
+  role: "super_admin" | "franchise_admin" | "staff" | "readonly" | "warehouse_staff" | "qc_staff" | "delivery_staff"
   department?: "admin" | "manager" | "booking" | "warehouse" | "qc" | "delivery" | "styling" | "accounts" | "franchise"
   franchise_id?: string
   franchise_name?: string
@@ -15,6 +15,20 @@ export interface User {
 }
 
 export interface UserPermissions {
+  // Department-level permissions (relational RBAC is authoritative on the server)
+  "warehouse.view"?: boolean
+  "warehouse.update"?: boolean
+  "warehouse.create"?: boolean
+  "warehouse.delete"?: boolean
+  "warehouse.export"?: boolean
+  "qc.view"?: boolean
+  "qc.update"?: boolean
+  "delivery.view"?: boolean
+  "delivery.update"?: boolean
+  "users.manage"?: boolean
+  "roles.manage"?: boolean
+  "permissions.manage"?: boolean
+  "settings.manage"?: boolean
   // Main Navigation
   dashboard: boolean
   bookings: boolean

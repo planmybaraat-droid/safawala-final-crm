@@ -1,7 +1,7 @@
 const https = require('https');
 
 const SUPABASE_URL = 'https://xplnyaxkusvuajtmorss.supabase.co';
-const SUPABASE_KEY = 'REDACTED_JWT';
+const SUPABASE_KEY = '';
 
 function makeRequest(method, path, body = null) {
   return new Promise((resolve, reject) => {

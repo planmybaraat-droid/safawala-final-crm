@@ -20,7 +20,7 @@ const DRY_RUN = !process.argv.includes("--run")
 const MAX_DIM = 2400
 const QUALITY = 88
 const SUPABASE_URL = "https://xplnyaxkusvuajtmorss.supabase.co"
-const SERVICE_KEY = "REDACTED_JWT"
+const SERVICE_KEY = ""
 const BUCKET = "product-images"
 
 const sb = createClient(SUPABASE_URL, SERVICE_KEY)

@@ -48,8 +48,7 @@ class WhatsAppService {
 
   constructor() {
     this.config = {
-      apiKey:
-        "REDACTED_JWT",
+      apiKey: process.env.WATI_API_KEY || "",
       baseUrl: "https://live-mt-server.wati.io/481455",
       instanceId: "481455",
     }

@@ -397,6 +397,10 @@ export default function LeadsPage() {
       
       const res = await fetch(`/api/leads?${params}`)
       const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load leads")
+      }
       
       const loadedLeads = data.data || []
       setLeads(loadedLeads)
@@ -408,8 +412,9 @@ export default function LeadsPage() {
           setSelectedLead(updatedSelected)
         }
       }
-    } catch (err) {
-      toast.error("Failed to load leads")
+    } catch (err: any) {
+      setLeads([])
+      toast.error(err.message || "Failed to load leads")
     } finally {
       setLoading(false)
     }
@@ -770,8 +775,15 @@ export default function LeadsPage() {
                           }`}
                         >
                           <td className="px-5 py-4">
-                            <div className="font-semibold text-gray-900">{lead.name}</div>
-                            <div className="text-xs text-slate-500 font-mono mt-0.5">{lead.phone}</div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7C3AED] text-sm font-semibold text-white shadow-sm">
+                                {(lead.name || "L").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-gray-900">{lead.name}</div>
+                                <div className="text-xs text-slate-500 font-mono mt-0.5">{lead.phone}</div>
+                              </div>
+                            </div>
                           </td>
                           <td className="px-4 py-4 text-xs font-medium text-gray-700">
                             {formatDateString(lead.event_date)}

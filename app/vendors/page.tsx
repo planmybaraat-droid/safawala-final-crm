@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,11 +17,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, ArrowLeft, Plus, Search, UsersRound, BriefcaseBusiness, Ban, WalletCards, Phone, Mail, Eye, Pencil, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
-import { ArrowLeft } from "lucide-react"
-import { Plus } from "lucide-react" // Import Plus component
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 
@@ -62,6 +61,7 @@ interface NewVendor {
 }
 
 export default function VendorsPage() {
+  const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -110,12 +110,13 @@ export default function VendorsPage() {
     try {
       console.log("[Vendors] Starting to fetch vendors from API...")
 
-      const response = await fetch(`/api/vendors?status=${statusFilter}`, {
+      const response = await fetch(`/api/vendors?status=${statusFilter}&_refresh=${Date.now()}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
+        cache: "no-store",
       })
 
       if (!response.ok) {
@@ -451,6 +452,7 @@ export default function VendorsPage() {
   const activeVendors = vendors.filter((v) => v.is_active).length
   const inactiveVendors = vendors.filter((v) => !v.is_active).length
   const totalVendors = vendors.length
+  const totalSpending = vendors.reduce((sum, vendor) => sum + (Number(vendor.pricing_per_item) || 0), 0)
 
   const getVendorStats = (vendorId: string) => {
     const transactions = vendorTransactions.filter((t) => t.vendor_id === vendorId)
@@ -473,26 +475,34 @@ export default function VendorsPage() {
   }
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+    <div className="space-y-5 p-4 md:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 border-[#E7E2EA] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5]"
+            title="Go back"
+            onClick={() => router.push("/dashboard")}
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Button>
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F1EAF5] text-[#4A1F5E]">
+            <UsersRound className="h-5 w-5" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold">Vendor Management</h1>
-            <p className="text-sm text-muted-foreground">Manage your business vendors and suppliers</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-[#1F1B24]">Vendor Management</h1>
+            <p className="text-sm text-[#6F6878]">Manage your business vendors and suppliers</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+          <Button type="button" variant="outline" className="border-[#E7E2EA] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5]" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
           <Dialog open={isVendorDialogOpen} onOpenChange={setIsVendorDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-[#4A1F5E] text-white hover:bg-[#5C2A72]">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Vendor
               </Button>
@@ -582,48 +592,39 @@ export default function VendorsPage() {
       </div>
 
       {/* Stats Cards */}
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Vendors</CardTitle>
-            <Card className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalVendors}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Vendors</CardTitle>
-            <Card className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeVendors}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive Vendors</CardTitle>
-            <Card className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inactiveVendors}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: "Total Vendors", value: totalVendors, hint: "All registered vendors", icon: UsersRound, tone: "bg-[#F1EAF5] text-[#4A1F5E]" },
+          { label: "Active Vendors", value: activeVendors, hint: "Currently working", icon: BriefcaseBusiness, tone: "bg-[#E9F7EE] text-[#25864A]" },
+          { label: "Inactive Vendors", value: inactiveVendors, hint: "Not in use", icon: Ban, tone: "bg-[#FFF3E5] text-[#C47A20]" },
+          { label: "Total Spending (MTD)", value: `₹${totalSpending.toLocaleString("en-IN")}`, hint: "Across all vendors", icon: WalletCards, tone: "bg-[#EAF1FF] text-[#3B64B7]" },
+        ].map(({ label, value, hint, icon: Icon, tone }) => (
+          <Card key={label} className="border-[#E7E2EA] shadow-sm">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="h-5 w-5" /></div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-[#6F6878]">{label}</p>
+                <p className="mt-0.5 text-xl font-semibold text-[#1F1B24]">{value}</p>
+                <p className="text-xs text-[#8C8492]">{hint}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9A93A2]" />
           <Input
-            placeholder="Search vendors..."
+            placeholder="Search vendors by name, contact, email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="h-10 border-[#E7E2EA] bg-white pl-10 focus-visible:ring-[#4A1F5E]"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-32">
+          <SelectTrigger className="h-10 w-full border-[#E7E2EA] bg-white sm:w-36">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -635,66 +636,71 @@ export default function VendorsPage() {
       </div>
 
       {/* Vendors Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <Card className="overflow-hidden border-[#E7E2EA] shadow-sm">
+        <CardHeader className="border-b border-[#E7E2EA] bg-white px-5 py-4">
+          <CardTitle className="text-base text-[#1F1B24]">
             {statusFilter === 'inactive' ? 'Inactive Vendors' : statusFilter === 'active' ? 'Active Vendors' : 'Vendors'} ({filteredVendors.length})
           </CardTitle>
-          <CardDescription>Manage your vendor relationships and contact information</CardDescription>
+          <CardDescription className="text-xs text-[#6F6878]">Manage your vendor relationships and contact information</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Pricing</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+              <TableHeader className="bg-[#FAF9FC]">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs font-semibold text-[#6F6878]">Vendor</TableHead>
+                  <TableHead className="text-xs font-semibold text-[#6F6878]">Contact</TableHead>
+                  <TableHead className="text-xs font-semibold text-[#6F6878]">Pricing</TableHead>
+                  <TableHead className="text-xs font-semibold text-[#6F6878]">Status</TableHead>
+                  <TableHead className="text-right text-xs font-semibold text-[#6F6878]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredVendors.map((vendor) => (
-                  <TableRow key={vendor.id}>
+                {paginatedVendors.map((vendor) => (
+                  <TableRow key={vendor.id} className="border-[#E7E2EA] hover:bg-[#FCFAFD]">
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{vendor.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {vendor.contact_person || "No contact person"}
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7C3AED] text-sm font-semibold text-white shadow-sm">
+                          {(vendor.name || "V").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium text-[#1F1B24]">{vendor.name}</div>
+                          <div className="text-xs text-[#6F6878]">
+                            {vendor.contact_person || "No contact person"}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="flex items-center text-sm">
-                          <div className="h-3 w-3 mr-1" />
+                        <div className="flex items-center text-xs text-[#6F6878]">
+                          <Phone className="mr-2 h-3.5 w-3.5 text-[#8C8492]" />
                           {vendor.phone}
                         </div>
-                        <div className="flex items-center text-sm">
-                          <div className="h-3 w-3 mr-1" />
+                        <div className="flex items-center text-xs text-[#6F6878]">
+                          <Mail className="mr-2 h-3.5 w-3.5 text-[#8C8492]" />
                           {vendor.email}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>₹{vendor.pricing_per_item}</TableCell>
+                    <TableCell className="font-medium text-[#1F1B24]">₹{Number(vendor.pricing_per_item || 0).toLocaleString("en-IN")}</TableCell>
                     <TableCell>
                       <div className="ml-2">
-                        <Badge variant={vendor.is_active ? "default" : "secondary"}>
+                        <Badge className={vendor.is_active ? "border-0 bg-[#E9F7EE] text-[#25864A] hover:bg-[#E9F7EE]" : "border-0 bg-[#F1F0F3] text-[#6F6878] hover:bg-[#F1F0F3]"}>
                           {vendor.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-center">
-                        <Button variant="ghost" size="sm" onClick={() => handleViewVendor(vendor)}>
-                          View
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="outline" size="icon" className="h-8 w-8 border-[#E7E2EA] hover:bg-[#F1EAF5]" title="View vendor" onClick={() => handleViewVendor(vendor)}>
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setEditingVendor(vendor)}>
-                          Edit
+                        <Button variant="outline" size="icon" className="h-8 w-8 border-[#E7E2EA] hover:bg-[#F1EAF5]" title="Edit vendor" onClick={() => setEditingVendor(vendor)}>
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteVendorWithConfirmation(vendor)}>
-                          Delete
+                        <Button variant="outline" size="icon" className="h-8 w-8 border-[#F1DADA] text-[#C94A4A] hover:bg-[#FFF1F1]" title="Delete vendor" onClick={() => handleDeleteVendorWithConfirmation(vendor)}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

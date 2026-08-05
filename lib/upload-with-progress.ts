@@ -32,7 +32,14 @@ export async function uploadWithProgress(
             reject(e)
           }
         } else {
-          reject(new Error('Upload failed'))
+          let message = `Upload failed (${xhr.status})`
+          try {
+            const json = JSON.parse(xhr.responseText)
+            if (json?.error) message = json.error
+          } catch {
+            // Keep the status-based message when the server did not return JSON.
+          }
+          reject(new Error(message))
         }
       }
     }

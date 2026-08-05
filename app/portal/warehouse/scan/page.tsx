@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
 
@@ -12,6 +12,14 @@ export default function ScanPage() {
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  const [scanning, setScanning] = useState(false)
+  const [cameraError, setCameraError] = useState("")
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const rafRef = useRef<number | null>(null)
+
+  useEffect(() => () => stopScan(), [])
 
   async function lookupBarcode(code: string) {
     if (!code.trim()) return
@@ -29,11 +37,102 @@ export default function ScanPage() {
     finally { setLoading(false) }
   }
 
+  function stopScan() {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+    setScanning(false)
+  }
+
+  async function startScan() {
+    setCameraError("")
+    if (!("BarcodeDetector" in window)) {
+      setCameraError("This browser doesn't support automatic barcode scanning. Enter the barcode manually below instead.")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+      setScanning(true)
+
+      const detector = new (window as any).BarcodeDetector({
+        formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"],
+      })
+
+      const tick = async () => {
+        if (!videoRef.current || videoRef.current.readyState < 2) {
+          rafRef.current = requestAnimationFrame(tick)
+          return
+        }
+        try {
+          const codes = await detector.detect(videoRef.current)
+          if (codes.length > 0) {
+            const value = codes[0].rawValue
+            stopScan()
+            setBarcode(value)
+            lookupBarcode(value)
+            return
+          }
+        } catch {
+          // detection hiccup on this frame — keep trying
+        }
+        rafRef.current = requestAnimationFrame(tick)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    } catch (e: any) {
+      setCameraError(
+        e?.name === "NotAllowedError"
+          ? "Camera access denied. Allow camera permission, or enter the barcode manually below."
+          : "Couldn't access the camera. Enter the barcode manually below."
+      )
+    }
+  }
+
   return (
     <div>
-      <PortalPageHeader title="Scan Barcode" subtitle="Enter or scan an item barcode" color={COLOR} backHref="/portal/warehouse" />
+      <PortalPageHeader title="Scan Barcode" subtitle="Scan with camera or enter manually" color={COLOR} backHref="/portal/warehouse" />
 
       <div className="px-4 py-6">
+        {/* Camera scanning */}
+        <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.15)" }}>
+          {scanning ? (
+            <>
+              <video ref={videoRef} muted playsInline className="w-full rounded-xl mb-3" style={{ background: "#000", maxHeight: 260, objectFit: "cover" }} />
+              <button
+                onClick={stopScan}
+                className="w-full py-2.5 rounded-xl text-[12px] font-bold"
+                style={{ background: "white", color: COLOR, border: `1px solid ${COLOR}` }}
+              >
+                Cancel Scan
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLOR} strokeWidth="2" strokeLinecap="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold" style={{ color: COLOR }}>Camera Scanning</p>
+                <p className="text-[11px]" style={{ color: "rgba(80,55,30,0.5)" }}>Point your camera at a barcode to look it up automatically.</p>
+              </div>
+              <button
+                onClick={startScan}
+                className="px-4 py-2 rounded-xl text-[12px] font-bold text-white flex-shrink-0"
+                style={{ background: COLOR }}
+              >
+                Open Camera
+              </button>
+            </div>
+          )}
+          {cameraError && <p className="text-[11px] font-semibold mt-3" style={{ color: "#b91c1c" }}>{cameraError}</p>}
+        </div>
+
         {/* Manual entry */}
         <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
           <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "rgba(80,55,30,0.4)" }}>Enter Barcode Manually</p>
@@ -58,18 +157,6 @@ export default function ScanPage() {
           </div>
         </div>
 
-        {/* Camera hint */}
-        <div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.15)" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLOR} strokeWidth="2" strokeLinecap="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-          <div>
-            <p className="text-[12px] font-bold" style={{ color: COLOR }}>Camera Scanning</p>
-            <p className="text-[11px]" style={{ color: "rgba(80,55,30,0.5)" }}>Point your camera at a barcode — it reads automatically on most devices via the keyboard input above.</p>
-          </div>
-        </div>
-
         {loading && (
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: COLOR, borderTopColor: "transparent" }} />
@@ -89,10 +176,9 @@ export default function ScanPage() {
             </div>
             {[
               ["Name", result.name],
-              ["SKU", result.sku],
+              ["Code", result.product_code || result.sku],
               ["Barcode", result.barcode],
-              ["Stock Available", result.stock_quantity?.toString()],
-              ["Unit", result.unit],
+              ["Stock Available", typeof result.stock_available === "number" ? result.stock_available.toString() : null],
               ["Price", result.price ? `₹${result.price.toLocaleString("en-IN")}` : null],
             ].map(([label, value]) => value ? (
               <div key={label} className="flex justify-between items-center px-4 py-3 border-b" style={{ borderColor: "rgba(0,0,0,0.04)" }}>
@@ -102,7 +188,7 @@ export default function ScanPage() {
             ) : null)}
             <div className="p-4">
               <button
-                onClick={() => router.push(`/inventory`)}
+                onClick={() => router.push(`/portal/warehouse/inventory`)}
                 className="w-full py-3 rounded-xl text-[13px] font-bold text-white"
                 style={{ background: COLOR }}
               >

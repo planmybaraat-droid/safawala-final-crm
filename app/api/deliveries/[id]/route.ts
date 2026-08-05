@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await authenticateRequest(request, { minRole: 'readonly' })
+    const auth = await authenticateRequest(request, { minRole: 'readonly', requirePermission: 'delivery.view' })
     if (!auth.authorized) {
       return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
     }
@@ -52,7 +52,7 @@ export async function PATCH(
   try {
     // Authenticate user - just need staff role
     // Don't require permission check since it might not be set on existing users
-    const auth = await authenticateRequest(request, { minRole: 'staff' })
+    const auth = await authenticateRequest(request, { minRole: 'staff', requirePermission: 'delivery.update' })
     if (!auth.authorized) {
       console.error("[Deliveries API] Unauthorized:", auth.error)
       return NextResponse.json(auth.error, { status: auth.statusCode || 401 })

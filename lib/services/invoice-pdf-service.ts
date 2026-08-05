@@ -32,7 +32,7 @@ export async function generateAndSaveInvoicePDF(
   }
 
   // 3. Generate PDF by navigating to the live URL with a pdfToken and customer details
-  const token = await generatePdfToken(orderId, orderType)
+  const token = generatePdfToken(orderId, orderType)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mysafawala.com"
   const cName = customer.name || "Customer"
   const cPhone = customer.phone || ""
@@ -149,4 +149,3 @@ async function fetchOrderData(orderId: string, orderType: string, supabase: any)
   }
   return data
 }
-

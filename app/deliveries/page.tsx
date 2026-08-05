@@ -23,7 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BookingWorkflowStepper } from "@/components/shared"
-import { Search, Plus, Truck, Package, Clock, CheckCircle, CheckCircle2, XCircle, Eye, Edit, ArrowLeft, CalendarClock, Loader2, RotateCcw, PackageCheck, Play, Ban, Phone } from "lucide-react"
+import { Search, Plus, Truck, Package, Clock, CheckCircle, CheckCircle2, XCircle, Eye, Edit, ArrowLeft, CalendarClock, Loader2, RotateCcw, PackageCheck, Play, Ban, Phone, RefreshCw } from "lucide-react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 
 import { UnifiedHandoverDialog } from "@/components/deliveries/UnifiedHandoverDialog"
@@ -183,6 +183,15 @@ export default function DeliveriesPage() {
     fuel_cost: "",
     special_instructions: "",
   })
+
+  // The bookings API aggregates multiple source tables and uses plural source
+  // names. Deliveries use the singular values consumed by the fulfilment APIs.
+  const normalizeBookingSource = (source?: string | null) => {
+    if (source === "package_bookings") return "package_booking"
+    if (source === "product_orders") return "product_order"
+    if (source === "direct_sales" || source === "direct_sales_orders") return "direct_sale"
+    return source || ""
+  }
 
   const [rescheduleForm, setRescheduleForm] = useState<{
     date: string
@@ -852,15 +861,7 @@ export default function DeliveriesPage() {
   }
 
   const handleBack = () => {
-    try {
-      if (window.history.length > 1) {
-        router.back()
-      } else {
-        router.push("/")
-      }
-    } catch {
-      router.push("/")
-    }
+    router.push("/dashboard")
   }
 
   if (!authResolved) {
@@ -1023,23 +1024,27 @@ export default function DeliveriesPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 bg-[#FAF8F5] min-h-screen">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 bg-[#F7F6F9] min-h-screen text-slate-900">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-200">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-200">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={handleBack} className="flex items-center space-x-2 text-stone-600 hover:text-stone-900 hover:bg-[#F4F1EA] border border-stone-200 rounded-md px-3 py-1">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="flex items-center space-x-2 text-[#4A1F5E] hover:text-[#352044] hover:bg-[#F1EAF5] border border-[#E1D8E8] rounded-lg px-4 py-2">
             <ArrowLeft className="h-4 w-4" />
             <span className="font-sans font-medium text-xs">Back</span>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-[#113c2c] font-serif">📦 Deliveries & Rental Returns</h2>
-            <p className="text-xs text-stone-500 mt-1 font-sans">Schedule deliveries, track fulfillment, and manage rental returns</p>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-[#1F1B24] flex items-center gap-2"><Package className="h-7 w-7 text-[#5B2A86]" />Deliveries & Rental Returns</h2>
+            <p className="text-sm text-slate-500 mt-1">Schedule deliveries, track fulfillment, and manage rental returns</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={() => fetchData()} disabled={loading} className="border-[#E1D8E8] text-[#4A1F5E] hover:bg-[#F1EAF5] rounded-lg px-4 py-2.5">
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
           <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
             <DialogTrigger asChild>
-              <Button className="bg-[#113c2c] hover:bg-[#0c2e22] text-white shadow-sm font-sans font-semibold text-xs tracking-wider uppercase px-4 py-2.5 rounded-lg flex items-center transition-colors">
+              <Button className="bg-[#4A1F5E] hover:bg-[#5C2A72] text-white shadow-sm font-semibold px-5 py-2.5 rounded-lg flex items-center transition-colors">
                 <Plus className="mr-2 h-4 w-4" />
                 Schedule Delivery
               </Button>
@@ -1148,7 +1153,7 @@ export default function DeliveriesPage() {
                           setScheduleForm((prev) => ({
                             ...prev,
                             booking_id: id,
-                            booking_source: source,
+                            booking_source: normalizeBookingSource(source),
                             // Auto-fill customer if not already selected
                             customer_id: prev.customer_id || selectedBooking.customer_id || "",
                             // Auto-fill delivery date and time from booking (with proper formatting)
@@ -1158,7 +1163,7 @@ export default function DeliveriesPage() {
                             delivery_address: selectedBooking.delivery_address || prev.delivery_address || "",
                           }))
                         } else {
-                          setScheduleForm({ ...scheduleForm, booking_id: id, booking_source: source })
+                          setScheduleForm({ ...scheduleForm, booking_id: id, booking_source: normalizeBookingSource(source) })
                         }
                       }}
                     >
@@ -1464,8 +1469,10 @@ export default function DeliveriesPage() {
                         return
                       }
 
-                      // Call API to create delivery using simpler endpoint
-                      const response = await fetch("/api/deliveries/create", {
+                      // Use the canonical deliveries endpoint. It applies the
+                      // same auth, franchise isolation, UUID sanitisation and
+                      // junction-table handling as all other delivery actions.
+                      const response = await fetch("/api/deliveries", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         credentials: "include",
@@ -1560,6 +1567,7 @@ export default function DeliveriesPage() {
 
       <BookingWorkflowStepper
         currentStep="delivery"
+        accent="purple"
         customerId={selectedDelivery?.customer_id || filteredDeliveries[0]?.customer_id || deliveries[0]?.customer_id || undefined}
         bookingId={selectedDelivery?.booking_id || filteredDeliveries[0]?.booking_id || deliveries[0]?.booking_id || undefined}
         bookingNumber={selectedDelivery?.booking_number || selectedDelivery?.booking?.booking_number || filteredDeliveries[0]?.booking_number || deliveries[0]?.booking_number || undefined}
@@ -1567,64 +1575,64 @@ export default function DeliveriesPage() {
 
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-        <Card className="bg-[#FAF8F5] border border-stone-200 shadow-none hover:border-[#DCD1B4] transition-colors rounded-xl">
+        <Card className="bg-white border border-[#E7E2EA] shadow-[0_2px_10px_rgba(31,27,36,0.04)] hover:shadow-md transition-all rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Total Deliveries</CardTitle>
-            <Package className="h-4 w-4 text-stone-400" />
+            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Deliveries</CardTitle>
+            <span className="h-9 w-9 rounded-lg bg-[#F1EAF5] flex items-center justify-center"><Package className="h-5 w-5 text-[#7B3FB0]" /></span>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-stone-900 font-serif">{deliveryOverview.totalDeliveries}</div>
-            <p className="text-[10px] text-stone-400 font-sans mt-1">All scheduled deliveries</p>
+            <div className="text-3xl font-bold text-[#1F1B24]">{deliveryOverview.totalDeliveries}</div>
+            <p className="text-xs text-slate-400 mt-1">All scheduled deliveries</p>
           </CardContent>
         </Card>
-        <Card className="bg-[#FAF8F5] border border-stone-200 shadow-none hover:border-[#DCD1B4] transition-colors rounded-xl">
+        <Card className="bg-white border border-[#E7E2EA] shadow-[0_2px_10px_rgba(31,27,36,0.04)] hover:shadow-md transition-all rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending</CardTitle>
+            <span className="h-9 w-9 rounded-lg bg-[#FFF4E5] flex items-center justify-center"><Clock className="h-5 w-5 text-amber-500" /></span>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-amber-800 font-serif">{deliveryOverview.pending}</div>
-            <p className="text-[10px] text-stone-400 font-sans mt-1">Awaiting pickup</p>
+            <div className="text-3xl font-bold text-[#1F1B24]">{deliveryOverview.pending}</div>
+            <p className="text-xs text-slate-400 mt-1">Awaiting pickup</p>
           </CardContent>
         </Card>
-        <Card className="bg-[#FAF8F5] border border-stone-200 shadow-none hover:border-[#DCD1B4] transition-colors rounded-xl">
+        <Card className="bg-white border border-[#E7E2EA] shadow-[0_2px_10px_rgba(31,27,36,0.04)] hover:shadow-md transition-all rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold text-stone-500 uppercase tracking-wider">In Transit</CardTitle>
-            <Truck className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">In Transit</CardTitle>
+            <span className="h-9 w-9 rounded-lg bg-[#EEF4FF] flex items-center justify-center"><Truck className="h-5 w-5 text-blue-500" /></span>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-900 font-serif">{deliveryOverview.inTransit}</div>
-            <p className="text-[10px] text-stone-400 font-sans mt-1">On the way</p>
+            <div className="text-3xl font-bold text-[#1F1B24]">{deliveryOverview.inTransit}</div>
+            <p className="text-xs text-slate-400 mt-1">On the way</p>
           </CardContent>
         </Card>
-        <Card className="bg-[#FAF8F5] border border-stone-200 shadow-none hover:border-[#DCD1B4] transition-colors rounded-xl">
+        <Card className="bg-white border border-[#E7E2EA] shadow-[0_2px_10px_rgba(31,27,36,0.04)] hover:shadow-md transition-all rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Delivered</CardTitle>
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Delivered</CardTitle>
+            <span className="h-9 w-9 rounded-lg bg-[#EAF8F0] flex items-center justify-center"><CheckCircle className="h-5 w-5 text-emerald-500" /></span>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-emerald-800 font-serif">{deliveryOverview.delivered}</div>
-            <p className="text-[10px] text-stone-400 font-sans mt-1">Successfully delivered</p>
+            <div className="text-3xl font-bold text-[#1F1B24]">{deliveryOverview.delivered}</div>
+            <p className="text-xs text-slate-400 mt-1">Successfully delivered</p>
           </CardContent>
         </Card>
-        <Card className="bg-[#FAF8F5] border border-stone-200 shadow-none hover:border-[#DCD1B4] transition-colors rounded-xl">
+        <Card className="bg-white border border-[#E7E2EA] shadow-[0_2px_10px_rgba(31,27,36,0.04)] hover:shadow-md transition-all rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Order Completed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Order Completed</CardTitle>
+            <span className="h-9 w-9 rounded-lg bg-[#F4EEFF] flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-[#9A5CE6]" /></span>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-[#113c2c] font-serif">{deliveryOverview.orderCompleted}</div>
-            <p className="text-[10px] text-stone-400 font-sans mt-1">Rental Return processed</p>
+            <div className="text-3xl font-bold text-[#1F1B24]">{deliveryOverview.orderCompleted}</div>
+            <p className="text-xs text-slate-400 mt-1">Rental Return processed</p>
           </CardContent>
         </Card>
-        <Card className="bg-[#FAF8F5] border border-stone-200 shadow-none hover:border-[#DCD1B4] transition-colors rounded-xl">
+        <Card className="bg-white border border-[#E7E2EA] shadow-[0_2px_10px_rgba(31,27,36,0.04)] hover:shadow-md transition-all rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Cancelled</CardTitle>
-            <XCircle className="h-4 w-4 text-rose-500" />
+            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cancelled</CardTitle>
+            <span className="h-9 w-9 rounded-lg bg-[#FFF0F0] flex items-center justify-center"><XCircle className="h-5 w-5 text-rose-500" /></span>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-rose-900 font-serif">{deliveryOverview.cancelled}</div>
-            <p className="text-[10px] text-stone-400 font-sans mt-1">Cancelled orders</p>
+            <div className="text-3xl font-bold text-[#1F1B24]">{deliveryOverview.cancelled}</div>
+            <p className="text-xs text-slate-400 mt-1">Cancelled orders</p>
           </CardContent>
         </Card>
       </div>
@@ -1638,11 +1646,11 @@ export default function DeliveriesPage() {
                 placeholder="Search deliveries..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-white border-stone-300 focus:border-[#113c2c] focus:ring-1 focus:ring-[#113c2c] rounded-md h-9 text-xs"
+                className="pl-9 bg-white border-[#E2DCE8] focus:border-[#4A1F5E] focus:ring-1 focus:ring-[#4A1F5E] rounded-lg h-11 text-sm"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-white border-stone-300 text-xs h-9 rounded-md">
+              <SelectTrigger className="w-[180px] bg-white border-[#E2DCE8] text-sm h-11 rounded-lg">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-stone-200">
@@ -1654,7 +1662,7 @@ export default function DeliveriesPage() {
               </SelectContent>
             </Select>
             <Select value={deliveryTypeFilter} onValueChange={setDeliveryTypeFilter}>
-              <SelectTrigger className="w-[180px] bg-white border-stone-300 text-xs h-9 rounded-md">
+              <SelectTrigger className="w-[180px] bg-white border-[#E2DCE8] text-sm h-11 rounded-lg">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-stone-200">
@@ -1667,13 +1675,13 @@ export default function DeliveriesPage() {
           </div>
 
           {/* Deliveries Card */}
-          <Card className="bg-white border border-stone-200 shadow-none rounded-xl">
-            <CardHeader className="border-b border-stone-100 pb-4">
-              <CardTitle className="text-lg font-serif font-bold text-stone-900 flex items-center gap-2">
-                <Package className="h-5 w-5 text-[#113c2c]" />
+          <Card className="bg-white border border-[#E7E2EA] shadow-[0_2px_12px_rgba(31,27,36,0.04)] rounded-2xl">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-lg font-bold text-[#1F1B24] flex items-center gap-2">
+                <Package className="h-5 w-5 text-[#4A1F5E]" />
                 Delivery Orders
               </CardTitle>
-              <CardDescription className="text-xs text-stone-500 font-sans">Manage and track all delivery orders</CardDescription>
+              <CardDescription className="text-sm text-slate-500">Manage and track all delivery orders</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
           <div className="space-y-4">
@@ -1728,9 +1736,9 @@ export default function DeliveriesPage() {
                 const { percentage, missing } = calculateCompleteness(delivery)
                 
                 return (
-                  <div key={delivery.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-stone-200 rounded-xl bg-[#FAF8F5] gap-4 hover:border-[#DCD1B4] transition-all duration-200">
+                  <div key={delivery.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 border border-[#E7E2EA] rounded-xl bg-white gap-4 hover:border-[#BCA7C8] hover:shadow-sm transition-all duration-200">
                     <div className="flex items-start space-x-4 flex-1">
-                      <div className="mt-1 bg-white p-2 rounded-lg border border-stone-200">
+                      <div className="mt-1 bg-[#F5EFFA] p-2.5 rounded-xl border border-[#E5D9EE]">
                         {getStatusIcon(delivery.status)}
                       </div>
                       <div className="flex-1 space-y-1">
@@ -1795,7 +1803,7 @@ export default function DeliveriesPage() {
                             size="sm"
                             disabled={updatingStatus.has(delivery.id)}
                             onClick={() => handleStartTransit(delivery.id)}
-                            className="border-stone-300 text-stone-700 hover:bg-stone-100 h-8 text-xs font-medium rounded-lg"
+                            className="border-[#DCCFE4] text-[#4A1F5E] hover:bg-[#F1EAF5] h-9 text-xs font-medium rounded-lg"
                           >
                             {updatingStatus.has(delivery.id) ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -1809,7 +1817,7 @@ export default function DeliveriesPage() {
                             size="sm"
                             disabled={updatingStatus.has(delivery.id)}
                             onClick={() => handleCancelDelivery(delivery.id)}
-                            className="border-stone-300 text-stone-700 hover:bg-stone-100 h-8 text-xs font-medium rounded-lg"
+                            className="border-[#DCCFE4] text-[#4A1F5E] hover:bg-[#F1EAF5] h-9 text-xs font-medium rounded-lg"
                           >
                             {updatingStatus.has(delivery.id) ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -1830,7 +1838,7 @@ export default function DeliveriesPage() {
                               setSelectedDelivery(delivery)
                               setShowMarkDeliveredDialog(true)
                             }}
-                            className="border-stone-300 text-stone-700 hover:bg-stone-100 h-8 text-xs font-medium rounded-lg"
+                            className="border-[#DCCFE4] text-[#4A1F5E] hover:bg-[#F1EAF5] h-9 text-xs font-medium rounded-lg"
                           >
                             {updatingStatus.has(delivery.id) ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -1844,7 +1852,7 @@ export default function DeliveriesPage() {
                             size="sm"
                             disabled={updatingStatus.has(delivery.id)}
                             onClick={() => handleCancelDelivery(delivery.id)}
-                            className="border-stone-300 text-stone-700 hover:bg-stone-100 h-8 text-xs font-medium rounded-lg"
+                            className="border-[#DCCFE4] text-[#4A1F5E] hover:bg-[#F1EAF5] h-9 text-xs font-medium rounded-lg"
                           >
                             {updatingStatus.has(delivery.id) ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -1866,7 +1874,7 @@ export default function DeliveriesPage() {
                             <Button
                               variant="default"
                               size="sm"
-                              className="bg-[#113c2c] hover:bg-[#0c2e22] text-white h-8 text-xs font-medium rounded-lg"
+                              className="bg-[#4A1F5E] hover:bg-[#5C2A72] text-white h-9 text-xs font-medium rounded-lg"
                               onClick={() => {
                                 setSelectedDelivery(delivery)
                                 setShowProcessReturnDialog(true)

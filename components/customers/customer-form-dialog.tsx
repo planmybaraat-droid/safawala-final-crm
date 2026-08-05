@@ -23,6 +23,7 @@ interface CustomerFormData {
   name: string
   phone: string
   whatsapp: string
+  email: string
   address: string
   city: string
   state: string
@@ -42,6 +43,7 @@ export function CustomerFormDialog({
     name: "",
     phone: "+91",
     whatsapp: "+91",
+    email: "",
     address: "",
     city: "",
     state: "",
@@ -55,6 +57,7 @@ export function CustomerFormDialog({
         name: customer.name || "",
         phone: customer.phone || "",
         whatsapp: customer.whatsapp || customer.phone || "",
+        email: customer.email || "",
         address: customer.address || "",
         city: customer.city || "",
         state: customer.state || "",
@@ -66,6 +69,7 @@ export function CustomerFormDialog({
         name: "",
         phone: "+91",
         whatsapp: "+91",
+        email: "",
         address: "",
         city: "",
         state: "",
@@ -99,6 +103,7 @@ export function CustomerFormDialog({
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         whatsapp: formData.whatsapp?.trim() || null,
+        email: formData.email?.trim() || null,
         address: formData.address?.trim() || null,
         city: formData.city?.trim() || null,
         state: formData.state?.trim() || null,
@@ -218,6 +223,20 @@ export function CustomerFormDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
+              placeholder="customer@example.com"
+              className="h-9 bg-slate-50/50 border-slate-200 focus-visible:ring-1 focus-visible:ring-slate-400 rounded-lg text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="address" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               {t("address")}
             </Label>
@@ -229,6 +248,22 @@ export function CustomerFormDialog({
               rows={2}
               className="bg-slate-50/50 border-slate-200 focus-visible:ring-1 focus-visible:ring-slate-400 rounded-lg text-sm resize-none"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="city" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">City</Label>
+              <Input id="city" value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} className="h-9 bg-slate-50/50 border-slate-200 rounded-lg text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="state" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">State</Label>
+              <Input id="state" value={formData.state} onChange={(e) => handleInputChange("state", e.target.value)} className="h-9 bg-slate-50/50 border-slate-200 rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="pincode" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pincode</Label>
+            <Input id="pincode" inputMode="numeric" maxLength={6} value={formData.pincode} onChange={(e) => handleInputChange("pincode", e.target.value.replace(/\D/g, ""))} className="h-9 bg-slate-50/50 border-slate-200 rounded-lg text-sm" />
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">

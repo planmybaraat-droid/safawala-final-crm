@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS integration_settings (
 INSERT INTO integration_settings (integration_name, api_key, base_url, instance_id, test_phone, is_active)
 VALUES (
   'WATI',
-  'REDACTED_JWT',
+  '',
   'https://live-mt-server.wati.io/481455',
   '481455',
   '+919725295692',

@@ -9,7 +9,7 @@ dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 // Initialize Supabase using service role key (for RLS bypass on write)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xplnyaxkusvuajtmorss.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'REDACTED_JWT';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 console.log("Supabase URL:", supabaseUrl);
 

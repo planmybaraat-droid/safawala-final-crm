@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 
 interface BookingWorkflowStepperProps {
   currentStep: "customer" | "invoice" | "booking" | "delivery"
+  accent?: "green" | "purple"
   customerId?: string
   bookingId?: string
   bookingNumber?: string
@@ -22,6 +23,7 @@ interface BookingWorkflowStepperProps {
 
 export function BookingWorkflowStepper({
   currentStep,
+  accent = "green",
   customerId,
   bookingId,
   bookingNumber,
@@ -29,6 +31,7 @@ export function BookingWorkflowStepper({
   customerData,
 }: BookingWorkflowStepperProps) {
   const router = useRouter()
+  const accentStrong = accent === "purple" ? "#5B2A86" : "#113c2c"
 
   // Define the steps
   const steps = [
@@ -100,18 +103,20 @@ export function BookingWorkflowStepper({
             <div
               className={cn(
                 "flex items-center gap-3 p-3 rounded-xl transition-all duration-200 w-full text-left",
-                isActive && "bg-[#113c2c]/5 border border-[#113c2c]/10 shadow-sm",
+                isActive && "border shadow-sm",
                 isClickable && "hover:bg-slate-50 cursor-pointer"
               )}
+              style={isActive ? { backgroundColor: `${accentStrong}0D`, borderColor: `${accentStrong}26` } : undefined}
             >
               {/* Icon / Status badge */}
               <div
                 className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300",
-                  isCompleted && "bg-[#113c2c] text-white",
-                  isActive && "bg-[#113c2c] text-white shadow-md shadow-[#113c2c]/20 scale-105 animate-pulse-slow",
+                  isCompleted && "text-white",
+                  isActive && "text-white shadow-md scale-105 animate-pulse-slow",
                   isUpcoming && "bg-slate-100 text-slate-400 border border-slate-200"
                 )}
+                style={isCompleted || isActive ? { backgroundColor: accentStrong } : undefined}
               >
                 {isCompleted ? (
                   <Check className="w-5 h-5 stroke-[3]" />
@@ -126,25 +131,27 @@ export function BookingWorkflowStepper({
                   <p
                     className={cn(
                       "text-xs font-semibold uppercase tracking-wider",
-                      isCompleted && "text-[#113c2c]",
-                      isActive && "text-[#113c2c] font-bold",
+                      isCompleted && "font-bold",
+                      isActive && "font-bold",
                       isUpcoming && "text-slate-400"
                     )}
+                    style={isCompleted || isActive ? { color: accentStrong } : undefined}
                   >
                     {step.label}
                   </p>
                   {isActive && (
                     <span className="flex h-2 w-2 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#113c2c] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#113c2c]"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentStrong }}></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: accentStrong }}></span>
                     </span>
                   )}
                 </div>
                 <p
                   className={cn(
                     "text-xs text-slate-500 truncate mt-0.5",
-                    isActive && "text-[#113c2c]/80 font-medium"
+                    isActive && "font-medium"
                   )}
+                  style={isActive ? { color: `${accentStrong}CC` } : undefined}
                 >
                   {step.description}
                 </p>

@@ -1,16 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
 import { authenticateRequest } from "@/lib/auth-middleware"
+import { supabaseServer } from "@/lib/supabase-server-simple"
 
 export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
-  const auth = await authenticateRequest(request, { minRole: 'franchise_admin' })
+  // Any authenticated staff member can view their own ledger (that's the
+  // whole point of "My Ledger" in every portal); viewing someone else's
+  // still requires franchise_admin/super_admin or HR.
+  const auth = await authenticateRequest(request, { minRole: 'staff' })
   if (!auth.authorized) {
     return NextResponse.json(auth.error, { status: auth.statusCode })
   }
+  const { userId } = params
+  const isSelf = auth.user!.id === userId
+  const isAdmin = auth.user!.is_super_admin || auth.user!.role === 'franchise_admin' || auth.user!.department === 'hr'
+  if (!isSelf && !isAdmin) {
+    return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
+  }
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { userId } = params
+    // authenticateRequest already validated this request via the CRM's own
+    // cookie — this route previously re-authenticated with a Supabase Auth
+    // session client, which silently returns no rows (not an error) whenever
+    // that separate session is missing/stale, making a real personal ledger
+    // look like "no data" to the caller.
+    const supabase = supabaseServer
 
     if (!userId) {
       return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 })

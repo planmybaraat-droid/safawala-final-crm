@@ -71,11 +71,13 @@ import { format } from "date-fns"
 import Link from "next/link"
 import { ProductSelector } from "@/components/products/product-selector"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { supabase as supabaseClient } from "@/lib/supabase"
 import { fetchProductsWithBarcodes } from "@/lib/product-barcode-service"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { BookingWorkflowStepper } from "@/components/shared"
 import { cn } from "@/lib/utils"
+import { DashboardLayout } from "@/components/layout/dashboard-layout"
 
 
 interface Customer {
@@ -188,6 +190,7 @@ export default function CreateInvoicePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const autoPrintTriggeredRef = useRef(false)
   const supabase = createClient()
   const barcodeInputRef = useRef<HTMLInputElement>(null)
   const { t } = useI18n()
@@ -200,6 +203,23 @@ export default function CreateInvoicePage() {
 
   // Gate: must select Rental or Sale before form unlocks (skip for edits/pdf views)
   const [typeSelected, setTypeSelected] = useState(mode !== "new" || !!pdfToken)
+  const [bookingStep, setBookingStep] = useState(1)
+  const bookingSteps = [
+    { number: 1, label: "Customer & Event", caption: "Booking information" },
+    { number: 2, label: "Products & Services", caption: "Add items" },
+    { number: 3, label: "Review & Payment", caption: "Confirm booking" },
+  ]
+
+  const goToBookingStep = (step: number) => {
+    setBookingStep(Math.max(1, Math.min(3, step)))
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const canContinueFromStep = () => {
+    if (bookingStep === 1 && !selectedCustomer) return false
+    if (bookingStep === 2 && invoiceItems.length === 0) return false
+    return true
+  }
 
   const handleTypeSelect = (type: "rental" | "sale") => {
     setInvoiceData(prev => ({ ...prev, invoice_type: type }))
@@ -1257,9 +1277,11 @@ export default function CreateInvoicePage() {
   const baseSubtotal = itemsSubtotal + packagePrice
   // Use override price if enabled, otherwise use calculated subtotal
   const subtotal = (useCustomPackagePrice && customPackagePrice > 0) ? customPackagePrice : baseSubtotal
-  const discountAmount = invoiceData.discount_type === "percentage" 
+  const manualDiscountAmount = invoiceData.discount_type === "percentage"
     ? (subtotal * invoiceData.discount_amount / 100)
     : invoiceData.discount_amount
+  const couponDiscountAmount = Math.max(0, invoiceData.coupon_discount || 0)
+  const discountAmount = Math.min(subtotal, manualDiscountAmount + couponDiscountAmount)
   const afterDiscount = subtotal - discountAmount
   // GST: When applyGst is ON, GST is inclusive (price already contains GST). When OFF, no GST.
   const gstAmount = applyGst ? afterDiscount - (afterDiscount / (1 + invoiceData.gst_percentage / 100)) : 0
@@ -1296,6 +1318,18 @@ export default function CreateInvoicePage() {
     p.barcode?.toLowerCase().includes(productSearch.toLowerCase()) ||
     p.product_code?.toLowerCase().includes(productSearch.toLowerCase())
   )
+
+  // Rental bookings intentionally expose only Barati Safa products. Sales
+  // continue to use the complete catalogue unchanged.
+  const rentalProducts = products.filter((product) => {
+    const category = (product.category || "").trim().toUpperCase()
+    const name = (product.name || "").toUpperCase()
+    return category === "BARATI SAFA" || name.includes("BARATI SAFA")
+  })
+  const productSelectorProducts = invoiceData.invoice_type === "rental" ? rentalProducts : products
+  const productSelectorCategories = invoiceData.invoice_type === "rental"
+    ? categories.filter((category) => category.name.trim().toUpperCase() === "BARATI SAFA")
+    : categories
 
   // Helper: Get safa limit from manual input
 
@@ -2172,7 +2206,8 @@ export default function CreateInvoicePage() {
 
   // Apply Coupon
   const handleApplyCoupon = async () => {
-    if (!invoiceData.coupon_code.trim()) {
+    const code = invoiceData.coupon_code.trim().toUpperCase()
+    if (!code) {
       setCouponError("Please enter a coupon code")
       return
     }
@@ -2181,16 +2216,14 @@ export default function CreateInvoicePage() {
     setCouponError(null)
 
     try {
-      const response = await fetch('/api/coupons/validate', {
+      const response = await fetch('/api/offers/validate', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: invoiceData.coupon_code,
-          invoice_type: invoiceData.invoice_type,
-          subtotal: baseSubtotal,
-          orderValue: baseSubtotal,
-          franchise_id: franchiseId,
+          code,
+          subtotal,
+          orderValue: subtotal,
         })
       })
 
@@ -2203,7 +2236,8 @@ export default function CreateInvoicePage() {
       }
 
       const data = await response.json()
-      if (data.valid === false) {
+      const discount = Number(data.discount || 0)
+      if (data.valid !== true || !Number.isFinite(discount) || discount < 0) {
         setCouponError(data.message || data.error || "Invalid or expired coupon")
         setInvoiceData(prev => ({ ...prev, coupon_discount: 0 }))
         setAppliedCoupon(null)
@@ -2212,10 +2246,11 @@ export default function CreateInvoicePage() {
 
       setInvoiceData(prev => ({
         ...prev,
-        coupon_discount: data.discount || 0
+        coupon_code: code,
+        coupon_discount: discount
       }))
-      setAppliedCoupon(invoiceData.coupon_code)
-      toast({ title: "Coupon Applied", description: `Discount: ₹${data.discount?.toLocaleString() || 0}` })
+      setAppliedCoupon(code)
+      toast({ title: "Coupon Applied", description: `Discount: ₹${discount.toLocaleString('en-IN')}` })
     } catch (error: any) {
       setCouponError("Failed to validate coupon")
       console.error("Coupon validation error:", error)
@@ -2224,42 +2259,69 @@ export default function CreateInvoicePage() {
     }
   }
 
-  // Print/Download
+  // Native browser printing — same flow as Ctrl/Cmd + P.
   const handlePrint = () => {
+    const hasCustomer = Boolean(selectedCustomer || qCustomerName)
+    const hasItems = invoiceItems.length > 0 || Boolean(selectedPackage)
+    if (!hasCustomer || !hasItems) {
+      toast({
+        title: "Complete the booking first",
+        description: !hasCustomer
+          ? "Select a customer before creating the PDF."
+          : "Add at least one product or package before creating the PDF.",
+        variant: "destructive",
+      })
+      return
+    }
+
     const originalTitle = document.title
     const eventDateStr = invoiceData.event_date
       ? format(new Date(invoiceData.event_date), "dd/MM/yy")
       : ""
-    const custName = selectedCustomer?.name || invoiceData.groom_name || ""
-    const parts = [
-      invoiceData.invoice_number,
-      custName,
-      eventDateStr,
-    ].filter(Boolean)
-    if (parts.length > 0) {
-      document.title = parts.join(" | ")
+    const customerName = selectedCustomer?.name || invoiceData.groom_name || qCustomerName || ""
+    const printTitle = [invoiceData.invoice_number, customerName, eventDateStr].filter(Boolean).join(" | ")
+    if (printTitle) document.title = printTitle
+
+    const restoreTitle = () => {
+      document.title = originalTitle
+      window.removeEventListener("afterprint", restoreTitle)
     }
+    window.addEventListener("afterprint", restoreTitle)
     window.print()
-    document.title = originalTitle
   }
 
   // Auto-trigger print if requested via query parameter
   // Wait for: order data, company settings, QR code, and product images
   useEffect(() => {
+    const printRequested = searchParams.get("print") === "true"
+    const hasCustomer = Boolean(selectedCustomer || qCustomerName)
+    const hasItems = invoiceItems.length > 0 || Boolean(selectedPackage)
     if (
+      !autoPrintTriggeredRef.current &&
       !loading &&
       orderId &&
-      searchParams.get("print") === "true" &&
+      printRequested &&
       invoiceData.invoice_number &&
-      companySettings !== null  // company settings have loaded
+      companySettings !== null &&
+      hasCustomer &&
+      hasItems
     ) {
-      // 2.5s gives enough time for QR base64 load + product images
-      const timer = setTimeout(() => {
-        handlePrint()
-      }, 2500)
-      return () => clearTimeout(timer)
+      autoPrintTriggeredRef.current = true
+      // Allow the loaded invoice images and print-only markup to paint first.
+      const timer = window.setTimeout(() => handlePrint(), 800)
+      return () => window.clearTimeout(timer)
     }
-  }, [loading, orderId, searchParams, invoiceData.invoice_number, selectedCustomer])
+  }, [
+    loading,
+    orderId,
+    searchParams,
+    invoiceData.invoice_number,
+    selectedCustomer,
+    qCustomerName,
+    invoiceItems.length,
+    selectedPackage,
+    companySettings,
+  ])
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -2281,53 +2343,42 @@ export default function CreateInvoicePage() {
 
   // Render sub-sections to prevent duplicate code and handle direct sales POS layout
   const renderCustomerCard = () => (
-                        <Card className="p-4 shadow-sm border-l-4 border-l-indigo-500 bg-white">
+                        <Card className="p-5 rounded-2xl shadow-sm border border-slate-100 bg-white">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <div className="p-1.5 bg-emerald-100 rounded-lg">
-                                <User className="h-4 w-4 text-indigo-700" />
+                              <div className="p-1.5 bg-[#F1EAF5] rounded-lg">
+                                <User className="h-4 w-4 text-[#4A1F5E]" />
                               </div>
-                              <span className="font-semibold text-gray-800">Customer Details</span>
+                              <span className="font-semibold text-gray-900">Customer Information</span>
                             </div>
                             <Button
                               variant="outline"
                               size="sm"
                               type="button"
-                              className="print:hidden h-8 text-xs border-slate-200 text-indigo-700 hover:bg-indigo-700 hover:text-white transition-all"
+                              className="print:hidden h-9 text-xs border-[#4A1F5E] text-[#4A1F5E] hover:bg-[#4A1F5E] hover:text-white transition-all"
                               onClick={() => setShowNewCustomerDialog(true)}
                             >
                               <Plus className="h-3.5 w-3.5 mr-1" />
-                              New
+                              New Customer
                             </Button>
                           </div>
     
                           {/* Customer / Lead Toggle */}
                           {!selectedCustomer && (
-                            <div className="flex bg-slate-100 p-0.5 rounded-lg mb-3 print:hidden">
-                              <button
-                                type="button"
-                                className={cn(
-                                  "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all",
-                                  customerMode === "customer"
-                                    ? "bg-white text-indigo-700 shadow-sm"
-                                    : "text-slate-600 hover:text-slate-900"
-                                )}
-                                onClick={() => setCustomerMode("customer")}
-                              >
-                                Customers
-                              </button>
-                              <button
-                                type="button"
-                                className={cn(
-                                  "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all",
-                                  customerMode === "lead"
-                                    ? "bg-white text-indigo-700 shadow-sm"
-                                    : "text-slate-600 hover:text-slate-900"
-                                )}
-                                onClick={() => setCustomerMode("lead")}
-                              >
-                                Leads
-                              </button>
+                            <div className="flex items-center gap-2 mb-3 print:hidden">
+                              <span className="text-xs font-semibold text-slate-700">Convert Lead</span>
+                              <Switch
+                                id="customer-lead-mode"
+                                checked={customerMode === "lead"}
+                                onCheckedChange={(checked) => {
+                                  setCustomerMode(checked ? "lead" : "customer")
+                                  setCustomerSearch("")
+                                  setLeadSearch("")
+                                }}
+                                aria-label="Toggle between customers and leads"
+                                className="data-[state=checked]:bg-[#4A1F5E]"
+                              />
+                              <span className="text-[11px] text-slate-400">Select an existing customer or lead</span>
                             </div>
                           )}
     
@@ -2338,7 +2389,7 @@ export default function CreateInvoicePage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 {customerMode === "customer" ? (
                                   <Input
-                                    placeholder="Search customers..."
+                                    placeholder="Search customer by name, phone number or email..."
                                     value={customerSearch}
                                     onChange={(e) => setCustomerSearch(e.target.value)}
                                     className="pl-10 h-9 text-xs bg-white border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -2382,7 +2433,7 @@ export default function CreateInvoicePage() {
                               </Button>
                             </div>
                           ) : customerMode === "customer" ? (
-                            <div className="border border-gray-100 rounded-lg max-h-36 overflow-y-auto text-sm print:hidden bg-white">
+                            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 text-sm print:hidden bg-white">
                               {customersLoading ? (
                                 <div className="space-y-0">
                                   {[1, 2, 3].map((i) => (
@@ -2394,18 +2445,19 @@ export default function CreateInvoicePage() {
                                 </div>
                               ) : (
                                 <>
-                                  {(customerSearch ? filteredCustomers : customers.slice(0, 3)).map((c) => (
+                                  {(customerSearch ? filteredCustomers : customers.slice(0, 4)).map((c) => (
                                     <button
                                       key={c.id}
                                       type="button"
                                       onClick={() => setSelectedCustomer(c)}
-                                      className="w-full text-left p-2 border-b last:border-b-0 hover:bg-emerald-50/45 transition-colors group flex items-center justify-between"
+                                      className="min-h-[126px] text-center p-3 rounded-xl border border-slate-200 hover:border-[#4A1F5E] hover:bg-[#F8F4FA] transition-colors group flex flex-col items-center justify-center"
                                     >
-                                      <div>
-                                        <div className="font-medium text-gray-800 group-hover:text-emerald-900 text-xs">{c.name}</div>
-                                        <div className="text-[10px] text-gray-500">{c.phone}</div>
+                                      <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#F1EAF5] text-sm font-semibold text-[#4A1F5E]">
+                                        {c.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
                                       </div>
-                                      <Check className="h-3.5 w-3.5 text-emerald-700 opacity-0 group-hover:opacity-100" />
+                                      <div className="font-medium text-gray-800 group-hover:text-[#4A1F5E] text-xs line-clamp-1">{c.name}</div>
+                                      <div className="text-[10px] text-gray-500">{c.phone}</div>
+                                      <Check className="mt-1 h-3.5 w-3.5 text-[#4A1F5E] opacity-0 group-hover:opacity-100" />
                                     </button>
                                   ))}
                                   {customerSearch && filteredCustomers.length === 0 && (
@@ -2486,13 +2538,12 @@ export default function CreateInvoicePage() {
 
   const renderEventAndGroomBrideCards = () => (
     <>
-                        {invoiceData.invoice_type === "rental" && (
-                          <Card className="p-4 shadow-sm border-l-4 border-l-indigo-500 bg-white">
+                        <Card className="p-5 rounded-2xl shadow-sm border border-slate-100 bg-white">
                             <div className="flex items-center gap-2 mb-3">
                               <div className="p-1.5 bg-emerald-100 rounded-lg">
                                 <CalendarIcon className="h-4 w-4 text-indigo-700" />
                               </div>
-                              <span className="font-semibold text-gray-800">Event Details</span>
+                              <span className="font-semibold text-gray-900">Event Information</span>
                             </div>
     
                             <div className="grid grid-cols-2 gap-3 text-xs">
@@ -2563,7 +2614,6 @@ export default function CreateInvoicePage() {
                               </div>
                             </div>
                           </Card>
-                        )}
     
                         {/* Groom & Bride details */}
                         {invoiceData.invoice_type === "rental" && (
@@ -2800,13 +2850,13 @@ export default function CreateInvoicePage() {
                             <div className="border-t border-gray-200/50 pt-3">
                               <Label className="text-[10px] text-gray-500 font-semibold mb-2 block uppercase">Add Products to Package</Label>
                               <ProductSelector
-                                products={products.map(p => ({
+                                products={productSelectorProducts.map(p => ({
                                   ...p,
                                   category: p.category || '',
                                   security_deposit: p.security_deposit || 0,
                                   sale_price: p.sale_price || p.rental_price,
                                 }))}
-                                categories={categories}
+                                categories={productSelectorCategories}
                                 subcategories={subcategories}
                                 selectedItems={invoiceItems.map(item => ({
                                   product_id: item.product_id,
@@ -2814,6 +2864,10 @@ export default function CreateInvoicePage() {
                                   unit_price: item.unit_price,
                                 }))}
                                 bookingType={invoiceData.invoice_type}
+                                limitBaratiSafaPackages={invoiceData.invoice_type === "rental"}
+                                hideAllCategoryOptions={invoiceData.invoice_type === "rental"}
+                                hideAllSubcategoryOptions={invoiceData.invoice_type === "rental"}
+                                defaultCategoryName={invoiceData.invoice_type === "rental" ? "BARATI SAFA" : undefined}
                                 eventDate={invoiceData.event_date}
                                 onProductSelect={(product, quantity) => addProduct(product as Product, quantity)}
                                 onItemUpdate={(product_id, quantity, unit_price) => {
@@ -2861,13 +2915,13 @@ export default function CreateInvoicePage() {
                         {!skipProductSelection && (selectionMode === "products" || invoiceData.invoice_type === "sale") && (
                           <div className="mb-2">
                             <ProductSelector
-                              products={products.map(p => ({
+                              products={productSelectorProducts.map(p => ({
                                 ...p,
                                 category: p.category || '',
                                 security_deposit: p.security_deposit || 0,
                                 sale_price: p.sale_price || p.rental_price,
                               }))}
-                              categories={categories}
+                              categories={productSelectorCategories}
                               subcategories={subcategories}
                               selectedItems={invoiceItems.map(item => ({
                                 product_id: item.product_id,
@@ -2875,6 +2929,10 @@ export default function CreateInvoicePage() {
                                 unit_price: item.unit_price,
                               }))}
                               bookingType={invoiceData.invoice_type}
+                              limitBaratiSafaPackages={invoiceData.invoice_type === "rental"}
+                              hideAllCategoryOptions={invoiceData.invoice_type === "rental"}
+                              hideAllSubcategoryOptions={invoiceData.invoice_type === "rental"}
+                              defaultCategoryName={invoiceData.invoice_type === "rental" ? "BARATI SAFA" : undefined}
                               eventDate={invoiceData.event_date}
                               onProductSelect={(product, quantity) => addProduct(product as Product, quantity)}
                               onItemUpdate={(product_id, quantity, unit_price) => {
@@ -2892,7 +2950,8 @@ export default function CreateInvoicePage() {
                           </div>
                         )}
     
-                        {/* Modifications Section */}
+                        {/* Modifications Section — available for sales only */}
+                        {invoiceData.invoice_type === "sale" && (
                         <Card className="p-4 shadow-sm border-l-4 border-l-amber-600 bg-white overflow-visible mt-4">
                           <div className="flex items-center space-x-2 mb-3">
                             <Checkbox
@@ -3044,6 +3103,7 @@ export default function CreateInvoicePage() {
                             </div>
                           )}
                         </Card>
+                        )}
     </>
   );
 
@@ -3326,6 +3386,7 @@ export default function CreateInvoicePage() {
   );
 
   return (
+    <DashboardLayout userRole={currentUser?.role} compactHeader hideSidebar>
     <>
       <style>{`
         @page {
@@ -3358,7 +3419,16 @@ export default function CreateInvoicePage() {
       {!typeSelected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 text-center">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 pt-16 text-center">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              aria-label="Close and return to dashboard"
+              title="Return to dashboard"
+              className="absolute right-5 top-5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FileText className="w-7 h-7 text-green-600" />
             </div>
@@ -3470,12 +3540,12 @@ export default function CreateInvoicePage() {
 
       <div className="min-h-screen bg-slate-50 p-4 print:p-0 print:bg-white invoice-scaled">
       {/* Header - Hidden on print */}
-      <div className="max-w-[64%] mx-auto mb-4 flex items-center justify-between print:hidden">
+      <div className="mx-auto mb-4 flex w-full max-w-[96rem] items-center justify-between print:hidden">
         <div className="flex items-center gap-4">
           <Link href="/bookings">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+            <Button variant="outline" size="sm" aria-label="Back to bookings" className="h-9 w-9 px-0 rounded-full border-slate-200">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
             </Button>
           </Link>
           <div>
@@ -3490,24 +3560,31 @@ export default function CreateInvoicePage() {
               )}
             </div>
             <p className="text-sm text-gray-600">
-              {mode === "edit" 
-                ? `Order: ${invoiceData.invoice_number || "Loading..."}` 
-                : "Fill in the details below to create a booking"}
+              {mode === "edit"
+                ? `Order: ${invoiceData.invoice_number || "Loading..."}`
+                : "Create a new booking in 3 simple steps"}
             </p>
           </div>
         </div>
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <Link href="/bookings">
+          <Link href="/bookings" className={mode === "new" ? "hidden" : undefined}>
             <Button variant="outline" size="sm">
               <FileText className="h-4 w-4 mr-2" />
               All Bookings
             </Button>
           </Link>
-          <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+            disabled={saving || (!selectedCustomer && !qCustomerName) || (invoiceItems.length === 0 && !selectedPackage)}
+            title="Print this invoice"
+            className={mode === "new" ? "hidden" : "disabled:cursor-not-allowed disabled:opacity-50"}
+          >
             <Printer className="h-4 w-4 mr-2" />
-            Print
+            Print Invoice
           </Button>
           {/* Save as Draft - not sent to customer, lets anyone with access pick it up later */}
           <Button
@@ -3519,8 +3596,21 @@ export default function CreateInvoicePage() {
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Save as Draft
           </Button>
+          {mode === "new" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Close booking"
+              title="Close booking"
+              onClick={() => router.push("/dashboard")}
+              className="h-9 w-9 px-0 rounded-lg border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
           {/* Save as Quote - only show in new mode, not in edit mode */}
-          {mode !== "edit" && (
+          {mode !== "edit" && mode !== "new" && (
             <Button
               variant="outline"
               size="sm"
@@ -3538,6 +3628,7 @@ export default function CreateInvoicePage() {
             size="sm" 
             onClick={handleCreateOrder} 
             disabled={saving}
+            className={mode === "new" ? "hidden" : undefined}
           >
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
             {mode === "edit" && editingQuote ? "Convert to Booking" : mode === "edit" ? "Update Order" : "Create Order"}
@@ -3547,7 +3638,7 @@ export default function CreateInvoicePage() {
 
 
       {/* Invoice Document */}
-      <div className="max-w-[64%] mx-auto bg-white rounded-lg shadow-lg print:shadow-none print:rounded-none print:max-w-full">
+      <div className="mx-auto w-full max-w-[96rem] rounded-lg bg-white shadow-lg print:shadow-none print:rounded-none print:max-w-full">
         
         {/* ========== PRINT-ONLY HEADER ========== */}
         <div className="hidden print:block bg-slate-50 border-b border-slate-300 px-3 py-2">
@@ -3700,81 +3791,114 @@ export default function CreateInvoicePage() {
             </div>
           </div>
 
+          {/* Guided booking steps */}
+          <div className="rounded-none border-0 bg-transparent px-2 py-2 shadow-none">
+            <div className="flex items-start justify-between gap-2 overflow-x-auto">
+              {bookingSteps.map((step, index) => {
+                const active = bookingStep === step.number
+                const complete = bookingStep > step.number
+                return (
+                  <div key={step.number} className="flex min-w-[110px] flex-1 items-start">
+                    <button
+                      type="button"
+                      onClick={() => complete || step.number <= bookingStep ? goToBookingStep(step.number) : undefined}
+                      className="group flex min-w-0 flex-1 flex-col items-center text-center"
+                      aria-current={active ? "step" : undefined}
+                    >
+                      <span className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-bold transition-colors",
+                        active || complete
+                          ? "border-indigo-600 bg-indigo-600 text-white"
+                          : "border-slate-300 bg-white text-slate-600"
+                      )}>
+                        {complete ? <Check className="h-4 w-4" /> : step.number}
+                      </span>
+                      <span className={cn("mt-2 text-xs font-semibold", active ? "text-indigo-700" : "text-slate-700")}>{step.label}</span>
+                      <span className="mt-0.5 text-[10px] text-slate-500">{active ? "In progress" : step.caption}</span>
+                    </button>
+                    {index < bookingSteps.length - 1 && (
+                      <div className={cn("mt-4 h-px flex-1", bookingStep > step.number ? "bg-indigo-500" : "bg-slate-200")} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-4 text-center text-sm font-medium text-slate-700">
+              Step {bookingStep} of {bookingSteps.length} · {bookingSteps[bookingStep - 1].label}
+            </p>
+          </div>
+
 
           {/* ================= WEB-ONLY CONTENT START ================= */}
           <div className="p-4 md:p-6 print:hidden bg-white space-y-6">
 
 
 
-            <div className={cn(
-              invoiceData.invoice_type === "sale" ? "grid grid-cols-12 gap-6 items-start" : "space-y-6"
-            )}>
-              <div className={cn(
-                invoiceData.invoice_type === "sale" ? "col-span-12 lg:col-span-8 space-y-6" : "w-full"
-              )}>
-                {invoiceData.invoice_type === "sale" ? (
-                  <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-12">
+              <div className="space-y-5 lg:col-span-8">
+                {bookingStep === 1 && (
+                  <div className="space-y-4">
                     {renderCustomerCard()}
-                    {renderProductSelectorCards()}
-                    {renderSettlementCards()}
+                    {invoiceData.invoice_type === "rental" && renderEventAndGroomBrideCards()}
                   </div>
-                ) : (
-                  <Tabs defaultValue="details" className="w-full">
-                    <TabsList className="grid grid-cols-3 bg-slate-100 p-1 rounded-lg mb-4 border border-slate-200">
-                      <TabsTrigger value="details" className="data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-slate-500 rounded-md py-1.5 font-medium text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5">
-                        <User className="h-4 w-4" />
-                        Details
-                      </TabsTrigger>
-                      <TabsTrigger value="items" className="data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-slate-500 rounded-md py-1.5 font-medium text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5">
-                        <Package className="h-4 w-4" />
-                        Products
-                      </TabsTrigger>
-                      <TabsTrigger value="settlement" className="data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-slate-500 rounded-md py-1.5 font-medium text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5">
-                        <FileCheck className="h-4 w-4" />
-                        Settlement
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {/* TAB 1: CUSTOMER & EVENT DETAILS */}
-                    <TabsContent value="details" className="space-y-4 focus-visible:outline-none focus-visible:ring-0">
-                      {renderCustomerCard()}
-                      {renderEventAndGroomBrideCards()}
-                    </TabsContent>
-
-                    {/* TAB 2: PRODUCTS & ITEMS */}
-                    <TabsContent value="items" className="space-y-4 focus-visible:outline-none focus-visible:ring-0">
-                      {renderProductSelectorCards()}
-                    </TabsContent>
-
-                    {/* TAB 3: SETTLEMENT */}
-                    <TabsContent value="settlement" className="space-y-4 focus-visible:outline-none focus-visible:ring-0">
-                      {renderSettlementCards()}
-                    </TabsContent>
-                  </Tabs>
                 )}
+                {bookingStep === 2 && renderProductSelectorCards()}
+                {bookingStep === 3 && (
+                  <div className="space-y-4">
+                    {renderSettlementCards()}
+                    <Card className="border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><Check className="h-5 w-5" /></div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-900">Review booking</h2>
+                        <p className="text-sm text-slate-500">Check the Booking Summary and confirm the order.</p>
+                      </div>
+                    </div>
+                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-slate-200 p-4"><p className="text-xs text-slate-500">Customer</p><p className="mt-1 font-semibold text-slate-900">{selectedCustomer?.name || "Not selected"}</p></div>
+                      <div className="rounded-lg border border-slate-200 p-4"><p className="text-xs text-slate-500">Booking type</p><p className="mt-1 font-semibold capitalize text-slate-900">{invoiceData.invoice_type}</p></div>
+                      <div className="rounded-lg border border-slate-200 p-4"><p className="text-xs text-slate-500">Items</p><p className="mt-1 font-semibold text-slate-900">{invoiceItems.reduce((sum, item) => sum + item.quantity, 0)}</p></div>
+                      <div className="rounded-lg border border-slate-200 p-4"><p className="text-xs text-slate-500">Estimated total</p><p className="mt-1 font-semibold text-slate-900">₹{grandTotal.toLocaleString("en-IN")}</p></div>
+                    </div>
+                    </Card>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+                  <Button type="button" variant="outline" onClick={() => goToBookingStep(bookingStep - 1)} disabled={bookingStep === 1}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  {bookingStep < 3 ? (
+                    <Button type="button" onClick={() => canContinueFromStep() && goToBookingStep(bookingStep + 1)} disabled={!canContinueFromStep()} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                      Continue to {bookingSteps[bookingStep].label}
+                      <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+                    </Button>
+                  ) : null}
+                </div>
               </div>
 
               {/* Right Column / POS checkout container OR bottom checkout container */}
               <div className={cn(
-                invoiceData.invoice_type === "sale" ? "col-span-12 lg:col-span-4 lg:sticky lg:top-20" : "space-y-4 mt-6"
+                "lg:col-span-4 lg:sticky lg:top-20"
               )}>
-                <Card className="shadow-sm border border-slate-200 bg-white overflow-hidden">
+                <Card className="shadow-sm border border-[#E7E2EA] bg-white overflow-hidden rounded-2xl">
                       {/* Sidebar Header */}
-                      <div className="p-3 bg-slate-900 text-white flex justify-between items-center">
+                      <div className="p-4 bg-[#F6F2FA] text-slate-900 flex justify-between items-center border-b border-[#E7E2EA]">
                         <div>
-                          <h3 className="font-semibold text-sm">Checkout Overview</h3>
-                          <p className="text-[10px] text-slate-400">
+                          <h3 className="font-semibold text-base">
+                            {invoiceData.invoice_type === "rental" ? "Rental Summary" : "Checkout Summary"}
+                          </h3>
+                          <p className="text-[11px] text-slate-500">
                             {selectedCustomer ? selectedCustomer.name : "No Customer Selected"}
                           </p>
                         </div>
-                        <Badge className="bg-indigo-500 text-white border-none text-[10px] capitalize">
+                        <Badge className="bg-[#4A1F5E] text-white border-none text-[10px] capitalize">
                           {invoiceData.invoice_type}
                         </Badge>
                       </div>
 
                       <div className={cn(
-                        "p-4 grid gap-6 items-start",
-                        invoiceData.invoice_type === "sale" ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+                        "p-4 grid grid-cols-1 gap-6 items-start"
                       )}>
                         {/* Left Column: Added Items & package/lost/damaged details */}
                         <div className="space-y-4">
@@ -3956,48 +4080,37 @@ export default function CreateInvoicePage() {
                             />
                           </div>
 
-                          <div className="border-t border-gray-200/50 pt-2 space-y-1.5">
-                            <Label className="text-[10px] text-gray-500">Coupon Code</Label>
-                            <div className="flex gap-1">
+                          <div className="space-y-1.5 border-t border-gray-200/60 pt-2">
+                            <Label htmlFor="bookingCouponCode" className="text-[10px] text-gray-700 font-medium">Coupon Code</Label>
+                            <div className="flex items-center gap-2">
                               <Input
-                                value={invoiceData.coupon_code}
+                                id="bookingCouponCode"
+                                value={invoiceData.coupon_code || ''}
                                 onChange={(e) => {
-                                  const nextCode = e.target.value.toUpperCase()
-                                  setInvoiceData((prev) => ({
-                                    ...prev,
-                                    coupon_code: nextCode,
-                                    coupon_discount: appliedCoupon && appliedCoupon !== nextCode ? 0 : prev.coupon_discount,
-                                  }))
+                                  setInvoiceData({ ...invoiceData, coupon_code: e.target.value.toUpperCase(), coupon_discount: 0 })
+                                  setAppliedCoupon(null)
                                   setCouponError(null)
-                                  if (appliedCoupon && appliedCoupon !== nextCode) {
-                                    setAppliedCoupon(null)
-                                  }
                                 }}
-                                placeholder="COUPON"
-                                className="h-7 text-xs bg-white uppercase animate-none"
+                                className="h-8 flex-1 text-xs bg-white border-gray-200"
+                                placeholder="Enter coupon code"
                               />
                               <Button
                                 type="button"
                                 size="sm"
-                                variant={appliedCoupon ? "default" : "outline"}
+                                variant="outline"
                                 onClick={handleApplyCoupon}
                                 disabled={validatingCoupon || !invoiceData.coupon_code.trim()}
-                                className="h-7 text-[10px] px-2 whitespace-nowrap"
+                                className="h-8 px-3 text-xs"
                               >
-                                {validatingCoupon ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : appliedCoupon ? (
-                                  "Applied"
-                                ) : (
-                                  "Apply"
-                                )}
+                                {validatingCoupon ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
                               </Button>
                             </div>
-                            {couponError && <p className="text-[9px] text-red-500">{couponError}</p>}
-                            {appliedCoupon && invoiceData.coupon_discount > 0 && (
-                              <p className="text-[9px] text-green-600">✓ Discount: ₹{invoiceData.coupon_discount}</p>
+                            {appliedCoupon && couponDiscountAmount > 0 && (
+                              <p className="text-[10px] text-emerald-600">{appliedCoupon} applied · ₹{couponDiscountAmount.toLocaleString('en-IN')} off</p>
                             )}
+                            {couponError && <p className="text-[10px] text-red-600">{couponError}</p>}
                           </div>
+
                         </div>
 
                         {/* GST Tax Toggle */}
@@ -4065,11 +4178,11 @@ export default function CreateInvoicePage() {
                         <Button 
                           size="default" 
                           onClick={handleCreateOrder} 
-                          disabled={saving || !selectedCustomer}
+                          disabled={saving || !selectedCustomer || bookingStep !== 3}
                           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-10 font-semibold text-sm disabled:opacity-50"
                         >
                           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-                          {mode === "edit" && editingQuote ? "CONVERT TO BOOKING" : mode === "edit" ? "UPDATE ORDER" : "CREATE ORDER"}
+                          REVIEW BOOKING TO CREATE
                         </Button>
                         
                         <div className="grid grid-cols-2 gap-2">
@@ -4077,10 +4190,12 @@ export default function CreateInvoicePage() {
                             variant="outline" 
                             size="sm" 
                             onClick={handlePrint}
-                            className="border-slate-200 text-slate-700 hover:bg-slate-50 h-8"
+                            disabled={saving || (!selectedCustomer && !qCustomerName) || (invoiceItems.length === 0 && !selectedPackage)}
+                            title="Print this invoice"
+                            className="border-slate-200 text-slate-700 hover:bg-slate-50 h-8 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Printer className="h-3.5 w-3.5 mr-1.5" />
-                            Print
+                            Print Invoice
                           </Button>
                           {mode !== "edit" && (
                             <Button 
@@ -4237,12 +4352,6 @@ export default function CreateInvoicePage() {
                   <span className="text-gray-600">Payment Method:</span>
                   <span className="font-medium">{invoiceData.payment_method}</span>
                 </div>
-                {invoiceData.coupon_code && invoiceData.coupon_discount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Coupon Code:</span>
-                    <span className="font-medium">{invoiceData.coupon_code} (-₹{invoiceData.coupon_discount.toLocaleString()})</span>
-                  </div>
-                )}
                 {staffMembers.find(s => s.id === invoiceData.sales_closed_by_id) && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Sales Staff:</span>
@@ -4650,7 +4759,9 @@ export default function CreateInvoicePage() {
           </div>
         </DialogContent>
       </Dialog>
+
     </div>
     </>
+    </DashboardLayout>
   )
 }

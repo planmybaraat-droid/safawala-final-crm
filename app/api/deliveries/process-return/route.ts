@@ -28,7 +28,7 @@ interface ReturnItem {
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authenticateRequest(request, { minRole: "staff" })
+    const auth = await authenticateRequest(request, { minRole: "staff", requirePermission: "delivery.update" })
     if (!auth.authorized) {
       return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
     }

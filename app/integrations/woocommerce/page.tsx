@@ -44,8 +44,8 @@ export default function WooCommercePage() {
   const router = useRouter()
   const [config, setConfig] = useState<WooCommerceConfig>({
     store_url: "https://safawala.com",
-    consumer_key: "REDACTED_WOOCOMMERCE_CONSUMER_KEY",
-    consumer_secret: "REDACTED_WOOCOMMERCE_CONSUMER_SECRET",
+    consumer_key: "",
+    consumer_secret: "",
   })
   const [isConfigured, setIsConfigured] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -391,7 +391,7 @@ export default function WooCommercePage() {
                   <Label htmlFor="consumer_key">Consumer Key *</Label>
                   <Input
                     id="consumer_key"
-                    placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    placeholder="Enter WooCommerce consumer key"
                     value={config.consumer_key}
                     onChange={(e) => setConfig({ ...config, consumer_key: e.target.value })}
                   />
@@ -402,7 +402,7 @@ export default function WooCommercePage() {
                   <Input
                     id="consumer_secret"
                     type="password"
-                    placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    placeholder="Enter WooCommerce consumer secret"
                     value={config.consumer_secret}
                     onChange={(e) => setConfig({ ...config, consumer_secret: e.target.value })}
                   />

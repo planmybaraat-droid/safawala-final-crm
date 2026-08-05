@@ -15,9 +15,9 @@ export default function InspectPage() {
 
   async function fetchOrders() {
     try {
-      const res = await fetch("/api/bookings?status=confirmed&limit=50")
+      const res = await fetch("/api/work-orders")
       const data = await res.json()
-      setOrders(Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []))
+      setOrders(Array.isArray(data.data) ? data.data : [])
     } catch { setOrders([]) }
     finally { setLoading(false) }
   }
@@ -48,10 +48,10 @@ export default function InspectPage() {
             title={`${o.booking_number} — ${(o.customer as any)?.name ?? "Customer"}`}
             subtitle={`Event: ${o.event_date ? new Date(o.event_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}`}
             meta={o.pickup_date ? new Date(o.pickup_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : undefined}
-            badge="confirmed"
+            badge={o.qc_status || "pending"}
             color={COLOR}
             icon="search"
-            onClick={() => router.push(`/bookings/${o.id}`)}
+            onClick={() => router.push(`/portal/qc/work-orders`)}
           />
         ))}
       </div>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth-middleware"
 import { supabaseServer } from "@/lib/supabase-server-simple"
+import { logAudit } from "@/lib/audit-log"
+import { isHrOrFranchiseAdmin } from "@/lib/hr-authorization"
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -21,17 +23,17 @@ export async function POST(
   try {
     console.log('[Toggle Status] Starting request for user:', params.id)
     
-    // 🔒 SECURITY: Authenticate user with franchise_admin role + staff permission
-    const auth = await authenticateRequest(request, {
-      minRole: 'franchise_admin',
-      requirePermission: 'staff'
-    })
-    
+    // 🔒 SECURITY: Authenticate user, then require franchise admin or HR staff
+    const auth = await authenticateRequest(request, { minRole: 'staff' })
+
     if (!auth.authorized) {
       console.error('[Toggle Status] Auth failed')
       return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
     }
-    
+    if (!isHrOrFranchiseAdmin(auth.user!)) {
+      return NextResponse.json({ error: "Forbidden", message: "Only HR staff or a franchise admin can activate/deactivate staff" }, { status: 403 })
+    }
+
     const { user } = auth
     console.log('[Toggle Status] Auth successful:', user!.id)
     const id = params.id
@@ -83,7 +85,11 @@ export async function POST(
       console.error("Error toggling staff status:", error)
       return NextResponse.json({ error: "Failed to update staff status" }, { status: 500 })
     }
-    
+
+    await logAudit(request, { id: user!.id, email: user!.email, franchise_id: user!.franchise_id }, {
+      module: "hr", action: newStatus ? "employee.activate" : "employee.deactivate", resourceType: "user", resourceId: id,
+    })
+
     return NextResponse.json(
       {
         message: `Staff member ${newStatus ? 'activated' : 'deactivated'} successfully`,

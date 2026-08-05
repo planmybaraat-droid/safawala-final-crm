@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
 import { TravelsBottomNav } from "@/components/portal/travels-bottom-nav"
+import { useAutoRefresh } from "@/lib/hooks/use-auto-refresh"
 
 const COLOR = "#0891b2"
 
@@ -50,6 +51,10 @@ export default function TravelsAssignmentsPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Reflects assignment/status changes made from the Main CRM or another
+  // travel staff member without a manual refresh.
+  useAutoRefresh(load, 15000)
 
   const openSheet = (ev: EventRow) => {
     setSheet({ event: ev, stylistId: ev.travel?.stylist_id ?? ev.assigned_stylist?.id ?? "", status: ev.travel?.status ?? "pending" })

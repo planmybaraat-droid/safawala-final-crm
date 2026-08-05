@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { PortalPageHeader, PortalSearchBar, PortalSectionLabel, PortalEmptyState, PortalSkeleton } from "@/components/portal/portal-shared"
 import { PortalIcon } from "@/components/portal/portal-icons"
 
@@ -27,6 +28,7 @@ const DOC_TYPES = [
 interface KycDoc { key: string; status: "pending" | "uploaded" | "verified" | "rejected"; url?: string; note?: string }
 
 export default function KycPage() {
+  const router = useRouter()
   const [staff, setStaff] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -122,7 +124,7 @@ export default function KycPage() {
   }
 
   return (
-    <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", paddingBottom: 40 }}>
+    <div className="hr-payroll-ui" style={{ fontFamily: "'Inter','Segoe UI',sans-serif", paddingBottom: 40, background: "#f7f6ff", minHeight: "100%" }}>
       {toast && (
         <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", background: COLOR_DARK, color: "white", borderRadius: 12, padding: "8px 20px", fontSize: 12, fontWeight: 700, zIndex: 200, whiteSpace: "nowrap" }}>
           {toast}
@@ -132,15 +134,14 @@ export default function KycPage() {
       {/* Staff detail view */}
       {selected ? (
         <div>
-          <PortalPageHeader title={`KYC — ${selected.name}`} subtitle={selected.department?.toUpperCase()} color={COLOR} backHref="#" />
-          <button onClick={() => setSelected(null)} style={{ margin: "0 16px 12px", display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.9)", borderRadius: 12, padding: "8px 14px", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-            ← Back to Staff
-          </button>
-
+          <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "20px 24px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
+            <button onClick={() => setSelected(null)} aria-label="Back to employees" style={{ width: 40, height: 40, borderRadius: 6, border: "1px solid #d9dfea", background: "#fff", color: "#334155", fontSize: 24, cursor: "pointer", boxShadow: "0 1px 2px rgba(15,23,42,.06)" }}>←</button>
+            <div><h1 style={{ margin: 0, color: "#172033", fontSize: 28, fontWeight: 700 }}>Employee KYC</h1><p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 14 }}>{selected.name} · {selected.department?.toUpperCase() || "STAFF"}</p></div>
+          </div>
           {kycLoading ? (
             <div style={{ padding: "0 16px" }}><div style={{ background: "rgba(255,255,255,0.65)", borderRadius: 16, padding: 16 }}><PortalSkeleton rows={6} /></div></div>
           ) : (
-            <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ padding: "0 24px", display: "flex", flexDirection: "column", gap: 10 }}>
               {DOC_TYPES.map(doc => {
                 const d = kyc.find(k => k.key === doc.key) ?? { key: doc.key, status: "pending" as const }
                 const ss = STATUS_STYLES[d.status]
@@ -191,10 +192,15 @@ export default function KycPage() {
         </div>
       ) : (
         <div>
-          <PortalPageHeader title="Employee KYC" subtitle="Manage staff documents" color={COLOR} backHref="/portal/hr" />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "20px 24px", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <button onClick={() => router.push("/hr")} aria-label="Back to HR & Staff" style={{ width: 40, height: 40, borderRadius: 6, border: "1px solid #d9dfea", background: "#fff", color: "#334155", fontSize: 24, cursor: "pointer", boxShadow: "0 1px 2px rgba(15,23,42,.06)" }}>←</button>
+              <div><h1 style={{ margin: 0, color: "#172033", fontSize: 28, fontWeight: 700 }}>Employee KYC</h1><p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 14 }}>Manage staff documents, identity proofs, and verification</p></div>
+            </div>
+          </div>
           <PortalSearchBar value={search} onChange={setSearch} placeholder="Search staff name or department…" />
 
-          <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ padding: "0 24px", display: "flex", flexDirection: "column", gap: 8 }}>
             {loading ? (
               <div style={{ background: "rgba(255,255,255,0.65)", borderRadius: 16, padding: 16 }}><PortalSkeleton rows={6} /></div>
             ) : filtered.length === 0 ? (
@@ -206,13 +212,13 @@ export default function KycPage() {
                 const deptColor = DEPT_COLORS[s.department] ?? COLOR
                 return (
                   <div key={s.id} onClick={() => openStaff(s)}
-                    style={{ background: "white", border: "1px solid rgba(255,255,255,0.9)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: `${deptColor}20`, display: "flex", alignItems: "center", justifyContent: "center", color: deptColor, fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                    style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: "0 1px 2px rgba(15,23,42,.04)" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: `${deptColor}18`, display: "flex", alignItems: "center", justifyContent: "center", color: deptColor, fontSize: 14, fontWeight: 800, flexShrink: 0 }}>
                       {(s.name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#1e1208" }}>{s.name}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(80,55,30,0.45)", fontWeight: 600, textTransform: "uppercase" }}>{s.department ?? "—"}</p>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#172033" }}>{s.name}</p>
+                      <p style={{ margin: "3px 0 0", fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase" }}>{s.department ?? "—"}</p>
                     </div>
                     <span style={{ color: "rgba(80,55,30,0.25)" }}><PortalIcon name="chevron-right" size={16} /></span>
                   </div>

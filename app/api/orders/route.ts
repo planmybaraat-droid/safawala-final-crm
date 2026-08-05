@@ -41,6 +41,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Create the warehouse work order (Pick & Pack) for real, confirmed bookings —
+    // quotes don't need picking yet. Failure here shouldn't fail the booking itself.
+    const CONFIRMED_STATUSES = ["confirmed", "picked_up", "delivered", "in_progress"]
+    if (!order.is_quote && CONFIRMED_STATUSES.includes(order.status)) {
+      try {
+        const { error: woError } = await supabase.rpc("create_work_order_for_booking", {
+          p_booking_id: order.id,
+          p_booking_source: "product_orders",
+          p_franchise_id: order.franchise_id,
+          p_order_number: order.order_number,
+          p_is_rental: order.booking_type === "rental",
+          p_items: (items || []).map((item: any) => ({ product_name: item.product_name, quantity: item.quantity })),
+        })
+        if (woError) console.error("[Orders API] Work order creation failed (non-fatal):", woError)
+      } catch (woErr) {
+        console.error("[Orders API] Work order creation threw (non-fatal):", woErr)
+      }
+    }
+
     // Insert lost/damaged items
     if (lostDamagedItems && lostDamagedItems.length > 0) {
       const ldData = lostDamagedItems.map((ld: any) => ({ ...ld, order_id: order.id }))
@@ -177,6 +196,31 @@ export async function PUT(req: NextRequest) {
       if (lostDamagedItems.length > 0) {
         const ldData = lostDamagedItems.map((ld: any) => ({ ...ld, order_id: orderId }))
         await supabase.from("order_lost_damaged_items").insert(ldData)
+      }
+    }
+
+    // A quote being converted/confirmed here also needs a work order — the
+    // RPC is idempotent (no-ops if one already exists for this booking).
+    const CONFIRMED_STATUSES = ["confirmed", "picked_up", "delivered", "in_progress"]
+    const { data: finalOrder } = await supabase
+      .from("product_orders")
+      .select("id, order_number, franchise_id, booking_type, status, is_quote")
+      .eq("id", orderId)
+      .single()
+
+    if (finalOrder && !finalOrder.is_quote && CONFIRMED_STATUSES.includes(finalOrder.status)) {
+      try {
+        const { error: woError } = await supabase.rpc("create_work_order_for_booking", {
+          p_booking_id: finalOrder.id,
+          p_booking_source: "product_orders",
+          p_franchise_id: finalOrder.franchise_id,
+          p_order_number: finalOrder.order_number,
+          p_is_rental: finalOrder.booking_type === "rental",
+          p_items: (items || []).map((item: any) => ({ product_name: item.product_name, quantity: item.quantity })),
+        })
+        if (woError) console.error("[Orders API] Work order creation failed (non-fatal):", woError)
+      } catch (woErr) {
+        console.error("[Orders API] Work order creation threw (non-fatal):", woErr)
       }
     }
 

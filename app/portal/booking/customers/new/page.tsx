@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 export default function NewCustomerPortalPage() {
   const router = useRouter()
@@ -49,7 +49,7 @@ export default function NewCustomerPortalPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#f0fdf4 0%,#dcfce7 100%)", fontFamily: "'Inter','Segoe UI',sans-serif", paddingBottom: 40 }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#F1EAF5 0%,#F1EAF5 100%)", fontFamily: "var(--font-inter), Inter, sans-serif", paddingBottom: 40 }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg,${COLOR_DARK},${COLOR})`, padding: "20px 16px 24px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -30, right: -30, width: 130, height: 130, borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />

@@ -11,10 +11,14 @@ export async function POST(request: NextRequest) {
   try {
     console.log("[v0] Setting up WATI integration...")
 
+    const apiKey = process.env.WATI_API_KEY
+    if (!apiKey) {
+      return Response.json({ error: "WATI_API_KEY is not configured" }, { status: 503 })
+    }
+
     const watiConfig = {
       integration_name: "whatsapp-wati",
-      api_key:
-        "REDACTED_JWT",
+      api_key: apiKey,
       base_url: "https://live-mt-server.wati.io/481455",
       instance_id: "481455",
       test_phone: "919725295692",

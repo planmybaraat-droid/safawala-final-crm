@@ -4,6 +4,9 @@ import { v4 as uuidv4 } from "uuid"
 import { uploadToR2 } from "@/lib/r2-storage"
 import { requireAuth } from "@/lib/auth-middleware"
 
+const IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"])
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"])
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request, 'staff')
@@ -39,11 +42,14 @@ export async function POST(request: NextRequest) {
       "application/pdf"
     ]
 
-    if (!allowedTypes.includes(file.type)) {
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? ""
+    const isPdf = file.type === "application/pdf" || extension === "pdf"
+    const isImage = IMAGE_TYPES.has(file.type) || IMAGE_EXTENSIONS.has(extension)
+    if (!isPdf && !isImage) {
       return NextResponse.json({ error: `File type not allowed: ${file.type}` }, { status: 400 })
     }
 
-    const allowedFolders = new Set(["uploads", "products", "company", "hr", "kyc", "vendors", "documents", "logos"])
+    const allowedFolders = new Set(["uploads", "products", "company", "hr", "kyc", "vendors", "documents", "logos", "travel-documents"])
     const normalizedFolder = folder?.trim() || "uploads"
     if (normalizedFolder.includes("..") || normalizedFolder.includes("\\") || normalizedFolder.startsWith("/")) {
       return NextResponse.json({ error: "Invalid folder path" }, { status: 400 })
@@ -53,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique filename
-    const fileExtension = file.name.split('.').pop()
+    const fileExtension = extension || (isPdf ? "pdf" : "bin")
     const fileName = `${uuidv4()}.${fileExtension}`
     const filePath = `${normalizedFolder}/${fileName}`
 
@@ -61,13 +67,26 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
 
-    // Upload file to Cloudflare R2
-    const { publicUrl, key } = await uploadToR2(
-      Buffer.from(buffer), 
-      fileName, 
-      file.type, 
-      normalizedFolder
-    )
+    const contentType = file.type || (isPdf ? "application/pdf" : `image/${extension === "jpg" ? "jpeg" : extension}`)
+    let publicUrl: string
+    let key: string
+    if (process.env.CLOUDFLARE_R2_BUCKET_NAME) {
+      const uploaded = await uploadToR2(Buffer.from(buffer), fileName, contentType, normalizedFolder)
+      publicUrl = uploaded.publicUrl
+      key = uploaded.key
+    } else {
+      // Production currently has Supabase configured but no R2 credentials.
+      // Use the existing public `uploads` bucket as the safe fallback.
+      const bucket = process.env.NEXT_PUBLIC_STORAGE_BUCKET || "uploads"
+      key = `${normalizedFolder}/${fileName}`
+      const { error: storageError } = await supabase.storage.from(bucket).upload(key, Buffer.from(buffer), {
+        contentType,
+        cacheControl: "3600",
+        upsert: false,
+      })
+      if (storageError) throw new Error(`Storage upload failed: ${storageError.message}`)
+      publicUrl = supabase.storage.from(bucket).getPublicUrl(key).data.publicUrl
+    }
 
     console.log('[Upload API] Upload successful:', publicUrl)
 
@@ -77,7 +96,7 @@ export async function POST(request: NextRequest) {
       filePath: key,
       url: publicUrl,
       size: file.size,
-      type: file.type
+      type: contentType
     })
   } catch (error) {
     console.error('[Upload API] Error:', error)

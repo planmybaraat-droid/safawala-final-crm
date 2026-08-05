@@ -1,7 +1,8 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
 import { TravelsBottomNav } from "@/components/portal/travels-bottom-nav"
+import { useAutoRefresh } from "@/lib/hooks/use-auto-refresh"
 
 const COLOR = "#0891b2"
 
@@ -25,7 +26,8 @@ export default function TravelsStylistsPage() {
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
     Promise.all([
       fetch("/api/travel-bookings").then(r => r.json()).catch(() => ({ data: [] })),
       fetch("/api/users?role=stylist&limit=100").then(r => r.json()).catch(() => ({ data: [] })),
@@ -49,9 +51,15 @@ export default function TravelsStylistsPage() {
 
       setGroups(Object.values(map).sort((a, b) => b.events.length - a.events.length))
       setUnassigned(none)
-      setLoading(false)
+      if (!silent) setLoading(false)
     })
   }, [])
+
+  useEffect(() => { load() }, [load])
+
+  // Reflects assignment/status changes made from the Main CRM or another
+  // travel staff member without a manual refresh.
+  useAutoRefresh(() => load(true), 15000)
 
   if (loading) {
     return (

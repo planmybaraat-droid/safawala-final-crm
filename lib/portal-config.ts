@@ -13,6 +13,8 @@ export interface PortalTab {
   icon: string
   label: string
   href: string
+  /** Optional server-enforced RBAC permission used for navigation visibility. */
+  permission?: string
 }
 
 export interface PortalConfig {
@@ -68,12 +70,12 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     icon: "box",
     color: "#a855f7",
     gradient: "from-purple-500 to-purple-600",
-    allowedRoles: ["super_admin", "franchise_admin", "staff", "warehouse_staff"],
+    allowedRoles: ["super_admin", "franchise_admin", "warehouse_staff"],
     tabs: [
-      { icon: "home", label: "Home", href: "/portal/warehouse" },
-      { icon: "clipboard", label: "Pick & Pack", href: "/portal/warehouse/tasks" },
-      { icon: "package", label: "Stock", href: "/portal/warehouse/inventory" },
-      { icon: "laundry", label: "Laundry", href: "/portal/warehouse/laundry" },
+      { icon: "home", label: "Home", href: "/portal/warehouse", permission: "warehouse.view" },
+      { icon: "clipboard", label: "Pick & Pack", href: "/portal/warehouse/tasks", permission: "warehouse.view" },
+      { icon: "package", label: "Stock", href: "/portal/warehouse/inventory", permission: "warehouse.update" },
+      { icon: "laundry", label: "Laundry", href: "/portal/warehouse/laundry", permission: "warehouse.view" },
       { icon: "user", label: "Me", href: "/portal/warehouse/profile" },
     ],
   },
@@ -87,10 +89,10 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     gradient: "from-yellow-500 to-yellow-600",
     allowedRoles: ["super_admin", "franchise_admin", "staff", "qc_staff"],
     tabs: [
-      { icon: "home", label: "Home", href: "/portal/qc" },
-      { icon: "search", label: "Inspect", href: "/portal/qc/inspect" },
-      { icon: "alert-triangle", label: "Damage", href: "/portal/qc/damage" },
-      { icon: "clipboard", label: "Orders", href: "/portal/qc/work-orders" },
+      { icon: "home", label: "Home", href: "/portal/qc", permission: "qc.view" },
+      { icon: "search", label: "Inspect", href: "/portal/qc/inspect", permission: "qc.view" },
+      { icon: "alert-triangle", label: "Damage", href: "/portal/qc/damage", permission: "qc.update" },
+      { icon: "clipboard", label: "Orders", href: "/portal/qc/work-orders", permission: "qc.view" },
       { icon: "user", label: "Me", href: "/portal/qc/profile" },
     ],
   },
@@ -102,12 +104,12 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     icon: "truck",
     color: "#14b8a6",
     gradient: "from-teal-500 to-teal-600",
-    allowedRoles: ["super_admin", "franchise_admin", "staff", "delivery_staff"],
+    allowedRoles: ["super_admin", "franchise_admin", "delivery_staff"],
     tabs: [
-      { icon: "home", label: "Home", href: "/portal/delivery" },
-      { icon: "truck", label: "Dispatch", href: "/portal/delivery/deliveries" },
-      { icon: "refresh", label: "Returns", href: "/portal/delivery/returns" },
-      { icon: "map-pin", label: "Track", href: "/portal/delivery/routes" },
+      { icon: "home", label: "Home", href: "/portal/delivery", permission: "delivery.view" },
+      { icon: "truck", label: "Dispatch", href: "/portal/delivery/deliveries", permission: "delivery.view" },
+      { icon: "refresh", label: "Returns", href: "/portal/delivery/returns", permission: "delivery.view" },
+      { icon: "map-pin", label: "Track", href: "/portal/delivery/routes", permission: "delivery.view" },
       { icon: "user", label: "Me", href: "/portal/delivery/profile" },
     ],
   },

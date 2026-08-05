@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import '@/styles/select-overrides.css'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -36,7 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Plus, Search, MoreHorizontal, Edit, Trash2, UserCheck, UserX, Mail, Phone, Eye, EyeOff, Shield, Settings } from 'lucide-react'
+import { ArrowLeft, Users, Plus, Search, MoreHorizontal, Edit, Trash2, UserCheck, UserX, Mail, Phone, Eye, EyeOff, Shield, Settings } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -195,7 +196,9 @@ const permissionCategories = {
 }
 
 // Permission labels
-const permissionLabels: Record<keyof UserPermissions, string> = {
+// Keep this map open-ended so newly introduced granular permissions (for
+// example warehouse.view/update) do not break the staff permissions screen.
+const permissionLabels: Record<string, string> = {
   dashboard: 'Dashboard',
   bookings: 'Bookings',
   customers: 'Customers',
@@ -758,17 +761,24 @@ export default function StaffPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="hr-payroll-ui space-y-8 rounded-2xl bg-[#F7F6FF] p-1">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
-            <p className="text-muted-foreground">Manage your team members, roles, and permissions</p>
+        <div className="flex items-center justify-between border-b border-[#E7E2EA] pb-6">
+          <div className="flex items-start gap-3">
+            <Button asChild variant="outline" size="icon" className="mt-1 h-10 w-10 shrink-0 rounded-md border-[#D8D2E2] bg-white text-[#334155] shadow-sm hover:bg-[#F1EAF5]" aria-label="Back to HR & Staff">
+              <Link href="/hr">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div>
+            <h1 className="text-3xl font-bold tracking-tight text-[#1F1B24]">Staff Management</h1>
+            <p className="mt-1 text-base text-[#64748B]">Manage your team members, roles, and permissions</p>
+            </div>
           </div>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button className="h-12 rounded-xl bg-[#4A1F5E] px-6 text-base font-semibold text-white shadow-sm hover:bg-[#5C2A72]">
+                <Plus className="mr-2 h-5 w-5" />
                 Add Staff Member
               </Button>
             </DialogTrigger>
@@ -977,68 +987,74 @@ export default function StaffPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-          <Card>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="rounded-2xl border-[#E0D9E8] bg-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Staff</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-lg font-semibold text-[#1F1B24]">Total Staff</CardTitle>
+              <Users className="h-6 w-6 text-[#64748B]" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalUsersCount}</div>
-            </CardContent>
+              <CardContent>
+                <div className="text-3xl font-bold text-[#1F1B24]">{totalUsersCount}</div>
+                <p className="mt-2 text-sm text-[#94A3B8]">All registered staff</p>
+              </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl border-[#E0D9E8] bg-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active</CardTitle>
-              <UserCheck className="h-4 w-4 text-green-600" />
+              <CardTitle className="text-lg font-semibold text-[#1F1B24]">Active</CardTitle>
+              <UserCheck className="h-6 w-6 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
-            </CardContent>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">{activeUsers}</div>
+                <p className="mt-2 text-sm text-[#94A3B8]">Currently active</p>
+              </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl border-[#E0D9E8] bg-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Super Admins</CardTitle>
-              <Badge variant="destructive" className="h-4 w-4 p-0"></Badge>
+              <CardTitle className="text-lg font-semibold text-[#1F1B24]">Super Admins</CardTitle>
+              <span className="h-6 w-6 rounded-full bg-[#FFE0E3]" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{superAdminUsers}</div>
-            </CardContent>
+              <CardContent>
+                <div className="text-3xl font-bold text-[#1F1B24]">{superAdminUsers}</div>
+                <p className="mt-2 text-sm text-[#94A3B8]">Full system access</p>
+              </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl border-[#E0D9E8] bg-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Franchise Admins</CardTitle>
-              <Badge variant="default" className="h-4 w-4 p-0"></Badge>
+              <CardTitle className="text-lg font-semibold text-[#1F1B24]">Franchise Admins</CardTitle>
+              <span className="h-6 w-6 rounded-full bg-[#5146E5]" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{franchiseAdminUsers}</div>
-            </CardContent>
+              <CardContent>
+                <div className="text-3xl font-bold text-[#1F1B24]">{franchiseAdminUsers}</div>
+                <p className="mt-2 text-sm text-[#94A3B8]">Branch administrators</p>
+              </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl border-[#E0D9E8] bg-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Staff</CardTitle>
-              <Badge variant="secondary" className="h-4 w-4 p-0"></Badge>
+              <CardTitle className="text-lg font-semibold text-[#1F1B24]">Staff</CardTitle>
+              <span className="h-6 w-6 rounded-full bg-[#F1F5F9]" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{staffUsers}</div>
-            </CardContent>
+              <CardContent>
+                <div className="text-3xl font-bold text-[#1F1B24]">{staffUsers}</div>
+                <p className="mt-2 text-sm text-[#94A3B8]">Standard staff access</p>
+              </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl border-[#E0D9E8] bg-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Read Only</CardTitle>
-              <Badge variant="outline" className="h-4 w-4 p-0"></Badge>
+              <CardTitle className="text-lg font-semibold text-[#1F1B24]">Read Only</CardTitle>
+              <span className="h-6 w-6 rounded-full border-2 border-[#D8E0EA] bg-white" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{readonlyUsers}</div>
-            </CardContent>
+              <CardContent>
+                <div className="text-3xl font-bold text-[#1F1B24]">{readonlyUsers}</div>
+                <p className="mt-2 text-sm text-[#94A3B8]">View-only access</p>
+              </CardContent>
           </Card>
         </div>
 
         {/* Filters */}
-        <Card>
+        <Card className="rounded-2xl border-[#E0D9E8] bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Staff Members</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-bold text-[#1F1B24]">Staff Members</CardTitle>
+            <CardDescription className="text-base text-[#64748B]">
               Manage your team members, their roles, and access permissions
             </CardDescription>
           </CardHeader>
@@ -1051,12 +1067,12 @@ export default function StaffPage() {
                     placeholder="Search by name or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="h-14 rounded-xl border-[#D8E0EA] bg-white pl-10 text-base shadow-none focus-visible:ring-[#4A1F5E]"
                   />
                 </div>
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full sm:w-48">
+                <SelectTrigger className="h-14 w-full rounded-xl border-[#D8E0EA] bg-white text-base sm:w-56">
                   <SelectValue placeholder="Filter by role" />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg max-h-60 overflow-y-auto">

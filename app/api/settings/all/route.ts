@@ -4,7 +4,9 @@ import { authenticateRequest, AuthMiddleware } from "@/lib/auth-middleware"
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authenticateRequest(request, { minRole: "readonly" })
+    // Consolidated settings are admin-only; frontend menu hiding is not a
+    // security boundary, so enforce the role on the API as well.
+    const auth = await authenticateRequest(request, { minRole: "franchise_admin", requirePermission: "settings" })
     if (!auth.authorized) {
       return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
     }

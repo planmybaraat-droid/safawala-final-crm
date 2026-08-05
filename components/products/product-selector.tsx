@@ -72,6 +72,12 @@ interface ProductSelectorProps {
   onItemRemove?: (product_id: string) => void
   onCheckAvailability?: (productId: string, productName: string) => void
   onOpenCustomProductDialog?: () => void
+  /** Restrict Barati Safa's visible package choices in the booking flow. */
+  limitBaratiSafaPackages?: boolean
+  /** Hide the broad all-items filter buttons when a focused catalogue is required. */
+  hideAllCategoryOptions?: boolean
+  hideAllSubcategoryOptions?: boolean
+  defaultCategoryName?: string
   className?: string
 }
 
@@ -87,6 +93,10 @@ export function ProductSelector({
   onItemRemove,
   onCheckAvailability,
   onOpenCustomProductDialog,
+  limitBaratiSafaPackages = false,
+  hideAllCategoryOptions = false,
+  hideAllSubcategoryOptions = false,
+  defaultCategoryName,
   className = "",
 }: ProductSelectorProps) {
   const [productSearch, setProductSearch] = useState("")
@@ -106,6 +116,16 @@ export function ProductSelector({
   const [showCameraScanner, setShowCameraScanner] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const html5QrCodeRef = useRef<any>(null)
+
+  // Categories are loaded asynchronously by the parent. Once available,
+  // select the requested category so the booking flow opens on the right list.
+  useEffect(() => {
+    if (!defaultCategoryName || selectedCategory) return
+    const defaultCategory = categories.find(
+      (category) => category.name.trim().toUpperCase() === defaultCategoryName.trim().toUpperCase()
+    )
+    if (defaultCategory) setSelectedCategory(defaultCategory.id)
+  }, [categories, defaultCategoryName, selectedCategory])
 
   // Barcode scan handler - auto add to cart
   const handleBarcodeScan = async (code: string) => {
@@ -266,6 +286,27 @@ export function ProductSelector({
     return map
   }, [categories])
 
+  const selectedCategoryName = selectedCategory
+    ? categories.find((category) => category.id === selectedCategory)?.name.trim().toUpperCase()
+    : undefined
+  const baratiSafaSubcategories = useMemo(() => {
+    const baratiCategory = categories.find((category) => category.name.trim().toUpperCase() === "BARATI SAFA")
+    if (!baratiCategory) return []
+    return subcategories
+      .filter((subcategory) => subcategory.parent_id === baratiCategory.id)
+      .sort((a, b) => {
+        const packageNumber = (name: string) => Number(name.match(/package\s*(\d+)/i)?.[1] || 999)
+        return packageNumber(a.name) - packageNumber(b.name)
+      })
+      .filter((subcategory) => /^package\s*[1-3]$/i.test(subcategory.name.trim()))
+  }, [categories, subcategories])
+
+  const visibleSubcategories = useMemo(() => {
+    const all = subcategories.filter((subcategory) => subcategory.parent_id === selectedCategory)
+    if (!limitBaratiSafaPackages || selectedCategoryName !== "BARATI SAFA") return all
+    return all.filter((subcategory) => baratiSafaSubcategories.some((visible) => visible.id === subcategory.id))
+  }, [subcategories, selectedCategory, selectedCategoryName, limitBaratiSafaPackages, baratiSafaSubcategories])
+
   // Filter products based on search and categories
   const filteredProducts = useMemo(() => {
     let result = products
@@ -280,6 +321,13 @@ export function ProductSelector({
     // Filter by category
     if (selectedCategory) {
       result = result.filter((p) => p.category_id === selectedCategory)
+    }
+
+    // In the booking flow, Barati Safa only exposes Package 1–3. This also
+    // prevents products from hidden packages appearing under “All Subcategories”.
+    if (limitBaratiSafaPackages && selectedCategoryName === "BARATI SAFA") {
+      const allowedIds = new Set(baratiSafaSubcategories.map((subcategory) => subcategory.id))
+      result = result.filter((p) => p.subcategory_id && allowedIds.has(p.subcategory_id))
     }
 
     // Filter by subcategory
@@ -312,7 +360,7 @@ export function ProductSelector({
     })
 
     return result
-  }, [products, productSearch, selectedCategory, selectedSubcategory, selectedItems, categoryTypeById, bookingType])
+  }, [products, productSearch, selectedCategory, selectedSubcategory, selectedItems, categoryTypeById, bookingType, limitBaratiSafaPackages, selectedCategoryName, baratiSafaSubcategories])
 
   // Calculate reserved quantities
   const getReservedQuantity = (productId: string): number => {
@@ -453,17 +501,19 @@ export function ProductSelector({
         {/* Category Filter Buttons */}
         {categories.filter((cat) => !cat.type || cat.type === "both" || cat.type === bookingType).length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            <Button
-              size="sm"
-              variant={selectedCategory === null ? "default" : "outline"}
-              onClick={() => {
-                setSelectedCategory(null)
-                setSelectedSubcategory(null)
-              }}
-              className="h-7 px-3 text-xs font-normal"
-            >
-              All Categories
-            </Button>
+            {!hideAllCategoryOptions && (
+              <Button
+                size="sm"
+                variant={selectedCategory === null ? "default" : "outline"}
+                onClick={() => {
+                  setSelectedCategory(null)
+                  setSelectedSubcategory(null)
+                }}
+                className="h-7 px-3 text-xs font-normal"
+              >
+                All Categories
+              </Button>
+            )}
             {categories.filter((cat) => !cat.type || cat.type === "both" || cat.type === bookingType).map((cat) => (
               <Button
                 key={cat.id}
@@ -482,20 +532,19 @@ export function ProductSelector({
         )}
 
         {/* Subcategory Filter Buttons - Show only when category is selected */}
-        {selectedCategory &&
-          subcategories.filter((sc) => sc.parent_id === selectedCategory).length > 0 && (
+        {selectedCategory && visibleSubcategories.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              <Button
-                size="sm"
-                variant={selectedSubcategory === null ? "default" : "outline"}
-                onClick={() => setSelectedSubcategory(null)}
-                className="h-7 px-3 text-xs font-normal"
-              >
-                All Subcategories
-              </Button>
-              {subcategories
-                .filter((sc) => sc.parent_id === selectedCategory)
-                .map((subcat) => (
+              {!hideAllSubcategoryOptions && (
+                <Button
+                  size="sm"
+                  variant={selectedSubcategory === null ? "default" : "outline"}
+                  onClick={() => setSelectedSubcategory(null)}
+                  className="h-7 px-3 text-xs font-normal"
+                >
+                  All Subcategories
+                </Button>
+              )}
+              {visibleSubcategories.map((subcat) => (
                   <Button
                     key={subcat.id}
                     size="sm"

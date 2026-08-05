@@ -3,7 +3,7 @@
 # dependencies
 /node_modules
 
-# macOS
+# macOS metadata
 .DS_Store
 
 # next.js
@@ -37,3 +37,5 @@ next-env.d.ts
 
 # puppeteer profile
 .puppeteer-chrome-profile/
+# local package store
+.pnpm-store/

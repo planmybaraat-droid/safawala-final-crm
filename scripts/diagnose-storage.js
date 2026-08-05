@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js')
 
 // Use environment variables directly
 const supabaseUrl = 'https://xplnyaxkusvuajtmorss.supabase.co'
-const supabaseServiceKey = 'REDACTED_JWT'
+const supabaseServiceKey = ''
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -75,7 +75,7 @@ async function diagnosePoliciesIssue() {
     // Test with anon key (what the frontend uses)
     console.log('\n3. Testing with anonymous key (frontend simulation)...')
     
-    const anonSupabase = createClient(supabaseUrl, 'REDACTED_JWT')
+    const anonSupabase = createClient(supabaseUrl, '')
     
     const { data: anonBuckets, error: anonError } = await anonSupabase.storage.listBuckets()
     

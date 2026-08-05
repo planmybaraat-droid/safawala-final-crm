@@ -1795,8 +1795,9 @@ export class WATITemplateManager {
 
   constructor() {
     this.baseUrl = "https://live-mt-server.wati.io/481455"
-    this.accessToken =
-      "Bearer REDACTED_JWT"
+    this.accessToken = process.env.WATI_API_KEY
+      ? `Bearer ${process.env.WATI_API_KEY}`
+      : ""
   }
 
   generateSubmissionFormat(templateName: string): string {

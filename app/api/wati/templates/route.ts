@@ -7,11 +7,15 @@ export async function GET(request: NextRequest) {
     return Response.json(auth.error, { status: auth.statusCode })
   }
   try {
+    const apiKey = process.env.WATI_API_KEY
+    if (!apiKey) {
+      return Response.json({ error: "WATI_API_KEY is not configured" }, { status: 503 })
+    }
+
     const response = await fetch("https://live-mt-server.wati.io/481455/api/v1/getMessageTemplates", {
       method: "GET",
       headers: {
-        Authorization:
-          "Bearer REDACTED_JWT",
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
     })

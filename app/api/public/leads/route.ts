@@ -7,7 +7,7 @@ const ADMIN_PASSWORD = process.env.PACKAGES_ADMIN_PASSWORD || null
 
 function checkPassword(req: NextRequest): boolean {
   if (!ADMIN_PASSWORD) return false
-  const pw = req.headers.get("x-admin-password") || new URL(req.url).searchParams.get("pw")
+  const pw = req.headers.get("x-admin-password")
   return pw === ADMIN_PASSWORD
 }
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 // POST — submit a new lead (public, no password)
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { name, phone, event_date, message, source, link_label, price_link_id } = body
+  const { name, phone, event_date, message, source } = body
 
   if (!name?.trim() || !phone?.trim()) {
     return NextResponse.json({ error: "Name and phone required" }, { status: 400 })
@@ -49,8 +49,6 @@ export async function POST(request: NextRequest) {
       event_date: event_date || null,
       message: message || null,
       source: source || "package_link",
-      link_label: link_label || null,
-      price_link_id: price_link_id || null,
       status: "new",
     })
     .select()
@@ -75,6 +73,10 @@ export async function PATCH(request: NextRequest) {
 
   if (!id || !status) {
     return NextResponse.json({ error: "id and status required" }, { status: 400 })
+  }
+
+  if (!["new", "contacted", "interested", "converted", "lost"].includes(status)) {
+    return NextResponse.json({ error: "Invalid lead status" }, { status: 400 })
   }
 
   const supabase = createClient()

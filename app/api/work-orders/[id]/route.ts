@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth-middleware"
+import { getRbacContext, requireRbacPermission, writeAuditLog } from "@/lib/rbac"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -125,14 +126,29 @@ export async function PATCH(
       return NextResponse.json(authResult.response, { status: 401 })
     }
     const user = authResult.authContext!.user
+    const rbacContext = await getRbacContext(request)
+    const isQc = rbacContext?.user.department === "qc" || rbacContext?.user.role === "qc_staff"
+    if (isQc) {
+      const rbacDenied = await requireRbacPermission(request, "qc.update")
+      if ("response" in rbacDenied) return rbacDenied.response
+    }
     const franchiseId = user.franchise_id
     const isSuperAdmin = user.role === 'super_admin'
 
     const body = await request.json()
-    const allowedFields = ['notes', 'status', 'priority', 'due_date']
+    const allowedFields = isQc ? ['qc_status', 'qc_notes'] : ['notes', 'status', 'priority', 'due_date']
     const updates: Record<string, any> = {}
     for (const key of allowedFields) {
       if (key in body) updates[key] = body[key]
+    }
+    if (isQc) {
+      if (updates.qc_status && !['pending', 'pass', 'fail'].includes(updates.qc_status)) {
+        return NextResponse.json({ error: "Invalid QC decision" }, { status: 400 })
+      }
+      if (updates.qc_status && updates.qc_status !== "pending") {
+        updates.qc_checked_by = user.id
+        updates.qc_checked_at = new Date().toISOString()
+      }
     }
 
     if (Object.keys(updates).length === 0) {
@@ -150,6 +166,16 @@ export async function PATCH(
 
     const { data, error } = await supabase.from("work_orders").update(updates).eq("id", id).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    if (isQc && rbacContext) {
+      await writeAuditLog(request, rbacContext, {
+        module: "qc",
+        action: "status_change",
+        resourceType: "work_order",
+        resourceId: id,
+        metadata: { qc_status: updates.qc_status },
+      })
+    }
 
     return NextResponse.json({ success: true, data })
   } catch (error: any) {

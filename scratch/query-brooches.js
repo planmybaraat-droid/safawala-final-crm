@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = 'https://xplnyaxkusvuajtmorss.supabase.co';
-const supabaseServiceKey = 'REDACTED_JWT';
+const supabaseServiceKey = '';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

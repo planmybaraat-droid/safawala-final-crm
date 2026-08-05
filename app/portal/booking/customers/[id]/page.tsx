@@ -2,21 +2,22 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { toast } from "sonner"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 function fmt(n: number) { return `₹${(n ?? 0).toLocaleString("en-IN")}` }
 function fmtDate(d: string | null) { return d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—" }
 function waLink(p: string) { const c = (p||"").replace(/\D/g,""); return c.length===10?`https://wa.me/91${c}`:`https://wa.me/${c}` }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  confirmed:      { bg:"#dcfce7", text:"#15803d" },
+  confirmed:      { bg:"#F1EAF5", text:"#15803d" },
   pending:        { bg:"#fef9c3", text:"#a16207" },
   pending_payment:{ bg:"#fef9c3", text:"#a16207" },
   delivered:      { bg:"#dbeafe", text:"#1d4ed8" },
   returned:       { bg:"#f3e8ff", text:"#6d28d9" },
-  order_complete: { bg:"#dcfce7", text:"#15803d" },
+  order_complete: { bg:"#F1EAF5", text:"#15803d" },
   cancelled:      { bg:"#fee2e2", text:"#b91c1c" },
 }
 function StatusBadge({ status }: { status: string }) {
@@ -35,9 +36,6 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [tab, setTab] = useState<Tab>("overview")
-  const [toast, setToast] = useState("")
-
-  function showToast(msg: string) { setToast(msg); setTimeout(()=>setToast(""),2500) }
 
   const loadAll = useCallback(async () => {
     if (!id) return
@@ -73,11 +71,11 @@ export default function CustomerDetailPage() {
   useEffect(() => { loadAll() }, [loadAll])
 
   async function copyPhone() {
-    try { await navigator.clipboard.writeText(customer.phone); showToast("Phone copied ✓") } catch {}
+    try { await navigator.clipboard.writeText(customer.phone); toast.success("Phone copied") } catch { toast.error("Could not copy phone") }
   }
 
   if (loading) return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4,#dcfce7)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12, fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5,#F1EAF5)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12, fontFamily:"var(--font-inter), Inter, sans-serif" }}>
       <div style={{ width:40, height:40, borderRadius:"50%", border:`3px solid ${COLOR}30`, borderTopColor:COLOR, animation:"spin 1s linear infinite" }} />
       <p style={{ color:"rgba(80,55,30,0.5)", fontSize:13 }}>Loading customer…</p>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -85,7 +83,7 @@ export default function CustomerDetailPage() {
   )
 
   if (error||!customer) return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4,#dcfce7)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16, padding:20, fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5,#F1EAF5)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16, padding:20, fontFamily:"var(--font-inter), Inter, sans-serif" }}>
       <div style={{ fontSize:48 }}>😔</div>
       <p style={{ fontWeight:700, fontSize:16, color:"#1e1208" }}>{error||"Customer not found"}</p>
       <button onClick={()=>router.push("/portal/booking/customers")} style={{ background:COLOR, color:"white", border:"none", borderRadius:14, padding:"12px 24px", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>← Back</button>
@@ -98,9 +96,7 @@ export default function CustomerDetailPage() {
   const activeBookings = bookings.filter(b=>!["cancelled","order_complete"].includes(b.status))
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#f0fdf4 0%,#dcfce7 100%)", fontFamily:"'Inter','Segoe UI',sans-serif", paddingBottom:100 }}>
-      {toast && <div style={{ position:"fixed", top:60, left:"50%", transform:"translateX(-50%)", background:COLOR, color:"white", borderRadius:12, padding:"8px 20px", fontSize:12, fontWeight:700, zIndex:200 }}>{toast}</div>}
-
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5 0%,#F1EAF5 100%)", fontFamily:"var(--font-inter), Inter, sans-serif", paddingBottom:100 }}>
       {/* Hero */}
       <div style={{ background:`linear-gradient(135deg,${COLOR_DARK},${COLOR})`, padding:"20px 16px 24px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:-30, right:-30, width:150, height:150, borderRadius:"50%", background:"rgba(255,255,255,0.07)" }} />

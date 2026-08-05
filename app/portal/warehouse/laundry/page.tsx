@@ -16,12 +16,34 @@ export default function LaundryPage() {
     setLoading(true)
     setErrorState(null)
     try {
-      const res = await fetch("/api/laundry?limit=50")
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch laundry items")
+      // GET /api/laundry returns batches (batch_number, status, dates) — no
+      // per-item product name. GET /api/laundry/items?batch_id=X returns the
+      // actual items for one batch. The Laundry Queue needs a flat item list
+      // with each item's status/dates inherited from its parent batch.
+      const batchesRes = await fetch("/api/laundry")
+      const batches = await batchesRes.json()
+      if (!batchesRes.ok) {
+        throw new Error((batches as any)?.error || "Failed to fetch laundry batches")
       }
-      setItems(Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []))
+      const batchList = Array.isArray(batches) ? batches : []
+
+      const itemLists = await Promise.all(
+        batchList.map((batch: any) =>
+          fetch(`/api/laundry/items?batch_id=${batch.id}`)
+            .then(r => r.json())
+            .then(list => (Array.isArray(list) ? list : []).map((item: any) => ({
+              id: item.id,
+              product_name: item.product_name,
+              notes: item.notes ?? batch.notes,
+              status: batch.status,
+              sent_at: batch.sent_date,
+              completed_at: batch.actual_return_date,
+            })))
+            .catch(() => [])
+        )
+      )
+
+      setItems(itemLists.flat())
     } catch (err: any) {
       console.error("Failed to fetch laundry:", err)
       setErrorState(err.message || "Failed to fetch laundry items")
@@ -31,7 +53,10 @@ export default function LaundryPage() {
     }
   }
 
-  const pending = items.filter(i => i.status === "pending" || i.status === "in_laundry" || !i.status)
+  // Real batch statuses in use: pending, in_progress, returned, cancelled
+  // (there is no "completed" or "in_laundry" value — the original filters
+  // never matched real data, silently dropping in_progress/cancelled items).
+  const pending = items.filter(i => i.status === "pending" || i.status === "in_progress" || !i.status)
   const done = items.filter(i => i.status === "completed" || i.status === "returned")
 
   return (

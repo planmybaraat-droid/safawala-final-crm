@@ -29,8 +29,19 @@ function fmtDate(d: string | null) { return d ? new Date(d).toLocaleDateString("
 
 const FILTERS = ["all", "pending", "in_transit", "delivered", "return_pending", "return_completed", "cancelled"]
 
+// This is only a presentation guard. Every mutation is still authorized by
+// the server-side delivery.update check in the API route.
+function hasDeliveryUpdatePermission(): boolean {
+  try {
+    const user = JSON.parse(localStorage.getItem("safawala_user") || "null")
+    if (!user) return false
+    if (user.is_super_admin || user.role === "franchise_admin" || user.role === "delivery_staff") return true
+    return user.department === "delivery" && user.permissions?.["delivery.update"] === true
+  } catch { return false }
+}
+
 /* ── Delivery Detail Sheet ── */
-function DeliverySheet({ delivery, onClose, onUpdated }: { delivery: any; onClose: () => void; onUpdated: () => void }) {
+function DeliverySheet({ delivery, onClose, onUpdated, canUpdate }: { delivery: any; onClose: () => void; onUpdated: () => void; canUpdate: boolean }) {
   const [updating, setUpdating] = useState(false)
   const [toast, setToast] = useState("")
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500) }
@@ -101,8 +112,8 @@ function DeliverySheet({ delivery, onClose, onUpdated }: { delivery: any; onClos
             ))}
           </div>
 
-          {/* Status Update */}
-          <div>
+          {/* Status Update (hidden for view-only delivery users) */}
+          {canUpdate && <div>
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "rgba(80,55,30,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>Update Status</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {(["pending", "in_transit", "delivered", "return_completed"] as const).map(s => {
@@ -115,7 +126,7 @@ function DeliverySheet({ delivery, onClose, onUpdated }: { delivery: any; onClos
                 )
               })}
             </div>
-          </div>
+          </div>}
         </div>
       </div>
     </div>
@@ -130,6 +141,7 @@ export default function DeliveriesPortalPage() {
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
   const [selected, setSelected] = useState<any | null>(null)
+  const [canUpdate, setCanUpdate] = useState(false)
   const [tab, setTab] = useState<"deliveries" | "returns">("deliveries")
 
   async function fetchData() {
@@ -157,7 +169,7 @@ export default function DeliveriesPortalPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData(); setCanUpdate(hasDeliveryUpdatePermission()) }, [])
 
   const filtered = useMemo(() =>
     deliveries.filter(d =>
@@ -296,7 +308,7 @@ export default function DeliveriesPortalPage() {
         })}
       </div>
 
-      {selected && <DeliverySheet delivery={selected} onClose={() => setSelected(null)} onUpdated={() => { setSelected(null); fetchData() }} />}
+      {selected && <DeliverySheet delivery={selected} canUpdate={canUpdate} onClose={() => setSelected(null)} onUpdated={() => { setSelected(null); fetchData() }} />}
 
       <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>

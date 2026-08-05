@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
   generated: { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6", label: "Generated" },
   quote:     { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6", label: "Generated" },
   sent:      { bg: "#fef9c3", text: "#a16207", dot: "#eab308", label: "Sent" },
-  accepted:  { bg: "#dcfce7", text: "#15803d", dot: "#22c55e", label: "Accepted" },
+  accepted:  { bg: "#F1EAF5", text: "#15803d", dot: "#22c55e", label: "Accepted" },
   rejected:  { bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444", label: "Rejected" },
   converted: { bg: "#f3e8ff", text: "#6d28d9", dot: "#8b5cf6", label: "Converted ✓" },
   expired:   { bg: "#f1f5f9", text: "#64748b", dot: "#94a3b8", label: "Expired" },
@@ -35,9 +36,6 @@ function StatusBadge({ status }: { status: string }) {
 function QuoteDetailSheet({ quote, onClose, onUpdated }: { quote: any; onClose: () => void; onUpdated: () => void }) {
   const router = useRouter()
   const [updating, setUpdating] = useState(false)
-  const [toast, setToast] = useState("")
-
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500) }
 
   async function updateStatus(newStatus: string) {
     setUpdating(true)
@@ -47,7 +45,10 @@ function QuoteDetailSheet({ quote, onClose, onUpdated }: { quote: any; onClose: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       })
-      if (res.ok) { showToast(`Status → ${newStatus}`); onUpdated() }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "Failed to update status") }
+      toast.success(`Status → ${newStatus}`); onUpdated()
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update status")
     } finally { setUpdating(false) }
   }
 
@@ -60,15 +61,14 @@ function QuoteDetailSheet({ quote, onClose, onUpdated }: { quote: any; onClose: 
       const a = document.createElement("a")
       a.href = url; a.download = `${quote.quote_number || "quote"}.pdf`
       a.click(); URL.revokeObjectURL(url)
-      showToast("PDF downloaded ✓")
-    } catch { showToast("PDF download failed") }
+      toast.success("PDF downloaded")
+    } catch { toast.error("PDF download failed") }
   }
 
   const initials = (quote.customer_name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column" }}>
-      {toast && <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", background: COLOR, color: "white", borderRadius: 12, padding: "8px 20px", fontSize: 12, fontWeight: 700, zIndex: 200 }}>{toast}</div>}
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }} onClick={onClose} />
       <div style={{ position: "relative", marginTop: "auto", background: "white", borderRadius: "24px 24px 0 0", maxHeight: "90vh", overflowY: "auto", zIndex: 1, paddingBottom: "env(safe-area-inset-bottom, 20px)" }}>
         {/* Handle */}
@@ -96,7 +96,7 @@ function QuoteDetailSheet({ quote, onClose, onUpdated }: { quote: any; onClose: 
 
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Amount */}
-          <div style={{ background: "#f0fdf4", borderRadius: 16, padding: "14px 16px", textAlign: "center" }}>
+          <div style={{ background: "#F1EAF5", borderRadius: 16, padding: "14px 16px", textAlign: "center" }}>
             <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "rgba(80,55,30,0.45)", letterSpacing: 1, textTransform: "uppercase" }}>Quote Amount</p>
             <p style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#15803d" }}>{fmt(quote.total_amount)}</p>
           </div>
@@ -198,7 +198,7 @@ export default function QuotesPage() {
   }), [quotes])
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%)", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #F1EAF5 0%, #F1EAF5 100%)", fontFamily: "var(--font-inter), Inter, sans-serif" }}>
       {/* ── Header ── */}
       <div style={{ background: `linear-gradient(135deg, ${COLOR_DARK}, ${COLOR})`, padding: "20px 16px 28px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
@@ -235,7 +235,7 @@ export default function QuotesPage() {
 
       {/* Search + Filter */}
       <div style={{ padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(34,197,94,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(74,31,94,0.18)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Quote # or customer name..."
             style={{ flex: 1, border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#1e1208", fontFamily: "inherit" }} />
@@ -256,10 +256,10 @@ export default function QuotesPage() {
         {loading ? (
           [...Array(6)].map((_, i) => (
             <div key={i} style={{ background: "white", borderRadius: 18, padding: "14px 16px", display: "flex", gap: 12, opacity: 1 - i * 0.1 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f0fdf4", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#F1EAF5", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
               <div style={{ flex: 1 }}>
-                <div style={{ height: 12, background: "#f0fdf4", borderRadius: 6, width: "60%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
-                <div style={{ height: 10, background: "#f0fdf4", borderRadius: 6, width: "40%", animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div style={{ height: 12, background: "#F1EAF5", borderRadius: 6, width: "60%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div style={{ height: 10, background: "#F1EAF5", borderRadius: 6, width: "40%", animation: "pulse 1.5s ease-in-out infinite" }} />
               </div>
             </div>
           ))

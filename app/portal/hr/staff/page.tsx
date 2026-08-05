@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { PortalPageHeader, PortalSearchBar, PortalEmptyState, PortalSkeleton } from "@/components/portal/portal-shared"
+import { useAutoRefresh } from "@/lib/hooks/use-auto-refresh"
 
 const COLOR = "#6366f1"
 const DEPT_COLORS: Record<string, string> = {
@@ -29,19 +30,24 @@ export default function StaffPage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 3000) }
 
-  const fetchStaff = useCallback(async () => {
-    setLoading(true)
+  const fetchStaff = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = new URLSearchParams({ limit: "200" })
       if (filter !== "all") params.set("department", filter)
       const res = await fetch(`/api/users?${params}`)
       const data = await res.json()
       setStaff(data.data ?? [])
-    } catch { setStaff([]) }
-    setLoading(false)
+    } catch { if (!silent) setStaff([]) }
+    if (!silent) setLoading(false)
   }, [filter])
 
   useEffect(() => { fetchStaff() }, [fetchStaff])
+
+  // Reflects employees added/updated/deactivated from elsewhere (Main CRM
+  // admin views, another HR user) without a manual refresh; silent so it
+  // doesn't flash the loading skeleton every cycle.
+  useAutoRefresh(() => fetchStaff(true), 15000)
 
   async function addStaff() {
     if (!form.name || !form.email || !form.password) {

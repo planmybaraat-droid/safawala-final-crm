@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js')
 
 const supabase = createClient(
   'https://xplnyaxkusvuajtmorss.supabase.co',
-  'REDACTED_JWT'
+  ''
 )
 
 async function addMissingColumns() {

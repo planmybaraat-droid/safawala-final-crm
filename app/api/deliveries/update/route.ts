@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
  * PATCH /api/deliveries/update
  */
 export async function PATCH(request: NextRequest) {
-  const auth = await authenticateRequest(request, { minRole: 'staff' })
+  const auth = await authenticateRequest(request, { minRole: 'staff', requirePermission: 'delivery.update' })
   if (!auth.authorized) {
     return NextResponse.json(auth.error, { status: auth.statusCode })
   }

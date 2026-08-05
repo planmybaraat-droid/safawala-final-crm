@@ -2,6 +2,8 @@
 -- Uses the first franchise in the DB so queries return real data
 -- Safe to run multiple times (upsert by email)
 
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS department text;
+
 DO $$
 DECLARE
   v_franchise_id  uuid;
@@ -23,12 +25,13 @@ BEGIN
   RAISE NOTICE 'Seeding dept users for franchise: % (%)', v_franchise_name, v_franchise_id;
 
   -- booking@safawala.com
-  INSERT INTO users (id, email, name, role, franchise_id, is_active, permissions)
+  INSERT INTO users (id, email, name, role, department, franchise_id, is_active, permissions)
   VALUES (
     '00000000-0000-4000-8001-000000000003',
     'booking@safawala.com',
     'Booking Manager',
-    'staff',
+    'qc_staff',
+    'qc',
     v_franchise_id,
     true,
     '{"dashboard":true,"bookings":true,"customers":true,"inventory":true,"packages":false,"vendors":false,"quotes":true,"invoices":true,"laundry":false,"expenses":false,"deliveries":false,"productArchive":false,"payroll":false,"attendance":false,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":true}'
@@ -40,12 +43,13 @@ BEGIN
     updated_at   = now();
 
   -- bookings@safawala.com  (the email the user wants to add)
-  INSERT INTO users (id, email, name, role, franchise_id, is_active, permissions)
+  INSERT INTO users (id, email, name, role, department, franchise_id, is_active, permissions)
   VALUES (
     '00000000-0000-4000-8001-000000000004',
     'bookings@safawala.com',
     'Bookings Manager',
-    'staff',
+    'qc_staff',
+    'qc',
     v_franchise_id,
     true,
     '{"dashboard":true,"bookings":true,"customers":true,"inventory":true,"packages":false,"vendors":false,"quotes":true,"invoices":true,"laundry":false,"expenses":false,"deliveries":false,"productArchive":false,"payroll":false,"attendance":false,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":true}'
@@ -57,18 +61,21 @@ BEGIN
     updated_at   = now();
 
   -- warehouse@safawala.com
-  INSERT INTO users (id, email, name, role, franchise_id, is_active, permissions)
+  INSERT INTO users (id, email, name, role, department, franchise_id, is_active, permissions)
   VALUES (
     '00000000-0000-4000-8001-000000000011',
     'warehouse@safawala.com',
     'Warehouse Manager',
-    'staff',
+    'warehouse_staff',
+    'warehouse',
     v_franchise_id,
     true,
-    '{"dashboard":true,"bookings":true,"customers":true,"inventory":true,"packages":false,"vendors":false,"quotes":false,"invoices":false,"laundry":true,"expenses":false,"deliveries":true,"productArchive":false,"payroll":false,"attendance":true,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":false}'
+    '{"dashboard":false,"bookings":false,"customers":false,"inventory":true,"packages":false,"vendors":false,"quotes":false,"invoices":false,"laundry":false,"expenses":false,"deliveries":false,"productArchive":false,"payroll":false,"attendance":false,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":false,"warehouse.view":true,"warehouse.update":true}'
   )
   ON CONFLICT (email) DO UPDATE SET
     franchise_id = EXCLUDED.franchise_id,
+    role         = 'warehouse_staff',
+    department   = 'warehouse',
     is_active    = true,
     permissions  = EXCLUDED.permissions,
     updated_at   = now();
@@ -79,7 +86,7 @@ BEGIN
     '00000000-0000-4000-8001-000000000001',
     'accounts@safawala.com',
     'Accounts Manager',
-    'staff',
+    'delivery_staff',
     v_franchise_id,
     true,
     '{"dashboard":true,"bookings":true,"customers":true,"inventory":false,"packages":false,"vendors":false,"quotes":true,"invoices":true,"laundry":false,"expenses":true,"deliveries":false,"productArchive":false,"payroll":true,"attendance":false,"reports":true,"financials":true,"franchises":false,"staff":false,"integrations":false,"settings":false}'
@@ -99,7 +106,7 @@ BEGIN
     'staff',
     v_franchise_id,
     true,
-    '{"dashboard":true,"bookings":false,"customers":false,"inventory":false,"packages":false,"vendors":false,"quotes":false,"invoices":false,"laundry":false,"expenses":false,"deliveries":true,"productArchive":false,"payroll":false,"attendance":true,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":false}'
+    '{"dashboard":false,"bookings":false,"customers":false,"inventory":false,"packages":false,"vendors":false,"quotes":false,"invoices":false,"laundry":false,"expenses":false,"deliveries":true,"productArchive":false,"payroll":false,"attendance":false,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":false,"delivery.view":true,"delivery.update":true}'
   )
   ON CONFLICT (email) DO UPDATE SET
     franchise_id = EXCLUDED.franchise_id,
@@ -108,18 +115,21 @@ BEGIN
     updated_at   = now();
 
   -- qc@safawala.com
-  INSERT INTO users (id, email, name, role, franchise_id, is_active, permissions)
+  INSERT INTO users (id, email, name, role, department, franchise_id, is_active, permissions)
   VALUES (
     '00000000-0000-4000-8001-000000000009',
     'qc@safawala.com',
     'QC Manager',
-    'staff',
+    'qc_staff',
+    'qc',
     v_franchise_id,
     true,
-    '{"dashboard":true,"bookings":false,"customers":false,"inventory":true,"packages":false,"vendors":false,"quotes":false,"invoices":false,"laundry":false,"expenses":false,"deliveries":false,"productArchive":true,"payroll":false,"attendance":true,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":false}'
+    '{"dashboard":false,"bookings":false,"customers":false,"inventory":false,"packages":false,"vendors":false,"quotes":false,"invoices":false,"laundry":false,"expenses":false,"deliveries":false,"productArchive":false,"payroll":false,"attendance":false,"reports":false,"financials":false,"franchises":false,"staff":false,"integrations":false,"settings":false,"qc.view":true,"qc.update":true}'
   )
   ON CONFLICT (email) DO UPDATE SET
     franchise_id = EXCLUDED.franchise_id,
+    role         = EXCLUDED.role,
+    department   = EXCLUDED.department,
     is_active    = true,
     permissions  = EXCLUDED.permissions,
     updated_at   = now();

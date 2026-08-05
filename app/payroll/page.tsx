@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ import {
   Minus,
   CreditCard,
   TrendingUp,
+  ArrowLeft,
 } from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
@@ -1140,19 +1142,26 @@ export default function PayrollPage() {
   return (
     <DashboardLayout>
       <TooltipProvider>
-        <div className="space-y-6 bg-[#FAF9F6] p-6 rounded-2xl border border-stone-200">
+        <div className="space-y-6 bg-[#F7F6FF] p-6 rounded-2xl border border-[#E7E2EA]">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200/60">
-            <div>
-              <h1 className="text-4xl font-light tracking-tight text-[#113c2c] font-serif">Payroll</h1>
-              <p className="text-xs text-stone-400 mt-1.5 font-sans font-light">Manage employee salaries, allowances, and payment slips</p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E7E2EA]">
+            <div className="flex items-start gap-3">
+              <Button asChild variant="outline" size="icon" className="mt-1 shrink-0" aria-label="Back to HR & Staff">
+                <Link href="/hr">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-4xl font-semibold tracking-tight text-[#4A1F5E] font-sans">Payroll</h1>
+                <p className="text-xs text-stone-400 mt-1.5 font-sans font-semibold">Manage employee salaries, allowances, and payment slips</p>
+              </div>
             </div>
             <div className="flex gap-2.5 flex-wrap items-center">
-              <Button variant="outline" onClick={() => handleExportPayroll('csv')} className="border-stone-200 bg-white text-stone-700 hover:bg-stone-50/50 hover:border-stone-300 transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
+              <Button variant="outline" onClick={() => handleExportPayroll('csv')} className="border-[#DCCFE4] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5] hover:border-[#BFA8CC] transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
                 <Download className="h-3.5 w-3.5 mr-2 text-stone-400" />
                 Export CSV
               </Button>
-              <Button variant="outline" onClick={() => handleExportPayroll('pdf')} className="border-stone-200 bg-white text-stone-700 hover:bg-stone-50/50 hover:border-stone-300 transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
+              <Button variant="outline" onClick={() => handleExportPayroll('pdf')} className="border-[#DCCFE4] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5] hover:border-[#BFA8CC] transition-all duration-200 h-9 px-4 text-xs rounded-lg font-medium shadow-sm">
                 <Download className="h-3.5 w-3.5 mr-2 text-stone-400" />
                 Export PDF
               </Button>
@@ -1163,27 +1172,27 @@ export default function PayrollPage() {
           <div className="grid gap-5 md:grid-cols-4">
             {[
               { title: "Total Employees", value: stats.total_employees, sub: "Active staff", color: "text-stone-850", icon: <Users className="h-4 w-4 text-stone-300 stroke-[1.5]" /> },
-              { title: "Total Payroll", value: `₹${stats.total_payroll.toLocaleString()}`, sub: "Salary expenses", color: "text-[#113c2c]", icon: <DollarSign className="h-4 w-4 text-[#113c2c] stroke-[1.5]" /> },
+              { title: "Total Payroll", value: `₹${stats.total_payroll.toLocaleString()}`, sub: "Salary expenses", color: "text-[#4A1F5E]", icon: <DollarSign className="h-4 w-4 text-[#4A1F5E] stroke-[1.5]" /> },
               { title: "Pending Processing", value: stats.pending_payments, sub: "Requires attention", color: "text-amber-600", icon: <Calendar className="h-4 w-4 text-amber-400 stroke-[1.5]" /> },
               { title: "Processed & Paid", value: stats.processed_this_month, sub: "Complete records", color: "text-emerald-700", icon: <Calculator className="h-4 w-4 text-emerald-500 stroke-[1.5]" /> },
             ].map((item, idx) => (
-              <div key={idx} className="bg-white border border-stone-200/70 rounded-xl p-5 shadow-[0_2px_12px_-5px_rgba(0,0,0,0.03)] hover:border-stone-300/80 transition-all duration-300">
+              <div key={idx} className="bg-white border border-[#E7E2EA] rounded-xl p-5 shadow-[0_2px_12px_-5px_rgba(74,31,94,0.08)] hover:border-[#CDB8D8] transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-semibold text-stone-400 uppercase tracking-widest">{item.title}</span>
                   {item.icon}
                 </div>
-                <div className={`text-3xl font-light font-serif ${item.color} mt-2.5`}>{item.value}</div>
-                <div className="text-[10px] text-stone-400 font-light mt-1.5">{item.sub}</div>
+                <div className={`text-3xl font-semibold font-sans ${item.color} mt-2.5`}>{item.value}</div>
+                <div className="text-[10px] text-stone-400 font-semibold mt-1.5">{item.sub}</div>
               </div>
             ))}
           </div>
 
           {/* Filters and Period Selection */}
-          <div className="bg-white border border-stone-200/70 rounded-xl shadow-[0_4px_20px_-10px_rgba(0,0,0,0.03)] p-6 space-y-6">
+          <div className="bg-white border border-[#E7E2EA] rounded-xl shadow-[0_4px_20px_-10px_rgba(74,31,94,0.08)] p-6 space-y-6">
             <div className="flex flex-col gap-4 pb-2 border-b border-stone-100 md:flex-row md:items-center md:justify-between md:space-y-0">
               <div>
-                <h2 className="text-xl font-light font-serif text-stone-900">Payroll Period & Records</h2>
-                <p className="text-xs text-stone-400 font-sans font-light mt-1">Select billing month and search employee logs</p>
+                <h2 className="text-xl font-semibold font-sans text-stone-900">Payroll Period & Records</h2>
+                <p className="text-xs text-stone-400 font-sans font-semibold mt-1">Select billing month and search employee logs</p>
               </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor="month-select" className="text-xs font-semibold text-stone-450 uppercase tracking-wider">Payroll Month:</Label>
@@ -1204,7 +1213,7 @@ export default function PayrollPage() {
                   placeholder="Search employees by name, ID or role..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-9 rounded-lg text-xs"
+                  className="pl-9 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-9 rounded-lg text-xs"
                 />
               </div>
               <div className="w-[180px]">
@@ -1241,7 +1250,7 @@ export default function PayrollPage() {
                 <TableBody>
                   {filteredRecords.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-stone-400 font-sans font-light text-sm">
+                      <TableCell colSpan={8} className="text-center py-12 text-stone-400 font-sans font-semibold text-sm">
                         {loading ? "Loading payroll records..." : "No payroll records found."}
                       </TableCell>
                     </TableRow>
@@ -1256,7 +1265,7 @@ export default function PayrollPage() {
                           <TableRow key={record.id} onClick={() => setExpandedRow(prev => prev === record.user_id ? null : record.user_id)} className="border-b border-stone-100 hover:bg-stone-50/20 transition-colors cursor-pointer">
                             <TableCell className="py-4 pl-4">
                               <div>
-                                <div className="font-light text-stone-900 font-serif text-sm leading-tight">{record.employee_name}</div>
+                                <div className="font-semibold text-stone-900 font-sans text-sm leading-tight">{record.employee_name}</div>
                                 <div className="text-[10px] text-stone-400 font-mono tracking-wider mt-0.5">{record.employee_id}</div>
                               </div>
                             </TableCell>
@@ -1266,7 +1275,7 @@ export default function PayrollPage() {
                             <TableCell className="font-mono text-stone-600 text-xs">₹{totalDeductions.toLocaleString()}</TableCell>
                             <TableCell className="font-mono text-stone-900 text-xs font-semibold">₹{record.net_salary.toLocaleString()}</TableCell>
                             <TableCell>
-                              <Badge className={`${getStatusColor(record.status)} text-[10px] border border-transparent font-sans py-0.5 px-2 rounded-full font-normal shadow-none`}>
+                              <Badge className={`${getStatusColor(record.status)} text-[10px] border border-transparent font-sans py-0.5 px-2 rounded-full font-medium shadow-none`}>
                                 {record.status}
                               </Badge>
                             </TableCell>
@@ -1317,12 +1326,12 @@ export default function PayrollPage() {
                                   <div className="bg-white border border-stone-200/60 rounded-xl p-5 shadow-sm flex flex-col justify-between">
                                     <div className="space-y-3">
                                       <h4 className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest border-b pb-1.5">Payroll Operations</h4>
-                                      <div className="text-xs text-stone-500 font-light space-y-1.5">
+                                      <div className="text-xs text-stone-500 font-semibold space-y-1.5">
                                         <p><strong>Month:</strong> {new Date(record.payroll_month).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
                                         <p><strong>Working Days:</strong> {record.working_days || 30}</p>
                                         <p><strong>Present Days:</strong> {record.present_days || 30}</p>
-                                        <p className="text-base font-serif font-light text-stone-900 mt-3 pt-1 border-t">
-                                          Net Take-home: <span className="font-semibold text-[#113c2c] font-mono">₹{record.net_salary.toLocaleString()}</span>
+                                        <p className="text-base font-sans font-semibold text-stone-900 mt-3 pt-1 border-t">
+                                          Net Take-home: <span className="font-semibold text-[#4A1F5E] font-mono">₹{record.net_salary.toLocaleString()}</span>
                                         </p>
                                       </div>
                                     </div>
@@ -1330,7 +1339,7 @@ export default function PayrollPage() {
                                     <div className="space-y-3.5 pt-4 border-t mt-4">
                                       <div className="grid grid-cols-2 gap-2">
                                         {record.status === "pending" || record.status === "draft" ? (
-                                          <Button disabled={processing} onClick={() => handleProcessSinglePayroll(record)} className="col-span-2 bg-[#113c2c] hover:bg-[#0c2e22] text-white text-xs h-8 rounded-lg">
+                                          <Button disabled={processing} onClick={() => handleProcessSinglePayroll(record)} className="col-span-2 bg-[#4A1F5E] hover:bg-[#3B164B] text-white text-xs h-8 rounded-lg">
                                             {processing ? "Processing..." : "Process Payroll"}
                                           </Button>
                                         ) : record.status === "processed" ? (
@@ -1352,10 +1361,10 @@ export default function PayrollPage() {
                                       <div className="space-y-1.5">
                                         <div className="text-[9px] font-semibold text-stone-400 uppercase tracking-widest text-center">Quick Adjustments</div>
                                         <div className="grid grid-cols-4 gap-1">
-                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "extra_salary")} className="border-stone-200 text-stone-600 hover:bg-stone-50 h-7 text-[10px] p-0 font-light rounded-md">Bonus</Button>
-                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "overtime")} className="border-stone-200 text-stone-600 hover:bg-stone-50 h-7 text-[10px] p-0 font-light rounded-md">Overtime</Button>
-                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "salary_cut")} className="border-stone-200 text-stone-650 hover:bg-rose-50/20 hover:border-rose-100 h-7 text-[10px] p-0 font-light rounded-md">Deduct</Button>
-                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "advance")} className="border-stone-200 text-stone-600 hover:bg-stone-50 h-7 text-[10px] p-0 font-light rounded-md">Advance</Button>
+                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "extra_salary")} className="border-stone-200 text-stone-600 hover:bg-stone-50 h-7 text-[10px] p-0 font-semibold rounded-md">Bonus</Button>
+                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "overtime")} className="border-stone-200 text-stone-600 hover:bg-stone-50 h-7 text-[10px] p-0 font-semibold rounded-md">Overtime</Button>
+                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "salary_cut")} className="border-stone-200 text-stone-650 hover:bg-rose-50/20 hover:border-rose-100 h-7 text-[10px] p-0 font-semibold rounded-md">Deduct</Button>
+                                          <Button variant="outline" size="sm" onClick={() => openAdjustmentDialog(record, "advance")} className="border-stone-200 text-stone-600 hover:bg-stone-50 h-7 text-[10px] p-0 font-semibold rounded-md">Advance</Button>
                                         </div>
                                       </div>
                                     </div>
@@ -1377,8 +1386,8 @@ export default function PayrollPage() {
           <Dialog open={extraSalaryDialog} onOpenChange={setExtraSalaryDialog}>
             <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
-                <DialogTitle className="font-serif font-light text-xl text-[#113c2c]">Add Extra Salary</DialogTitle>
-                <DialogDescription className="text-xs text-stone-400 font-sans font-light mt-1">Add bonus or extra salary for {selectedEmployee?.employee_name}</DialogDescription>
+                <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Add Extra Salary</DialogTitle>
+                <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Add bonus or extra salary for {selectedEmployee?.employee_name}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1389,7 +1398,7 @@ export default function PayrollPage() {
                     placeholder="Enter amount"
                     value={adjustmentForm.amount}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-9 rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-9 rounded-lg text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1399,13 +1408,13 @@ export default function PayrollPage() {
                     placeholder="Reason for extra salary"
                     value={adjustmentForm.reason}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all rounded-lg text-xs"
                   />
                 </div>
               </div>
               <DialogFooter className="border-t border-stone-100 pt-3 gap-2">
                 <Button variant="outline" onClick={() => setExtraSalaryDialog(false)} className="border-stone-200 text-stone-600 hover:bg-stone-50 rounded-lg">Cancel</Button>
-                <Button onClick={() => handlePayrollAdjustment("extra_salary")} className="bg-[#113c2c] hover:bg-[#0c2e22] text-white rounded-lg px-4">Add Extra Salary</Button>
+                <Button onClick={() => handlePayrollAdjustment("extra_salary")} className="bg-[#4A1F5E] hover:bg-[#3B164B] text-white rounded-lg px-4">Add Extra Salary</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1414,8 +1423,8 @@ export default function PayrollPage() {
           <Dialog open={overtimeDialog} onOpenChange={setOvertimeDialog}>
             <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
-                <DialogTitle className="font-serif font-light text-xl text-[#113c2c]">Add Overtime</DialogTitle>
-                <DialogDescription className="text-xs text-stone-400 font-sans font-light mt-1">Add overtime hours for {selectedEmployee?.employee_name}</DialogDescription>
+                <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Add Overtime</DialogTitle>
+                <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Add overtime hours for {selectedEmployee?.employee_name}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1426,7 +1435,7 @@ export default function PayrollPage() {
                     placeholder="Overtime hours"
                     value={adjustmentForm.hours}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, hours: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-9 rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-9 rounded-lg text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1436,7 +1445,7 @@ export default function PayrollPage() {
                     placeholder="Reason for overtime"
                     value={adjustmentForm.reason}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all rounded-lg text-xs"
                   />
                 </div>
                 {adjustmentForm.hours && selectedEmployee && (
@@ -1447,7 +1456,7 @@ export default function PayrollPage() {
               </div>
               <DialogFooter className="border-t border-stone-100 pt-3 gap-2">
                 <Button variant="outline" onClick={() => setOvertimeDialog(false)} className="border-stone-200 text-stone-600 hover:bg-stone-50 rounded-lg">Cancel</Button>
-                <Button onClick={() => handlePayrollAdjustment("overtime")} className="bg-[#113c2c] hover:bg-[#0c2e22] text-white rounded-lg px-4">Add Overtime</Button>
+                <Button onClick={() => handlePayrollAdjustment("overtime")} className="bg-[#4A1F5E] hover:bg-[#3B164B] text-white rounded-lg px-4">Add Overtime</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1456,8 +1465,8 @@ export default function PayrollPage() {
           <Dialog open={salaryCutDialog} onOpenChange={setSalaryCutDialog}>
             <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
-                <DialogTitle className="font-serif font-light text-xl text-[#113c2c]">Apply Salary Cut</DialogTitle>
-                <DialogDescription className="text-xs text-stone-400 font-sans font-light mt-1">Apply salary deduction for {selectedEmployee?.employee_name}</DialogDescription>
+                <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Apply Salary Cut</DialogTitle>
+                <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Apply salary deduction for {selectedEmployee?.employee_name}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1468,7 +1477,7 @@ export default function PayrollPage() {
                     placeholder="Deduction amount"
                     value={adjustmentForm.amount}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-9 rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-9 rounded-lg text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1478,7 +1487,7 @@ export default function PayrollPage() {
                     placeholder="Reason for salary cut"
                     value={adjustmentForm.reason}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all rounded-lg text-xs"
                   />
                 </div>
               </div>
@@ -1493,8 +1502,8 @@ export default function PayrollPage() {
           <Dialog open={advanceSalaryDialog} onOpenChange={setAdvanceSalaryDialog}>
             <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
-                <DialogTitle className="font-serif font-light text-xl text-[#113c2c]">Advance Salary</DialogTitle>
-                <DialogDescription className="text-xs text-stone-400 font-sans font-light mt-1">Provide advance salary to {selectedEmployee?.employee_name}</DialogDescription>
+                <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Advance Salary</DialogTitle>
+                <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Provide advance salary to {selectedEmployee?.employee_name}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1505,7 +1514,7 @@ export default function PayrollPage() {
                     placeholder="Advance amount"
                     value={adjustmentForm.amount}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all h-9 rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all h-9 rounded-lg text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -1515,16 +1524,16 @@ export default function PayrollPage() {
                     placeholder="Reason for advance salary"
                     value={adjustmentForm.reason}
                     onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })}
-                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#113c2c] transition-all rounded-lg text-xs"
+                    className="col-span-3 bg-white border-stone-200 hover:border-stone-300 focus:border-[#4A1F5E] transition-all rounded-lg text-xs"
                   />
                 </div>
-                <div className="text-[10px] text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-100 font-light font-sans text-center">
+                <div className="text-[10px] text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-100 font-semibold font-sans text-center">
                   Note: This advance will be deducted from future salary payments
                 </div>
               </div>
               <DialogFooter className="border-t border-stone-100 pt-3 gap-2">
                 <Button variant="outline" onClick={() => setAdvanceSalaryDialog(false)} className="border-stone-200 text-stone-600 hover:bg-stone-50 rounded-lg">Cancel</Button>
-                <Button onClick={() => handlePayrollAdjustment("advance")} className="bg-[#113c2c] hover:bg-[#0c2e22] text-white rounded-lg px-4">Provide Advance</Button>
+                <Button onClick={() => handlePayrollAdjustment("advance")} className="bg-[#4A1F5E] hover:bg-[#3B164B] text-white rounded-lg px-4">Provide Advance</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1533,7 +1542,7 @@ export default function PayrollPage() {
           <Dialog open={viewPayslipDialog} onOpenChange={setViewPayslipDialog}>
             <DialogContent className="max-w-2xl bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl">
               <DialogHeader className="border-b border-stone-100 pb-3">
-                <DialogTitle className="flex items-center justify-between font-serif font-light text-2xl text-[#113c2c]">
+                <DialogTitle className="flex items-center justify-between font-sans font-semibold text-2xl text-[#4A1F5E]">
                   <span>Salary Slip</span>
                   <Button
                     variant="outline"
@@ -1599,7 +1608,7 @@ export default function PayrollPage() {
                   <div className="bg-stone-50 border border-stone-150 p-4 rounded-xl flex items-center justify-between mt-6">
                     <div>
                       <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">Net Take-Home Salary</span>
-                      <div className="text-2xl font-light font-serif text-[#113c2c] mt-0.5">₹{(selectedPayslip.net_salary || 0).toLocaleString()}</div>
+                      <div className="text-2xl font-semibold font-sans text-[#4A1F5E] mt-0.5">₹{(selectedPayslip.net_salary || 0).toLocaleString()}</div>
                     </div>
                     <div>
                       <span className="text-[9px] font-semibold text-stone-400 uppercase tracking-widest block text-right">Payment Status</span>
@@ -1617,13 +1626,13 @@ export default function PayrollPage() {
           <Dialog open={editPayrollDialog} onOpenChange={setEditPayrollDialog}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl">
               <DialogHeader className="border-b border-stone-100 pb-3">
-                <DialogTitle className="font-serif font-light text-2xl text-[#113c2c]">Edit Payroll Breakdown - {selectedEditRecord?.employee_name}</DialogTitle>
+                <DialogTitle className="font-sans font-semibold text-2xl text-[#4A1F5E]">Edit Payroll Breakdown - {selectedEditRecord?.employee_name}</DialogTitle>
               </DialogHeader>
               {selectedEditRecord && (
                 <div className="space-y-6 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <h3 className="text-xs font-semibold text-[#113c2c] uppercase tracking-widest border-b pb-1.5">Earnings Breakdown (₹)</h3>
+                      <h3 className="text-xs font-semibold text-[#4A1F5E] uppercase tracking-widest border-b pb-1.5">Earnings Breakdown (₹)</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="basic_salary" className="text-[10px] text-stone-500 font-medium">Basic Salary</Label>
@@ -1819,7 +1828,7 @@ export default function PayrollPage() {
                       </div>
                       <div>
                         <span className="text-stone-500">Net Take-Home:</span>
-                        <div className="text-sm font-bold text-[#113c2c] mt-1">
+                        <div className="text-sm font-bold text-[#4A1F5E] mt-1">
                           ₹{(
                             editFormData.basic_salary +
                             editFormData.hra +
@@ -1843,7 +1852,7 @@ export default function PayrollPage() {
                     <Button variant="outline" onClick={() => setEditPayrollDialog(false)} className="border-stone-200 text-stone-600 hover:bg-stone-50 rounded-lg">
                       Cancel
                     </Button>
-                    <Button onClick={handleEditSubmit} className="bg-[#113c2c] hover:bg-[#0c2e22] text-white rounded-lg px-5 shadow-sm">
+                    <Button onClick={handleEditSubmit} className="bg-[#4A1F5E] hover:bg-[#3B164B] text-white rounded-lg px-5 shadow-sm">
                       Update Payroll
                     </Button>
                   </div>

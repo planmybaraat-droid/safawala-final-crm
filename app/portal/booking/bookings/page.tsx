@@ -3,18 +3,18 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 
-const COLOR = "#22c55e"
-const COLOR_DARK = "#15803d"
+const COLOR = "#4A1F5E"
+const COLOR_DARK = "#351044"
 
 const STATUS_META: Record<string, { bg: string; text: string; dot: string }> = {
-  confirmed:         { bg: "#dcfce7", text: "#15803d", dot: "#22c55e" },
+  confirmed:         { bg: "#F1EAF5", text: "#15803d", dot: "#22c55e" },
   pending:           { bg: "#fef9c3", text: "#a16207", dot: "#eab308" },
   pending_payment:   { bg: "#fef9c3", text: "#a16207", dot: "#eab308" },
   pending_selection: { bg: "#fff7ed", text: "#c2410c", dot: "#f97316" },
   generated:         { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6" },
   delivered:         { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6" },
   returned:          { bg: "#f3e8ff", text: "#6d28d9", dot: "#8b5cf6" },
-  order_complete:    { bg: "#dcfce7", text: "#15803d", dot: "#22c55e" },
+  order_complete:    { bg: "#F1EAF5", text: "#15803d", dot: "#22c55e" },
   cancelled:         { bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444" },
 }
 
@@ -97,7 +97,7 @@ export default function BookingListPage() {
   const todayBookings = tabBookings.filter(b => b.event_date && new Date(b.event_date).toDateString() === today)
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%)", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #F1EAF5 0%, #F1EAF5 100%)", fontFamily: "var(--font-inter), Inter, sans-serif" }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${COLOR_DARK}, ${COLOR})`, padding: "20px 16px 0", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
@@ -167,7 +167,7 @@ export default function BookingListPage() {
 
       {/* Search */}
       <div style={{ padding: "12px 16px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(34,197,94,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 14, padding: "10px 14px", border: "1px solid rgba(74,31,94,0.18)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.35)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search booking # or customer..."
             style={{ flex: 1, border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#1e1208", fontFamily: "inherit" }} />
@@ -191,10 +191,10 @@ export default function BookingListPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[...Array(5)].map((_, i) => (
               <div key={i} style={{ background: "white", borderRadius: 18, padding: "14px 16px", display: "flex", gap: 12, alignItems: "center", opacity: 1 - i * 0.15 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f0fdf4", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#F1EAF5", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ height: 12, background: "#f0fdf4", borderRadius: 6, width: "70%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
-                  <div style={{ height: 10, background: "#f0fdf4", borderRadius: 6, width: "50%", animation: "pulse 1.5s ease-in-out infinite" }} />
+                  <div style={{ height: 12, background: "#F1EAF5", borderRadius: 6, width: "70%", marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
+                  <div style={{ height: 10, background: "#F1EAF5", borderRadius: 6, width: "50%", animation: "pulse 1.5s ease-in-out infinite" }} />
                 </div>
               </div>
             ))}

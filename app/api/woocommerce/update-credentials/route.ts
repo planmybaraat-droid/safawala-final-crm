@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
         is_active: true,
         settings: {
           store_url: "https://safawala.com",
-          consumer_key: "REDACTED_WOOCOMMERCE_CONSUMER_KEY",
-          consumer_secret: "REDACTED_WOOCOMMERCE_CONSUMER_SECRET",
+          consumer_key: process.env.WOOCOMMERCE_CONSUMER_KEY || "",
+          consumer_secret: process.env.WOOCOMMERCE_CONSUMER_SECRET || "",
           webhook_secret: "",
         },
       },

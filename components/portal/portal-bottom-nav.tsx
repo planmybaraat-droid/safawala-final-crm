@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { PortalTab } from "@/lib/portal-config"
 import { PortalIcon } from "./portal-icons"
+import { useEffect, useState } from "react"
 
 interface PortalBottomNavProps {
   tabs: PortalTab[]
@@ -12,6 +13,20 @@ interface PortalBottomNavProps {
 
 export function PortalBottomNav({ tabs, color }: PortalBottomNavProps) {
   const pathname = usePathname()
+  const [user, setUser] = useState<any>(null)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("safawala_user")
+      if (raw) setUser(JSON.parse(raw))
+    } catch {}
+  }, [])
+  const visibleTabs = tabs.filter((tab) => {
+    if (!tab.permission) return true
+    if (user?.is_super_admin || user?.role === "franchise_admin") return true
+    return user?.permissions?.[tab.permission] === true ||
+      (user?.department === "warehouse" && (user?.role === "warehouse_staff" || user?.role === "staff") && ["warehouse.view", "warehouse.update"].includes(tab.permission)) ||
+      (user?.department === "qc" && (user?.role === "qc_staff" || user?.role === "staff") && ["qc.view", "qc.update"].includes(tab.permission))
+  })
 
   return (
     <nav
@@ -26,7 +41,7 @@ export function PortalBottomNav({ tabs, color }: PortalBottomNavProps) {
         height: "calc(62px + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      {tabs.map((tab) => {
+      {visibleTabs.map((tab) => {
         const isActive =
           pathname === tab.href ||
           (tab.href !== "/" &&

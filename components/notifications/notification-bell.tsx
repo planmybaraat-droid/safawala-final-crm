@@ -72,7 +72,7 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative"
+          className="relative text-[#6F6878] hover:text-[#4A1F5E] hover:bg-[#F1EAF5]"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />

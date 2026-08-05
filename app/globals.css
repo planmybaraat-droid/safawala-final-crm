@@ -83,10 +83,45 @@
 
   body {
     @apply text-foreground;
-    background: #F8FAFC;
-    color: #0F172A;
+    background: #F7F6F9;
+    color: #1F1B24;
     font-family: var(--font-inter), system-ui, sans-serif;
   }
+}
+
+/* Shared Payroll visual system for every HR & Staff workspace. */
+.hr-payroll-ui {
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #172033;
+  letter-spacing: -0.01em;
+}
+
+.hr-payroll-ui h1,
+.hr-payroll-ui h2,
+.hr-payroll-ui h3,
+.hr-payroll-ui h4,
+.hr-payroll-ui button,
+.hr-payroll-ui input,
+.hr-payroll-ui select,
+.hr-payroll-ui textarea {
+  font-family: inherit;
+}
+
+.hr-payroll-ui h1,
+.hr-payroll-ui h2,
+.hr-payroll-ui h3 {
+  color: #172033;
+}
+
+.hr-payroll-ui p,
+.hr-payroll-ui label,
+.hr-payroll-ui th {
+  color: #64748b;
+}
+
+.hr-payroll-ui [class*="border-gray-200"],
+.hr-payroll-ui [class*="border-stone-200"] {
+  border-color: #e2e8f0 !important;
 }
 
 @layer components {
@@ -184,8 +219,8 @@
 
   /* ── Sidebar ───────────────────────────────────────────────── */
   .heritage-sidebar {
-    background: #18181b !important;
-    border-right: 1px solid #27272a;
+    background: #2B1738 !important;
+    border-right: 1px solid #493455;
     box-shadow: none;
     position: relative;
   }
@@ -196,7 +231,14 @@
   .heritage-sidebar[data-sidebar="sidebar"],
   [data-sidebar="sidebar"].heritage-sidebar,
   [data-mobile="true"][data-sidebar="sidebar"] {
-    background: #18181b !important;
+    background: #2B1738 !important;
+  }
+
+  /* The desktop sidebar content is a nested element with its own bg-sidebar utility. */
+  .heritage-sidebar [data-sidebar="sidebar"],
+  [data-sidebar="sidebar"].heritage-sidebar {
+    background: #2B1738 !important;
+    color: #F8F4FA !important;
   }
 
   /* Remove decorative pseudo-element */
@@ -223,7 +265,7 @@
 
   /* Sidebar group label */
   .heritage-sidebar [data-sidebar="group-label"] {
-    color: #71717a !important;
+    color: #BDAFC5 !important;
   }
 
   /* Sidebar items */
@@ -232,43 +274,49 @@
     border: none;
     border-left: 3px solid transparent;
     transition: background 0.15s, color 0.15s;
-    color: #a1a1aa;
+    color: #C8BACF;
     font-family: var(--font-inter), system-ui, sans-serif;
     font-weight: 500;
     border-radius: 0.375rem;
   }
 
   .heritage-sidebar-item:hover {
-    background: rgba(255,255,255,0.06);
-    color: #ffffff;
+    background: #352044;
+    color: #FFFFFF;
     transform: none;
     box-shadow: none;
   }
 
   .heritage-sidebar-item[data-active="true"] {
-    background: rgba(168, 85, 247, 0.15);
-    color: #c084fc;
-    border-left: 3px solid #a855f7;
+    background: #4A1F5E;
+    color: #F1D696;
+    border-left: 3px solid #C8A96B;
     font-weight: 700;
     box-shadow: none;
   }
 
   .heritage-sidebar-item[data-active="true"] svg {
-    color: #a855f7;
+    color: #F1D696;
   }
+
+  .heritage-sidebar-item svg {
+    color: #C8BACF;
+    transition: color 0.15s;
+  }
+  .heritage-sidebar-item:hover svg { color: #FFFFFF; }
 
   /* ── Dashboard cards ───────────────────────────────────────── */
   .dashboard-card-heritage {
     background: #ffffff;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #E7E2EA;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     color: #0F172A;
   }
 
   /* ── Header ────────────────────────────────────────────────── */
   .heritage-header {
-    background: #ffffff;
-    border-bottom: 1px solid #E2E8F0;
+    background: #FFFFFF !important;
+    border-bottom: 1px solid #E7E2EA;
   }
 
   /* ── Misc legacy classes (kept for compatibility) ──────────── */

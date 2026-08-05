@@ -249,14 +249,13 @@ export default function WorkOrdersPage() {
   return (
     <DashboardErrorBoundary>
       <DashboardLayout userRole={user.role}>
-        <div className="container mx-auto p-4 max-w-7xl space-y-6">
+        <div className="hr-payroll-ui container mx-auto p-4 max-w-7xl space-y-6">
           
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" onClick={() => router.back()} className="hover:bg-slate-100">
-                <ArrowLeft className="h-4 w-4 mr-1.5" />
-                Back
+              <Button variant="outline" size="icon" onClick={() => router.push("/hr")} aria-label="Back to HR & Staff" className="h-10 w-10 shrink-0 rounded-md border-[#D8D2E2] bg-white text-[#334155] shadow-sm hover:bg-[#F1EAF5]">
+                <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">

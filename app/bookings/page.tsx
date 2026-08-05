@@ -1380,7 +1380,7 @@ export default function BookingsPage() {
             Print List
           </Button>
           <Link href="/create-invoice">
-            <Button size="sm">
+            <Button size="sm" className="bg-[#C4B5FD] text-[#4A1F5E] hover:bg-[#A78BFA] hover:text-[#2B1738]">
               <Plus className="h-4 w-4 mr-1" />
               New Booking
             </Button>
@@ -1420,7 +1420,7 @@ export default function BookingsPage() {
                       onClick={() => setDateRange(opt.value as any)}
                       className={`px-2 py-1 text-[11px] font-semibold rounded-lg transition-all duration-200 text-center ${
                         dateRange === opt.value
-                          ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
+                          ? "bg-[#C4B5FD] text-[#4A1F5E] shadow-sm shadow-purple-300/30"
                           : "bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
                       } ${opt.value === "all" ? "col-span-2" : ""}`}
                     >

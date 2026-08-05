@@ -1,17 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth-middleware"
+import { getRbacContext, requireRbacPermission } from "@/lib/rbac"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
+    const rbacContext = await getRbacContext(request)
+    if (rbacContext?.user.department === "warehouse") {
+      const rbacDenied = await requireRbacPermission(request, "warehouse.view")
+      if ("response" in rbacDenied) return rbacDenied.response
+    }
+    if (rbacContext?.user.department === "qc" || rbacContext?.user.role === "qc_staff") {
+      const rbacDenied = await requireRbacPermission(request, "qc.view")
+      if ("response" in rbacDenied) return rbacDenied.response
+    }
     const authResult = await requireAuth(request, 'readonly')
     if (!authResult.success) {
       return NextResponse.json(authResult.response, { status: 401 })
     }
     const user = authResult.authContext!.user
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ success: true, data: [] })
+    }
     const franchiseId = user.franchise_id
     const isSuperAdmin = user.role === 'super_admin'
 
@@ -141,7 +154,20 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true, data: enrichedWorkOrders })
+    const visibleWorkOrders = rbacContext?.user.department === "warehouse" && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+      ? enrichedWorkOrders.map((wo: any) => ({
+          ...wo,
+          work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>
+            ["warehouse", "packing"].includes(t.department) && (!t.assigned_to || t.assigned_to === rbacContext.user.id)
+          ),
+        })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
+      : (rbacContext?.user.department === "qc" || rbacContext?.user.role === "qc_staff")
+        ? enrichedWorkOrders.filter((wo: any) =>
+            (wo.work_order_tasks || []).some((t: any) => t.department === "packing" && ["picked", "completed"].includes(t.status))
+          )
+        : enrichedWorkOrders
+
+    return NextResponse.json({ success: true, data: visibleWorkOrders })
   } catch (error: any) {
     console.error("[Work Orders GET] Error:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })

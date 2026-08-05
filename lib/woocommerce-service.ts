@@ -58,8 +58,8 @@ class WooCommerceService {
     } else {
       this.config = {
         storeUrl: "https://safawala.com",
-        consumerKey: "REDACTED_WOOCOMMERCE_CONSUMER_KEY",
-        consumerSecret: "REDACTED_WOOCOMMERCE_CONSUMER_SECRET",
+        consumerKey: "",
+        consumerSecret: "",
       }
     }
   }

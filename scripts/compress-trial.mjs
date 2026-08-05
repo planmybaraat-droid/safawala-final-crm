@@ -14,8 +14,14 @@ import fs from "fs"
 import path from "path"
 import https from "https"
 
-const SUPABASE_URL = "https://xplnyaxkusvuajtmorss.supabase.co"
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "REDACTED_JWT"
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!SUPABASE_URL || !SERVICE_KEY) {
+  throw new Error(
+    "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Configure them in the environment before running this script."
+  )
+}
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 

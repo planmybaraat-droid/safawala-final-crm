@@ -9,7 +9,7 @@ const { createClient } = require('@supabase/supabase-js')
 
 // Load environment variables
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hvxgjfbbzjgjrbfmqlqd.supabase.co'
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'REDACTED_JWT'
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 

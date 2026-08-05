@@ -3,8 +3,8 @@ INSERT INTO integration_settings (integration_name, store_url, consumer_key, con
 VALUES (
   'WooCommerce',
   'https://safawala.com',
-  'REDACTED_WOOCOMMERCE_CONSUMER_KEY',
-  'REDACTED_WOOCOMMERCE_CONSUMER_SECRET',
+  '', -- Set securely after deployment; never commit API keys.
+  '', -- Set securely after deployment; never commit API secrets.
   true,
   NOW(),
   NOW()

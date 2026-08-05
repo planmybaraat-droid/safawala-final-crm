@@ -1046,9 +1046,9 @@ export function TeamChat() {
           style={{
             position: "fixed", bottom: 14, right: getRightPosition(), zIndex: 9998,
             width: 52, height: 52, borderRadius: "50%",
-            background: "linear-gradient(135deg, #22c55e, #16a34a)",
+            background: "linear-gradient(135deg, #4A1F5E, #5C2A72)",
             border: "none", cursor: btnDragging ? "grabbing" : "grab",
-            boxShadow: "0 4px 20px rgba(34,197,94,0.4)",
+            boxShadow: "0 4px 20px rgba(74,31,94,0.4)",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white",
             transition: btnDragging ? "none" : "right 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
