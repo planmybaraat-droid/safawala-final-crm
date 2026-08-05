@@ -96,6 +96,21 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       )
     }
 
+    // Check if user already has an active or pending loan (Single Loan Policy)
+    const { data: activeLoans } = await supabaseServer
+      .from("staff_loan_requests")
+      .select("id, amount, status")
+      .eq("user_id", params.userId)
+      .in("status", ["pending", "approved", "active"])
+
+    if (activeLoans && activeLoans.length > 0) {
+      const existing = activeLoans[0]
+      return NextResponse.json({
+        success: false,
+        error: `❌ Active Loan Found: You already have an active or pending loan of ₹${Number(existing.amount).toLocaleString("en-IN")}. You must fully repay your existing loan before applying for a new one.`
+      }, { status: 400 })
+    }
+
     // Get or create staff ledger
     let { data: ledger, error: ledgerError } = await supabaseServer
       .from("staff_ledgers")
@@ -131,7 +146,8 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       ledger = createdLedger
     }
 
-    const monthlyEmi = Math.ceil(amount / tenureMonths)
+    const tenureMonths = 1
+    const monthlyEmi = amount
 
     const payload = {
       user_id: params.userId,

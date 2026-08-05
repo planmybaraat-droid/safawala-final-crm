@@ -360,9 +360,7 @@ export function WarehouseLoanSystem({
                           </span>
                         </div>
                         <p className="mt-1 text-[10px] text-slate-500">
-                          Tenure: <span className="font-semibold text-slate-700">{loan.tenure_months} Months</span> · Monthly EMI:{" "}
-                          <span className="font-semibold text-slate-700">{fmt(loan.monthly_emi)}</span> · Applied on{" "}
-                          {new Date(loan.created_at).toLocaleDateString("en-IN")}
+                          Applied on <span className="font-semibold text-slate-700">{new Date(loan.created_at).toLocaleDateString("en-IN")}</span>
                         </p>
                         {loan.reason && <p className="mt-1 line-clamp-2 text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">{loan.reason}</p>}
                         {loan.review_notes && (
@@ -443,58 +441,71 @@ export function WarehouseLoanSystem({
               </button>
             </div>
 
-            {/* Credit Limit Alert Banner */}
-            <div className="rounded-xl border border-purple-100 bg-purple-50/70 p-3 flex items-center justify-between text-xs">
-              <div>
-                <p className="text-[10px] font-extrabold uppercase text-purple-700">Available Loan Credit</p>
-                <p className="text-sm font-black text-[#5B246B]">{fmt(totals.availableCredit)}</p>
-              </div>
-              <span className="text-[10px] text-purple-600 font-medium text-right">Max Limit: {fmt(ledger?.creditLimit || ledger?.credit_limit || 50000)}</span>
-            </div>
+              {/* Single Loan Constraint Alert */}
+              {(totals.activeCount > 0 || totals.pendingCount > 0) && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800 space-y-1">
+                  <div className="flex items-center gap-1.5 text-rose-900 font-extrabold">
+                    <AlertCircle size={16} /> Active Loan Found
+                  </div>
+                  <p className="text-[11px] font-normal text-rose-700">
+                    A staff member can only have 1 active loan at a time. Please fully repay your current loan before applying for a new one.
+                  </p>
+                </div>
+              )}
 
-            {/* Inputs */}
-            <div className="space-y-3">
-              <label className="block text-[10px] font-bold text-slate-700">
-                Loan Amount (₹) *
-                <input
-                  type="number"
-                  min="1000"
-                  max={totals.availableCredit}
-                  step="500"
-                  required
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-[#5B246B]"
-                  placeholder="Enter amount (e.g. 15000)"
-                />
-              </label>
-
-              {/* Amount Quick Pickers */}
-              <div className="flex flex-wrap gap-1.5">
-                {[5000, 10000, 15000, 25000, 50000].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    disabled={val > totals.availableCredit}
-                    onClick={() => setAmount(String(val))}
-                    className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold transition ${
-                      numAmount === val
-                        ? "border-[#5B246B] bg-[#5B246B] text-white"
-                        : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                    }`}
-                  >
-                    ₹{val.toLocaleString("en-IN")}
-                  </button>
-                ))}
+              {/* Credit Limit Alert Banner */}
+              <div className="rounded-xl border border-purple-100 bg-purple-50/70 p-3 flex items-center justify-between text-xs">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase text-purple-700">Available Loan Credit</p>
+                  <p className="text-sm font-black text-[#5B246B]">{fmt(totals.availableCredit)}</p>
+                </div>
+                <span className="text-[10px] text-purple-600 font-medium text-right">Max Limit: {fmt(ledger?.creditLimit || ledger?.credit_limit || 50000)}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Inputs */}
+              <div className="space-y-3">
+                <label className="block text-[10px] font-bold text-slate-700">
+                  Loan Amount (₹) *
+                  <input
+                    type="number"
+                    min="1000"
+                    max={totals.availableCredit}
+                    step="500"
+                    required
+                    disabled={totals.activeCount > 0 || totals.pendingCount > 0}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-[#5B246B] disabled:bg-slate-100"
+                    placeholder="Enter amount (e.g. 10000)"
+                  />
+                </label>
+
+                {/* Amount Quick Pickers */}
+                <div className="flex flex-wrap gap-1.5">
+                  {[5000, 10000, 15000, 25000, 50000].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      disabled={val > totals.availableCredit || totals.activeCount > 0 || totals.pendingCount > 0}
+                      onClick={() => setAmount(String(val))}
+                      className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold transition ${
+                        numAmount === val
+                          ? "border-[#5B246B] bg-[#5B246B] text-white"
+                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                      }`}
+                    >
+                      ₹{val.toLocaleString("en-IN")}
+                    </button>
+                  ))}
+                </div>
+
                 <label className="block text-[10px] font-bold text-slate-700">
                   Loan Purpose *
                   <select
                     value={purpose}
+                    disabled={totals.activeCount > 0 || totals.pendingCount > 0}
                     onChange={(e) => setPurpose(e.target.value as any)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#5B246B]"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#5B246B] disabled:bg-slate-100"
                   >
                     {Object.entries(PURPOSE_LABELS).map(([key, item]) => (
                       <option key={key} value={key}>
@@ -505,69 +516,36 @@ export function WarehouseLoanSystem({
                 </label>
 
                 <label className="block text-[10px] font-bold text-slate-700">
-                  Repayment Tenure *
-                  <select
-                    value={tenureMonths}
-                    onChange={(e) => setTenureMonths(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#5B246B]"
-                  >
-                    {[1, 2, 3, 6, 9, 12, 18, 24].map((m) => (
-                      <option key={m} value={m}>
-                        {m} Month{m > 1 ? "s" : ""}
-                      </option>
-                    ))}
-                  </select>
+                  Reason / Justification Notes
+                  <textarea
+                    rows={3}
+                    disabled={totals.activeCount > 0 || totals.pendingCount > 0}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Explain why you need this loan..."
+                    className="mt-1 w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#5B246B] disabled:bg-slate-100"
+                  />
                 </label>
               </div>
 
-              {/* Real-time EMI Calculation Card */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-900 p-4 text-white shadow-md space-y-2">
-                <div className="flex justify-between items-center text-[10px] font-extrabold uppercase text-purple-300">
-                  <span>EMI Breakdown</span>
-                  <span>{tenureMonths} Monthly Deductions</span>
-                </div>
-                <div className="flex justify-between items-baseline pt-1">
-                  <div>
-                    <p className="text-[10px] text-slate-400">Estimated Monthly EMI</p>
-                    <p className="text-2xl font-black text-emerald-400">{fmt(calculatedEmi)} / mo</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-slate-400">Total Loan Amount</p>
-                    <p className="text-sm font-bold text-white">{fmt(numAmount)}</p>
-                  </div>
-                </div>
+              {/* Actions */}
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setOpenModal(false)}
+                  disabled={saving}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || numAmount <= 0 || totals.activeCount > 0 || totals.pendingCount > 0}
+                  className="rounded-xl bg-[#5B246B] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#6B2C7D] disabled:opacity-50"
+                >
+                  {saving ? "Submitting..." : "Submit Application"}
+                </button>
               </div>
-
-              <label className="block text-[10px] font-bold text-slate-700">
-                Reason / Justification Notes
-                <textarea
-                  rows={3}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Explain why you need this loan..."
-                  className="mt-1 w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#5B246B]"
-                />
-              </label>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-              <button
-                type="button"
-                onClick={() => setOpenModal(false)}
-                disabled={saving}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving || numAmount <= 0}
-                className="rounded-xl bg-[#5B246B] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#6B2C7D] disabled:opacity-50"
-              >
-                {saving ? "Submitting..." : "Submit Application"}
-              </button>
-            </div>
           </form>
         </div>
       )}
