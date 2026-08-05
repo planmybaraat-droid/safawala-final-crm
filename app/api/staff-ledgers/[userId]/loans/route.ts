@@ -16,6 +16,82 @@ function canViewOtherUsers(user: any) {
   return user.is_super_admin || user.role === "franchise_admin" || user.department === "hr" || user.department === "accounts" || user.department === "manager"
 }
 
+async function getOrInitLedger(targetUserId: string, authUser: any) {
+  // Ensure target user exists in users table first
+  const { data: existingUser } = await supabaseServer
+    .from("users")
+    .select("id")
+    .eq("id", targetUserId)
+    .maybeSingle()
+
+  if (!existingUser) {
+    try {
+      await supabaseServer.from("users").upsert(
+        {
+          id: targetUserId,
+          email: authUser?.email || `${targetUserId}@safawala.com`,
+          name: authUser?.name || "Warehouse Staff",
+          role: authUser?.role || "staff",
+          department: authUser?.department || "warehouse",
+          franchise_id: authUser?.franchise_id || null,
+        },
+        { onConflict: "id" }
+      )
+    } catch (e) {
+      console.warn("User upsert warning:", e)
+    }
+  }
+
+  // 1. Check existing ledger by targetUserId
+  let { data: ledger } = await supabaseServer
+    .from("staff_ledgers")
+    .select("id, credit_limit, utilized_credit")
+    .eq("user_id", targetUserId)
+    .maybeSingle()
+
+  if (ledger) return { ledger, userId: targetUserId }
+
+  // 2. Try creating ledger for targetUserId
+  const { data: created, error: createError } = await supabaseServer
+    .from("staff_ledgers")
+    .insert({ user_id: targetUserId, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
+    .select("id, credit_limit, utilized_credit")
+    .maybeSingle()
+
+  if (created) return { ledger: created, userId: targetUserId }
+
+  // 3. Fallback: If FK constraint failed, lookup valid user in users table by email/id
+  if (createError && (createError.code === "23503" || createError.message?.includes("foreign key"))) {
+    const { data: dbUser } = await supabaseServer
+      .from("users")
+      .select("id")
+      .or(`email.eq.${authUser?.email || ""},id.eq.${authUser?.id || ""}`)
+      .limit(1)
+      .maybeSingle()
+
+    if (dbUser) {
+      let { data: dbUserLedger } = await supabaseServer
+        .from("staff_ledgers")
+        .select("id, credit_limit, utilized_credit")
+        .eq("user_id", dbUser.id)
+        .maybeSingle()
+
+      if (!dbUserLedger) {
+        const { data: fallbackCreated } = await supabaseServer
+          .from("staff_ledgers")
+          .insert({ user_id: dbUser.id, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
+          .select("id, credit_limit, utilized_credit")
+          .single()
+        dbUserLedger = fallbackCreated
+      }
+
+      if (dbUserLedger) return { ledger: dbUserLedger, userId: dbUser.id }
+    }
+  }
+
+  throw createError || new Error("Failed to initialize staff ledger")
+}
+
 export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
   const auth = await authenticateRequest(request, { minRole: "staff" })
   if (!auth.authorized || !auth.user) {
@@ -30,7 +106,7 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     const { data, error } = await supabaseServer
       .from("staff_loan_requests")
       .select("*")
-      .eq("user_id", params.userId)
+      .or(`user_id.eq.${params.userId},user_id.eq.${auth.user.id}`)
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -74,32 +150,14 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       return NextResponse.json({ success: false, error: "Select a valid loan purpose." }, { status: 400 })
     }
 
-    // Ensure target user exists in users table before creating staff ledger
-    const { data: existingUser } = await supabaseServer
-      .from("users")
-      .select("id")
-      .eq("id", params.userId)
-      .maybeSingle()
-
-    if (!existingUser) {
-      await supabaseServer.from("users").upsert(
-        {
-          id: params.userId,
-          email: auth.user.email || `${params.userId}@safawala.com`,
-          name: auth.user.name || "Warehouse Staff",
-          role: auth.user.role || "staff",
-          department: auth.user.department || "warehouse",
-          franchise_id: auth.user.franchise_id || null,
-        },
-        { onConflict: "id" }
-      )
-    }
+    // Resolve ledger & valid user ID
+    const { ledger, userId: effectiveUserId } = await getOrInitLedger(params.userId, auth.user)
 
     // Check if user already has an active or pending loan (Single Loan Policy)
     const { data: activeLoans } = await supabaseServer
       .from("staff_loan_requests")
       .select("id, amount, status")
-      .eq("user_id", params.userId)
+      .or(`user_id.eq.${params.userId},user_id.eq.${effectiveUserId}`)
       .in("status", ["pending", "approved", "active"])
 
     if (activeLoans && activeLoans.length > 0) {
@@ -108,17 +166,6 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
         success: false,
         error: `❌ Active Loan Found: You already have an active or pending loan of ₹${Number(existing.amount).toLocaleString("en-IN")}. You must fully repay your existing loan before applying for a new one.`
       }, { status: 400 })
-    }
-
-    // Get or create staff ledger
-    let { data: ledger, error: ledgerError } = await supabaseServer
-      .from("staff_ledgers")
-      .select("id, credit_limit, utilized_credit")
-      .eq("user_id", params.userId)
-      .maybeSingle()
-
-    if (ledgerError) {
-      return NextResponse.json({ success: false, error: ledgerError.message }, { status: 500 })
     }
 
     const creditLimit = ledger?.credit_limit ?? 50000
@@ -132,24 +179,11 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       }, { status: 400 })
     }
 
-    if (!ledger) {
-      const { data: createdLedger, error: createError } = await supabaseServer
-        .from("staff_ledgers")
-        .insert({ user_id: params.userId, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
-        .select("id")
-        .single()
-
-      if (createError) {
-        return NextResponse.json({ success: false, error: createError.message }, { status: 500 })
-      }
-      ledger = createdLedger
-    }
-
     const tenureMonths = 1
     const monthlyEmi = amount
 
     const payload = {
-      user_id: params.userId,
+      user_id: effectiveUserId,
       ledger_id: ledger.id,
       franchise_id: auth.user.franchise_id || null,
       amount,
