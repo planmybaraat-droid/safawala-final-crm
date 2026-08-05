@@ -224,7 +224,7 @@ export function WarehouseLoanSystem({
     <div className="space-y-4">
       {/* Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Available Loan Limit</p>
@@ -235,6 +235,12 @@ export function WarehouseLoanSystem({
               <Wallet size={20} strokeWidth={2.2} />
             </span>
           </div>
+          <button
+            onClick={() => setOpenModal(true)}
+            className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#5B246B] py-2 text-xs font-bold text-white shadow-xs hover:bg-[#6B2C7D] transition"
+          >
+            <Plus size={14} /> Apply for Loan
+          </button>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -284,14 +290,14 @@ export function WarehouseLoanSystem({
           <div>
             <h2 className="text-sm font-black text-slate-900">Warehouse Staff Loan System</h2>
             <p className="mt-0.5 text-[10px] text-slate-500">
-              Request personal or emergency salary loans with flexible monthly EMI repayments.
+              Request personal or emergency salary loans. Only 1 active loan permitted at a time.
             </p>
           </div>
           <button
             onClick={() => setOpenModal(true)}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B246B] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#6B2C7D]"
           >
-            <Plus size={16} /> Request New Loan
+            <Plus size={16} /> Apply for Loan
           </button>
         </div>
 
