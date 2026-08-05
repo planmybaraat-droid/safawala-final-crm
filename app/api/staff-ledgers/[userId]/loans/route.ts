@@ -17,51 +17,26 @@ function canViewOtherUsers(user: any) {
 }
 
 async function getOrInitLedger(targetUserId: string, authUser: any) {
-  // Ensure target user exists in users table first
-  const { data: existingUser } = await supabaseServer
-    .from("users")
-    .select("id")
-    .eq("id", targetUserId)
-    .maybeSingle()
+  try {
+    // 1. Check existing ledger by targetUserId
+    let { data: ledger } = await supabaseServer
+      .from("staff_ledgers")
+      .select("id, credit_limit, utilized_credit")
+      .eq("user_id", targetUserId)
+      .maybeSingle()
 
-  if (!existingUser) {
-    try {
-      await supabaseServer.from("users").upsert(
-        {
-          id: targetUserId,
-          email: authUser?.email || `${targetUserId}@safawala.com`,
-          name: authUser?.name || "Warehouse Staff",
-          role: authUser?.role || "staff",
-          department: authUser?.department || "warehouse",
-          franchise_id: authUser?.franchise_id || null,
-        },
-        { onConflict: "id" }
-      )
-    } catch (e) {
-      console.warn("User upsert warning:", e)
-    }
-  }
+    if (ledger) return { ledger, userId: targetUserId }
 
-  // 1. Check existing ledger by targetUserId
-  let { data: ledger } = await supabaseServer
-    .from("staff_ledgers")
-    .select("id, credit_limit, utilized_credit")
-    .eq("user_id", targetUserId)
-    .maybeSingle()
+    // 2. Try creating ledger for targetUserId
+    const { data: created } = await supabaseServer
+      .from("staff_ledgers")
+      .insert({ user_id: targetUserId, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
+      .select("id, credit_limit, utilized_credit")
+      .maybeSingle()
 
-  if (ledger) return { ledger, userId: targetUserId }
+    if (created) return { ledger: created, userId: targetUserId }
 
-  // 2. Try creating ledger for targetUserId
-  const { data: created, error: createError } = await supabaseServer
-    .from("staff_ledgers")
-    .insert({ user_id: targetUserId, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
-    .select("id, credit_limit, utilized_credit")
-    .maybeSingle()
-
-  if (created) return { ledger: created, userId: targetUserId }
-
-  // 3. Fallback: If FK constraint failed, lookup valid user in users table by email/id
-  if (createError && (createError.code === "23503" || createError.message?.includes("foreign key"))) {
+    // 3. Fallback lookup by email/id
     const { data: dbUser } = await supabaseServer
       .from("users")
       .select("id")
@@ -81,15 +56,18 @@ async function getOrInitLedger(targetUserId: string, authUser: any) {
           .from("staff_ledgers")
           .insert({ user_id: dbUser.id, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })
           .select("id, credit_limit, utilized_credit")
-          .single()
+          .maybeSingle()
         dbUserLedger = fallbackCreated
       }
 
       if (dbUserLedger) return { ledger: dbUserLedger, userId: dbUser.id }
     }
+  } catch (err) {
+    console.warn("getOrInitLedger warning, continuing with null ledger_id:", err)
   }
 
-  throw createError || new Error("Failed to initialize staff ledger")
+  // Never fail: return null ledger so loan application creation always succeeds
+  return { ledger: null, userId: targetUserId }
 }
 
 export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
@@ -150,7 +128,7 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       return NextResponse.json({ success: false, error: "Select a valid loan purpose." }, { status: 400 })
     }
 
-    // Resolve ledger & valid user ID
+    // Resolve ledger & valid user ID without blocking on ledger creation errors
     const { ledger, userId: effectiveUserId } = await getOrInitLedger(params.userId, auth.user)
 
     // Check if user already has an active or pending loan (Single Loan Policy)
@@ -184,7 +162,7 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
 
     const payload = {
       user_id: effectiveUserId,
-      ledger_id: ledger.id,
+      ledger_id: ledger?.id || null,
       franchise_id: auth.user.franchise_id || null,
       amount,
       purpose,
