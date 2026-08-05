@@ -75,6 +75,27 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       return NextResponse.json({ success: false, error: "Select a valid loan purpose." }, { status: 400 })
     }
 
+    // Ensure target user exists in users table before creating staff ledger
+    const { data: existingUser } = await supabaseServer
+      .from("users")
+      .select("id")
+      .eq("id", params.userId)
+      .maybeSingle()
+
+    if (!existingUser) {
+      await supabaseServer.from("users").upsert(
+        {
+          id: params.userId,
+          email: auth.user.email || `${params.userId}@safawala.com`,
+          name: auth.user.name || "Warehouse Staff",
+          role: auth.user.role || "staff",
+          department: auth.user.department || "warehouse",
+          franchise_id: auth.user.franchise_id || null,
+        },
+        { onConflict: "id" }
+      )
+    }
+
     // Get or create staff ledger
     let { data: ledger, error: ledgerError } = await supabaseServer
       .from("staff_ledgers")

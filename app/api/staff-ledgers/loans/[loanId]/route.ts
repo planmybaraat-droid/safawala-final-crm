@@ -55,6 +55,26 @@ export async function PATCH(request: NextRequest, { params }: { params: { loanId
         .maybeSingle()
 
       if (!ledger) {
+        const { data: existingUser } = await supabaseServer
+          .from("users")
+          .select("id")
+          .eq("id", loan.user_id)
+          .maybeSingle()
+
+        if (!existingUser) {
+          await supabaseServer.from("users").upsert(
+            {
+              id: loan.user_id,
+              email: `${loan.user_id}@safawala.com`,
+              name: "Warehouse Staff",
+              role: "staff",
+              department: "warehouse",
+              franchise_id: loan.franchise_id || null,
+            },
+            { onConflict: "id" }
+          )
+        }
+
         const { data: newLedger, error: createErr } = await supabaseServer
           .from("staff_ledgers")
           .insert({ user_id: loan.user_id, utilized_credit: 0, credit_limit: 50000, base_salary: 0 })

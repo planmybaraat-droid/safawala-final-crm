@@ -78,16 +78,32 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     if (ledgerError) throw ledgerError
 
     if (!ledger) {
-      // Fetch base salary from users table
-      const { data: userData } = await supabaseServer
+      // Ensure user exists in users table to prevent FK error
+      const { data: existingUser } = await supabaseServer
         .from("users")
-        .select("salary")
+        .select("id, salary")
         .eq("id", userId)
         .maybeSingle()
 
+      if (!existingUser) {
+        await supabaseServer.from("users").upsert(
+          {
+            id: userId,
+            email: auth.user?.email || `${userId}@safawala.com`,
+            name: auth.user?.name || "Staff Member",
+            role: auth.user?.role || "staff",
+            department: auth.user?.department || "warehouse",
+            franchise_id: auth.user?.franchise_id || null,
+          },
+          { onConflict: "id" }
+        )
+      }
+
+      const baseSalary = existingUser?.salary ?? 0
+
       const { data: newLedger, error: createError } = await supabaseServer
         .from("staff_ledgers")
-        .insert({ user_id: userId, base_salary: userData?.salary ?? 0, utilized_credit: 0, credit_limit: 50000 })
+        .insert({ user_id: userId, base_salary: baseSalary, utilized_credit: 0, credit_limit: 50000 })
         .select()
         .single()
 

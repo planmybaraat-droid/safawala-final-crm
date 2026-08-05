@@ -62,6 +62,27 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     return NextResponse.json({ success: false, error: "Receipt URL is invalid." }, { status: 400 })
   }
 
+  // Ensure user exists in users table to prevent FK constraint errors
+  const { data: existingUser } = await supabaseServer
+    .from("users")
+    .select("id")
+    .eq("id", params.userId)
+    .maybeSingle()
+
+  if (!existingUser) {
+    await supabaseServer.from("users").upsert(
+      {
+        id: params.userId,
+        email: user.email || `${params.userId}@safawala.com`,
+        name: user.name || "Warehouse Staff",
+        role: user.role || "staff",
+        department: user.department || "warehouse",
+        franchise_id: user.franchise_id || null,
+      },
+      { onConflict: "id" }
+    )
+  }
+
   let { data: ledger, error: ledgerError } = await supabaseServer
     .from("staff_ledgers")
     .select("id")
