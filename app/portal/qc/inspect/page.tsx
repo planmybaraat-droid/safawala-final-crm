@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   Search,
@@ -18,13 +18,14 @@ import {
   PackageCheck,
   ChevronRight,
   X,
-  FileText,
   User,
-  Calendar,
   Sparkles,
   ShieldCheck,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  SwitchCamera,
+  Trash2,
+  Image as ImageIcon
 } from "lucide-react"
 
 const COLOR = "#a855f7"
@@ -49,7 +50,7 @@ interface InspectionItem {
   status: "pending" | "pass" | "fail"
   failReason?: string
   failNotes?: string
-  photoProof?: string
+  photoProofs: string[]
 }
 
 interface QCOrder {
@@ -134,7 +135,8 @@ export default function QCInspectPage() {
             quantity: 1,
             category: "Sherwani",
             checklist: { ...INITIAL_CHECKLIST },
-            status: "pending"
+            status: "pending",
+            photoProofs: []
           },
           {
             id: `item-2-${idx}`,
@@ -143,7 +145,8 @@ export default function QCInspectPage() {
             quantity: 1,
             category: "Accessories",
             checklist: { ...INITIAL_CHECKLIST },
-            status: "pending"
+            status: "pending",
+            photoProofs: []
           },
           {
             id: `item-3-${idx}`,
@@ -152,7 +155,8 @@ export default function QCInspectPage() {
             quantity: 1,
             category: "Footwear & Stole",
             checklist: { ...INITIAL_CHECKLIST },
-            status: "pending"
+            status: "pending",
+            photoProofs: []
           }
         ]
       }))
@@ -191,15 +195,7 @@ export default function QCInspectPage() {
           items: o.items.map(item => ({
             ...item,
             status: "pass",
-            checklist: {
-              correctProduct: true,
-              correctQuantity: true,
-              colorMatch: true,
-              cleanliness: true,
-              stitching: true,
-              damageCheck: true,
-              accessoriesComplete: true,
-            }
+            checklist: { ...INITIAL_CHECKLIST }
           }))
         }
       }
@@ -463,6 +459,7 @@ function QCOrderInspectorModal({
 }) {
   const [items, setItems] = useState<InspectionItem[]>(order.items)
   const [activeItemIndex, setActiveItemIndex] = useState(0)
+  const [showLiveCamera, setShowLiveCamera] = useState(false)
 
   const currentItem = items[activeItemIndex]
 
@@ -497,7 +494,31 @@ function QCOrderInspectorModal({
     }))
   }
 
-  function updateFailDetails(field: "failReason" | "failNotes" | "photoProof", val: string) {
+  function addPhotoProof(photoUrl: string) {
+    setItems(prev => prev.map((item, idx) => {
+      if (idx === activeItemIndex) {
+        return {
+          ...item,
+          photoProofs: [...(item.photoProofs || []), photoUrl]
+        }
+      }
+      return item
+    }))
+  }
+
+  function removePhotoProof(photoIndex: number) {
+    setItems(prev => prev.map((item, idx) => {
+      if (idx === activeItemIndex) {
+        return {
+          ...item,
+          photoProofs: item.photoProofs.filter((_, pIdx) => pIdx !== photoIndex)
+        }
+      }
+      return item
+    }))
+  }
+
+  function updateFailDetails(field: "failReason" | "failNotes", val: string) {
     setItems(prev => prev.map((item, idx) => {
       if (idx === activeItemIndex) {
         return { ...item, [field]: val }
@@ -505,8 +526,6 @@ function QCOrderInspectorModal({
       return item
     }))
   }
-
-  const hasAnyFailed = items.some(i => i.status === "fail")
 
   function handleFinalAction(action: "approve" | "rework" | "damage" | "hold") {
     let finalStatus: QCOrder["status"] = "passed"
@@ -650,11 +669,57 @@ function QCOrderInspectorModal({
             </div>
           </div>
 
-          {/* Failure Reason & Photo Evidence Section */}
+          {/* Photo Evidence & Camera Capture Section */}
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-slate-900 font-extrabold text-xs">
+                <Camera size={16} className="text-[#5B246B]" /> Visual Inspection Photo Proof ({currentItem.photoProofs?.length || 0})
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLiveCamera(true)}
+                className="px-3 py-1.5 bg-[#5B246B] text-white rounded-xl text-xs font-extrabold shadow-sm hover:bg-[#6B2C7D] transition flex items-center gap-1.5"
+              >
+                <Camera size={14} /> Live Camera Snap
+              </button>
+            </div>
+
+            {/* Photo Proof Strip */}
+            <div className="grid grid-cols-4 gap-2">
+              {(currentItem.photoProofs || []).map((photo, pIdx) => (
+                <div key={pIdx} className="relative group rounded-xl overflow-hidden border border-slate-300 h-20 bg-slate-900">
+                  <img src={photo} alt={`Proof ${pIdx}`} className="h-full w-full object-cover" />
+                  <button
+                    onClick={() => removePhotoProof(pIdx)}
+                    className="absolute top-1 right-1 h-6 w-6 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-md hover:bg-rose-700"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+
+              {/* Gallery File Upload Button */}
+              <label className="h-20 border-2 border-dashed border-slate-300 bg-white rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-purple-50/50 transition text-center p-2">
+                <Upload size={18} className="text-[#5B246B] mb-0.5" />
+                <span className="text-[10px] font-bold text-slate-600">Gallery Upload</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) addPhotoProof(URL.createObjectURL(file))
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Failure Details Section */}
           {currentItem.status === "fail" && (
             <div className="bg-rose-50 rounded-2xl p-4 border border-rose-200 space-y-3">
               <div className="flex items-center gap-1.5 text-rose-800 font-extrabold text-xs">
-                <AlertTriangle size={16} /> Failure Details & Photo Proof (Required)
+                <AlertTriangle size={16} /> Failure Reason & Audit Notes (Required)
               </div>
 
               <div>
@@ -677,40 +742,10 @@ function QCOrderInspectorModal({
                 <textarea
                   value={currentItem.failNotes || ""}
                   onChange={e => updateFailDetails("failNotes", e.target.value)}
-                  placeholder="Describe exact stain location, missing item, or damage issue..."
+                  placeholder="Describe stain location, fabric flaw, or defect details..."
                   rows={2}
                   className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-medium outline-none resize-none"
                 />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-extrabold uppercase text-slate-600 block mb-1">
-                  Photo Proof (Optional / Required for Damage)
-                </label>
-                <div className="flex items-center gap-3">
-                  <label className="flex-1 border-2 border-dashed border-rose-300 bg-white rounded-xl py-3 px-4 text-center cursor-pointer hover:bg-rose-100/50 transition">
-                    <Camera size={18} className="mx-auto text-rose-600 mb-1" />
-                    <span className="text-[11px] font-bold text-rose-700">Upload Photo Evidence</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          updateFailDetails("photoProof", URL.createObjectURL(file))
-                        }
-                      }}
-                    />
-                  </label>
-                  {currentItem.photoProof && (
-                    <img
-                      src={currentItem.photoProof}
-                      alt="Proof"
-                      className="h-16 w-16 rounded-xl object-cover border border-rose-300 shadow-sm"
-                    />
-                  )}
-                </div>
               </div>
             </div>
           )}
@@ -750,6 +785,171 @@ function QCOrderInspectorModal({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Live Camera Viewfinder Modal */}
+      {showLiveCamera && (
+        <LiveCameraCaptureModal
+          onClose={() => setShowLiveCamera(false)}
+          onPhotoCaptured={(dataUrl) => {
+            addPhotoProof(dataUrl)
+            setShowLiveCamera(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function LiveCameraCaptureModal({
+  onClose,
+  onPhotoCaptured,
+}: {
+  onClose: () => void
+  onPhotoCaptured: (dataUrl: string) => void
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [cameraError, setCameraError] = useState(false)
+
+  useEffect(() => {
+    let stream: MediaStream | null = null
+    async function startCamera() {
+      try {
+        setCameraError(false)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
+        })
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      } catch (err) {
+        console.warn("Camera access error:", err)
+        setCameraError(true)
+      }
+    }
+
+    if (!capturedImage) {
+      startCamera()
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop())
+      }
+    }
+  }, [facingMode, capturedImage])
+
+  function snapPhoto() {
+    if (!videoRef.current || !canvasRef.current) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth || 640
+    canvas.height = video.videoHeight || 480
+
+    const ctx = canvas.getContext("2d")
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85)
+      setCapturedImage(dataUrl)
+    }
+  }
+
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      const url = URL.createObjectURL(file)
+      onPhotoCaptured(url)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col justify-between p-4">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between text-white z-10">
+        <span className="text-xs font-bold tracking-wider uppercase flex items-center gap-1.5">
+          <Camera size={18} className="text-purple-400" /> Live QC Camera Viewfinder
+        </span>
+        <button onClick={onClose} className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white">
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Viewfinder Canvas / Video Frame */}
+      <div className="relative flex-1 my-4 flex items-center justify-center overflow-hidden rounded-3xl border-2 border-white/20 bg-slate-950">
+        {capturedImage ? (
+          <img src={capturedImage} alt="Captured" className="w-full h-full object-contain" />
+        ) : cameraError ? (
+          <div className="text-center p-6 text-white space-y-3">
+            <Camera size={40} className="mx-auto text-rose-400" />
+            <p className="text-sm font-bold">Camera Access Blocked or Not Available</p>
+            <p className="text-xs text-slate-400">Please choose a photo from your gallery instead.</p>
+            <label className="inline-flex items-center gap-2 bg-[#5B246B] text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold cursor-pointer">
+              <Upload size={16} /> Select Photo from Device
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileSelected} />
+            </label>
+          </div>
+        ) : (
+          <>
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            {/* Viewfinder Framing Lines */}
+            <div className="absolute inset-8 border border-white/40 rounded-2xl pointer-events-none flex flex-col justify-between p-3">
+              <div className="flex justify-between">
+                <div className="w-4 h-4 border-t-2 border-l-2 border-amber-400" />
+                <div className="w-4 h-4 border-t-2 border-r-2 border-amber-400" />
+              </div>
+              <div className="flex justify-between">
+                <div className="w-4 h-4 border-b-2 border-l-2 border-amber-400" />
+                <div className="w-4 h-4 border-b-2 border-r-2 border-amber-400" />
+              </div>
+            </div>
+          </>
+        )}
+        <canvas ref={canvasRef} className="hidden" />
+      </div>
+
+      {/* Controls Footer */}
+      <div className="flex items-center justify-between px-6 pb-4">
+        {capturedImage ? (
+          <div className="w-full flex items-center gap-3">
+            <button
+              onClick={() => setCapturedImage(null)}
+              className="flex-1 bg-slate-800 text-white py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 border border-slate-700"
+            >
+              <RotateCcw size={16} /> Retake
+            </button>
+            <button
+              onClick={() => onPhotoCaptured(capturedImage)}
+              className="flex-1 bg-emerald-600 text-white py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
+            >
+              <CheckCircle2 size={16} /> Use Photo Proof
+            </button>
+          </div>
+        ) : (
+          <div className="w-full flex items-center justify-between">
+            <button
+              onClick={() => setFacingMode(prev => prev === "environment" ? "user" : "environment")}
+              className="h-12 w-12 rounded-2xl bg-white/20 text-white flex items-center justify-center"
+            >
+              <SwitchCamera size={22} />
+            </button>
+
+            {/* Circular Shutter Button */}
+            <button
+              onClick={snapPhoto}
+              className="h-18 w-18 rounded-full border-4 border-white bg-rose-600 hover:bg-rose-500 shadow-2xl flex items-center justify-center transition active:scale-95"
+            >
+              <div className="h-14 w-14 rounded-full border-2 border-white/60" />
+            </button>
+
+            <label className="h-12 w-12 rounded-2xl bg-white/20 text-white flex items-center justify-center cursor-pointer">
+              <ImageIcon size={22} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileSelected} />
+            </label>
+          </div>
+        )}
       </div>
     </div>
   )
