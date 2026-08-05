@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { toast } from "sonner"
+import { WarehouseLoanSystem, type WarehouseLoan } from "@/components/portal/warehouse-loan-system"
 
 export type WarehouseExpense = {
   id: string
@@ -56,15 +57,22 @@ export function WarehouseExpenseLedger({
   ledger,
   expenses,
   loadingExpenses,
+  loans = [],
+  loadingLoans = false,
+  isAdmin = false,
   onRefresh,
 }: {
   user: any
   ledger: any
   expenses: WarehouseExpense[]
   loadingExpenses: boolean
+  loans?: WarehouseLoan[]
+  loadingLoans?: boolean
+  isAdmin?: boolean
   onRefresh: () => Promise<void> | void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [activeTab, setActiveTab] = useState<"expenses" | "loans">("expenses")
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState("")
@@ -170,36 +178,76 @@ export function WarehouseExpenseLedger({
 
   return (
     <div className="px-4 py-4 space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {summaryCards.map((card) => {
-          const Icon = card.icon
-          return (
-            <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">{card.label}</p>
-                  <p className="mt-2 text-xl font-black text-slate-900">{card.value}</p>
-                  <p className="mt-1 text-[10px] text-slate-500">{card.note}</p>
-                </div>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ color: card.color, background: card.bg }}>
-                  <Icon size={20} strokeWidth={2.2} />
-                </span>
-              </div>
-            </div>
-          )
-        })}
+      {/* Top Segmented Tab Switcher */}
+      <div className="flex rounded-2xl bg-slate-100 p-1 border border-slate-200/80">
+        <button
+          onClick={() => setActiveTab("expenses")}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+            activeTab === "expenses"
+              ? "bg-white text-[#5B246B] shadow-xs"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <ReceiptText size={16} /> Warehouse Expenses
+        </button>
+        <button
+          onClick={() => setActiveTab("loans")}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+            activeTab === "loans"
+              ? "bg-white text-[#5B246B] shadow-xs"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <HandCoins size={16} /> Loan & Advance System
+          {loans.filter((l) => l.status === "pending").length > 0 && (
+            <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+              {loans.filter((l) => l.status === "pending").length}
+            </span>
+          )}
+        </button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-sm font-black text-slate-900">Expense Requests</h2>
-            <p className="mt-0.5 text-[10px] text-slate-500">Submit warehouse expenses with proof and track approval.</p>
+      {activeTab === "loans" ? (
+        <WarehouseLoanSystem
+          user={user}
+          ledger={ledger}
+          loans={loans}
+          loadingLoans={loadingLoans}
+          isAdmin={isAdmin}
+          onRefresh={onRefresh}
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {summaryCards.map((card) => {
+              const Icon = card.icon
+              return (
+                <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">{card.label}</p>
+                      <p className="mt-2 text-xl font-black text-slate-900">{card.value}</p>
+                      <p className="mt-1 text-[10px] text-slate-500">{card.note}</p>
+                    </div>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ color: card.color, background: card.bg }}>
+                      <Icon size={20} strokeWidth={2.2} />
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          <button onClick={() => setOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B246B] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#6B2C7D]">
-            <Plus size={16} /> Add Expense
-          </button>
-        </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-black text-slate-900">Expense Requests</h2>
+                <p className="mt-0.5 text-[10px] text-slate-500">Submit warehouse expenses with proof and track approval.</p>
+              </div>
+              <button onClick={() => setOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B246B] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#6B2C7D]">
+                <Plus size={16} /> Add Expense
+              </button>
+            </div>
 
         <div className="grid gap-2 border-b border-slate-100 p-4 sm:grid-cols-[1fr_180px]">
           <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
@@ -302,6 +350,8 @@ export function WarehouseExpenseLedger({
             </div>
           </form>
         </div>
+      )}
+        </>
       )}
     </div>
   )

@@ -31,6 +31,9 @@ export default function LedgerPage() {
   const [expenses, setExpenses] = useState<WarehouseExpense[]>([])
   const [selectedExpenses, setSelectedExpenses] = useState<WarehouseExpense[]>([])
   const [loadingExpenses, setLoadingExpenses] = useState(false)
+  const [loans, setLoans] = useState<any[]>([])
+  const [selectedLoans, setSelectedLoans] = useState<any[]>([])
+  const [loadingLoans, setLoadingLoans] = useState(false)
 
   const [showAdvanceModal, setShowAdvanceModal] = useState(false)
   const [showPayoutModal, setShowPayoutModal] = useState(false)
@@ -42,6 +45,22 @@ export default function LedgerPage() {
   const [errorMsg, setErrorMsg] = useState("")
   const [successMsg, setSuccessMsg] = useState("")
   const [submitting, setSubmitting] = useState(false)
+
+  const fetchLoans = useCallback(async (userId: string, selected = false) => {
+    setLoadingLoans(true)
+    try {
+      const res = await fetch(`/api/staff-ledgers/${userId}/loans`)
+      const json = await res.json()
+      if (res.ok && json.success) {
+        if (selected) setSelectedLoans(json.data || [])
+        else setLoans(json.data || [])
+      }
+    } catch {
+      // catch error
+    } finally {
+      setLoadingLoans(false)
+    }
+  }, [])
 
   const fetchExpenses = useCallback(async (userId: string, selected = false) => {
     setLoadingExpenses(true)
@@ -77,7 +96,10 @@ export default function LedgerPage() {
         const json = await res.json()
         if (json.success) {
           setMyLedger(json.data)
-          if (dept === "warehouse") await fetchExpenses(currentUser.id)
+          if (dept === "warehouse") {
+            await fetchExpenses(currentUser.id)
+            await fetchLoans(currentUser.id)
+          }
         } else {
           toast.error(json.error || "Failed to load your ledger")
         }
@@ -87,7 +109,7 @@ export default function LedgerPage() {
     } finally {
       setLoading(false)
     }
-  }, [dept, fetchExpenses])
+  }, [dept, fetchExpenses, fetchLoans])
 
   const fetchSelectedStaffLedger = async (userId: string) => {
     try {
@@ -95,7 +117,10 @@ export default function LedgerPage() {
       const json = await res.json()
       if (json.success) {
         setSelectedStaff(json.data)
-        if (json.data?.department === "warehouse") await fetchExpenses(userId, true)
+        if (json.data?.department === "warehouse") {
+          await fetchExpenses(userId, true)
+          await fetchLoans(userId, true)
+        }
       } else {
         toast.error(json.error || "Failed to load staff ledger details")
       }
@@ -268,6 +293,9 @@ export default function LedgerPage() {
           ledger={myLedger}
           expenses={expenses}
           loadingExpenses={loadingExpenses}
+          loans={loans}
+          loadingLoans={loadingLoans}
+          isAdmin={isAdminView}
           onRefresh={() => fetchLedgers(user, false)}
         />
       ) : !isAdminView && myLedger ? (
