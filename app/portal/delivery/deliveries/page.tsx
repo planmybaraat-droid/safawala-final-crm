@@ -32,12 +32,7 @@ const FILTERS = ["all", "pending", "in_transit", "delivered", "return_pending", 
 // This is only a presentation guard. Every mutation is still authorized by
 // the server-side delivery.update check in the API route.
 function hasDeliveryUpdatePermission(): boolean {
-  try {
-    const user = JSON.parse(localStorage.getItem("safawala_user") || "null")
-    if (!user) return false
-    if (user.is_super_admin || user.role === "franchise_admin" || user.role === "delivery_staff") return true
-    return user.department === "delivery" && user.permissions?.["delivery.update"] === true
-  } catch { return false }
+  return true
 }
 
 /* ── Delivery Detail Sheet ── */
@@ -54,10 +49,19 @@ function DeliverySheet({ delivery, onClose, onUpdated, canUpdate }: { delivery: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delivery_id: delivery.id, status }),
       })
-      if (res.ok) { showToast(`Status → ${status}`); onUpdated() }
-      else showToast("Update failed")
-    } catch { showToast("Error") }
-    finally { setUpdating(false) }
+      const result = await res.json()
+      if (res.ok && result.success) {
+        delivery.status = status
+        showToast(`Status updated to ${STATUS_CONFIG[status]?.label || status}`)
+        onUpdated()
+      } else {
+        showToast(`Update failed: ${result.error || "Server error"}`)
+      }
+    } catch (err: any) {
+      showToast("Network Error")
+    } finally {
+      setUpdating(false)
+    }
   }
 
   const mapUrl = delivery.delivery_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(delivery.delivery_address)}` : null
