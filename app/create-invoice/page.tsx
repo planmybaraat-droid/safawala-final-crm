@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { sendInvoiceViaWhatsApp } from "@/lib/send-invoice-whatsapp"
 import { triggerPDFGeneration } from "@/lib/generate-pdf-helper"
 import { validatePhoneWithCountry } from "@/lib/form-validation"
+import { DEFAULT_SIGNATURE_URL } from "@/lib/signature-constant"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -4504,11 +4505,11 @@ export default function CreateInvoicePage() {
               </div>
             </div>
             <div className="text-center w-[40%] flex flex-col items-center justify-end">
-              <div className="h-12 w-auto mb-1 flex items-center justify-center">
+              <div className="h-14 w-auto mb-1 flex items-center justify-center">
                 <img 
-                  src={companySettings?.signature_url || "/ronak-dave-signature.png"} 
+                  src={DEFAULT_SIGNATURE_URL} 
                   alt="Authorized Signature" 
-                  className="max-h-12 max-w-full object-contain mix-blend-multiply"
+                  className="max-h-14 max-w-full object-contain mix-blend-multiply"
                 />
               </div>
               <div className="border-t border-gray-400 pt-1 w-full">
