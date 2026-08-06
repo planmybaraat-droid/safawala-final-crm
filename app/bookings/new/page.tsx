@@ -237,6 +237,7 @@ export default function CreateInvoicePage() {
   
   // Selection Mode: "products" = individual products, "package" = package with products inside
   const [selectionMode, setSelectionMode] = useState<"products" | "package">("products")
+  const [signatureHeight, setSignatureHeight] = useState<number>(105)
   
   // Package Selection State
   const [packages, setPackages] = useState<any[]>([])
@@ -4211,11 +4212,12 @@ export default function CreateInvoicePage() {
               </div>
             </div>
             <div className="text-center w-[40%] flex flex-col items-center justify-end">
-              <div className="h-16 w-auto mb-1 flex items-center justify-center">
+              <div className="w-auto mb-1 flex items-center justify-center" style={{ height: `${signatureHeight}px` }}>
                 <img 
                   src={DEFAULT_SIGNATURE_URL} 
                   alt="Authorized Signature" 
-                  className="max-h-16 max-w-full object-contain"
+                  className="w-auto object-contain"
+                  style={{ maxHeight: `${signatureHeight}px` }}
                 />
               </div>
               <div className="border-t border-gray-400 pt-1 w-full">

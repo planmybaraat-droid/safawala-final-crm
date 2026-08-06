@@ -235,6 +235,7 @@ export default function CreateInvoicePage() {
   const [companySettings, setCompanySettings] = useState<any>(null)
   const [primaryBank, setPrimaryBank] = useState<any>(null)
   const [bankQrDataUrl, setBankQrDataUrl] = useState<string>("")
+  const [signatureHeight, setSignatureHeight] = useState<number>(105)
 
   // Franchise ID for data isolation
   const [franchiseId, setFranchiseId] = useState<string | null>(null)
@@ -4186,6 +4187,22 @@ export default function CreateInvoicePage() {
                           REVIEW BOOKING TO CREATE
                         </Button>
                         
+                        <div className="mb-2 flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
+                          <span className="font-semibold text-slate-700 flex items-center gap-1">✒️ Signature Size:</span>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="range" 
+                              min="60" 
+                              max="180" 
+                              step="5"
+                              value={signatureHeight} 
+                              onChange={(e) => setSignatureHeight(Number(e.target.value))}
+                              className="w-24 cursor-pointer accent-indigo-600 h-1.5 bg-slate-300 rounded"
+                            />
+                            <span className="font-bold text-indigo-700 min-w-[36px] text-right">{signatureHeight}px</span>
+                          </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
                           <Button 
                             variant="outline" 
@@ -4505,11 +4522,12 @@ export default function CreateInvoicePage() {
               </div>
             </div>
             <div className="text-center w-[40%] flex flex-col items-center justify-end">
-              <div className="h-16 w-auto mb-1 flex items-center justify-center">
+              <div className="w-auto mb-1 flex items-center justify-center" style={{ height: `${signatureHeight}px` }}>
                 <img 
                   src={DEFAULT_SIGNATURE_URL} 
                   alt="Authorized Signature" 
-                  className="max-h-16 max-w-full object-contain"
+                  className="w-auto object-contain"
+                  style={{ maxHeight: `${signatureHeight}px` }}
                 />
               </div>
               <div className="border-t border-gray-400 pt-1 w-full">
