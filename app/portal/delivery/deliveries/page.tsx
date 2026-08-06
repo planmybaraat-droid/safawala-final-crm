@@ -122,7 +122,7 @@ function DeliverySheet({ delivery, onClose, onUpdated, canUpdate }: { delivery: 
           {canUpdate && <div>
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "rgba(80,55,30,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>Update Status</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {(["pending", "in_transit", "delivered", "returned"] as const).map(s => {
+              {(["pending", "in_transit", "delivered", "returned", "cancelled"] as const).map(s => {
                 const c = STATUS_CONFIG[s]
                 const isCurrent = delivery.status === s || (s === "returned" && (delivery.status === "return_completed" || delivery.status === "completed"))
                 return (
@@ -189,6 +189,8 @@ export default function DeliveriesPortalPage() {
         matchesFilter = d.status === "return_pending" || d.status === "delivered"
       } else if (filter === "returned" || filter === "return_completed") {
         matchesFilter = d.status === "returned" || d.status === "return_completed" || d.status === "completed"
+      } else if (filter === "cancelled") {
+        matchesFilter = d.status === "cancelled"
       } else {
         matchesFilter = d.status === filter
       }

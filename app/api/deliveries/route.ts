@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       data = []
     }
 
-    // Dynamic CRM Order Auto-Sync: Fetch confirmed product_orders to ensure all Main CRM bookings flow into Delivery Portal
+    // Dynamic CRM Order Auto-Sync: Fetch all relevant product_orders to ensure CRM bookings flow into Delivery Portal
     try {
       let poQuery = supabase
         .from("product_orders")
@@ -57,9 +57,9 @@ export async function GET(request: NextRequest) {
           venue_address, groom_name, groom_whatsapp, groom_address, customer_id, franchise_id,
           customer:customers(id, name, phone, email)
         `)
-        .in("status", ["confirmed", "in_progress", "delivered", "picked_up"])
+        .in("status", ["confirmed", "in_progress", "delivered", "picked_up", "completed", "returned", "cancelled"])
         .order("created_at", { ascending: false })
-        .limit(100)
+        .limit(150)
 
       if (effectiveFranchiseId) {
         poQuery = poQuery.eq("franchise_id", effectiveFranchiseId)
@@ -72,11 +72,15 @@ export async function GET(request: NextRequest) {
 
         for (const po of poList) {
           if (!existingOrderIds.has(po.id)) {
-            const mappedStatus = po.status === "delivered" 
-              ? "delivered" 
-              : po.status === "in_progress" 
-                ? "in_transit" 
-                : "pending"
+            const mappedStatus = po.status === "cancelled" 
+              ? "cancelled"
+              : (po.status === "completed" || po.status === "returned")
+                ? "returned"
+                : po.status === "delivered" 
+                  ? "delivered" 
+                  : po.status === "in_progress" 
+                    ? "in_transit" 
+                    : "pending"
 
             if (!status || status === "all" || status === mappedStatus) {
               data.push({
