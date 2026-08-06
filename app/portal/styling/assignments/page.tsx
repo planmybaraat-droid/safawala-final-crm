@@ -43,21 +43,22 @@ export default function AssignmentsPage() {
     setLoading(true)
     setErrorState(null)
     try {
-      // Fetch bookings from CRM API
-      const res = await fetch("/api/bookings?limit=50")
+      const res = await fetch("/api/styling/gigs")
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to fetch rental assignments")
 
-      const rawBookings = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : [])
-      
-      // Filter for Rental bookings or active orders requiring Safa Tying
-      const rentalBookings = rawBookings.filter((b: any) => 
-        b.booking_type === "rental" || 
-        b.booking_type === "Rental" ||
-        (b.status !== "cancelled" && b.status !== "rejected")
-      )
+      const rawBookings = Array.isArray(data.data) ? data.data : []
+      setBookings(rawBookings)
 
-      setBookings(rentalBookings)
+      if (Array.isArray(data.interests) && data.interests.length > 0) {
+        const intMap: Record<string, any> = {}
+        for (const item of data.interests) {
+          if (item.booking_id) {
+            intMap[item.booking_id] = item
+          }
+        }
+        setUserInterests(prev => ({ ...intMap, ...prev }))
+      }
     } catch (err: any) {
       console.error("Failed to fetch assignments:", err)
       setErrorState(err.message || "Failed to fetch rental assignments")
