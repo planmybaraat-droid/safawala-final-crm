@@ -10,8 +10,10 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; lab
   pending:          { bg: "#fef9c3", text: "#a16207", dot: "#eab308",  label: "Pending" },
   in_transit:       { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6",  label: "In Transit 🚚" },
   delivered:        { bg: "#dcfce7", text: "#15803d", dot: "#22c55e",  label: "Delivered ✓" },
-  return_pending:   { bg: "#fef9c3", text: "#a16207", dot: "#eab308",  label: "Return Pending" },
+  return_pending:   { bg: "#ffedd5", text: "#c2410c", dot: "#f97316",  label: "Return Pending 🔄" },
   return_completed: { bg: "#f3e8ff", text: "#6d28d9", dot: "#8b5cf6",  label: "Returned ✓" },
+  returned:         { bg: "#f3e8ff", text: "#6d28d9", dot: "#8b5cf6",  label: "Returned ✓" },
+  completed:        { bg: "#f3e8ff", text: "#6d28d9", dot: "#8b5cf6",  label: "Returned ✓" },
   cancelled:        { bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444",  label: "Cancelled" },
 }
 
@@ -27,7 +29,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function fmtDate(d: string | null) { return d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—" }
 
-const FILTERS = ["all", "pending", "in_transit", "delivered", "return_pending", "return_completed", "cancelled"]
+const FILTERS = ["all", "pending", "in_transit", "delivered", "return_pending", "returned", "cancelled"]
 
 // This is only a presentation guard. Every mutation is still authorized by
 // the server-side delivery.update check in the API route.
@@ -120,11 +122,12 @@ function DeliverySheet({ delivery, onClose, onUpdated, canUpdate }: { delivery: 
           {canUpdate && <div>
             <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "rgba(80,55,30,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>Update Status</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {(["pending", "in_transit", "delivered", "return_completed"] as const).map(s => {
+              {(["pending", "in_transit", "delivered", "returned"] as const).map(s => {
                 const c = STATUS_CONFIG[s]
+                const isCurrent = delivery.status === s || (s === "returned" && (delivery.status === "return_completed" || delivery.status === "completed"))
                 return (
-                  <button key={s} onClick={() => updateStatus(s)} disabled={updating || delivery.status === s}
-                    style={{ padding: "8px 14px", borderRadius: 20, border: "none", background: delivery.status === s ? c.dot : c.bg, color: delivery.status === s ? "white" : c.text, fontSize: 11, fontWeight: 700, cursor: delivery.status === s ? "default" : "pointer", fontFamily: "inherit" }}>
+                  <button key={s} onClick={() => updateStatus(s)} disabled={updating || isCurrent}
+                    style={{ padding: "8px 14px", borderRadius: 20, border: "none", background: isCurrent ? c.dot : c.bg, color: isCurrent ? "white" : c.text, fontSize: 11, fontWeight: 700, cursor: isCurrent ? "default" : "pointer", fontFamily: "inherit" }}>
                     {c.label}
                   </button>
                 )
@@ -162,6 +165,8 @@ export default function DeliveriesPortalPage() {
         delivery_address: d.delivery_address || "",
         delivery_date: d.delivery_date,
         delivery_time: d.delivery_time,
+        return_date: d.return_date || null,
+        booking_type: d.booking_type || "rental",
         status: d.status,
         driver_name: d.driver_name || "",
         vehicle_number: d.vehicle_number || "",
@@ -176,13 +181,25 @@ export default function DeliveriesPortalPage() {
   useEffect(() => { fetchData(); setCanUpdate(hasDeliveryUpdatePermission()) }, [])
 
   const filtered = useMemo(() =>
-    deliveries.filter(d =>
-      (filter === "all" || d.status === filter) &&
-      (!search ||
+    deliveries.filter(d => {
+      let matchesFilter = false
+      if (filter === "all") {
+        matchesFilter = true
+      } else if (filter === "return_pending") {
+        matchesFilter = d.status === "return_pending" || d.status === "delivered"
+      } else if (filter === "returned" || filter === "return_completed") {
+        matchesFilter = d.status === "returned" || d.status === "return_completed" || d.status === "completed"
+      } else {
+        matchesFilter = d.status === filter
+      }
+
+      return matchesFilter && (
+        !search ||
         d.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
         d.delivery_number?.toLowerCase().includes(search.toLowerCase()) ||
-        d.delivery_address?.toLowerCase().includes(search.toLowerCase()))
-    ), [deliveries, search, filter])
+        d.delivery_address?.toLowerCase().includes(search.toLowerCase())
+      )
+    }), [deliveries, search, filter])
 
   const stats = useMemo(() => ({
     total: deliveries.length,
