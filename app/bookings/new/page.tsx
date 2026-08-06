@@ -4200,10 +4200,10 @@ export default function CreateInvoicePage() {
                   <li>No last-minute changes will be allowed in the placed order after confirmation.</li>
                   <li>Your designated responsible person must count &amp; verify items before and after tying turbans at venue. All products are selected &amp; checked by customer.</li>
                   <li>Total outstanding balance along with Security Deposit must be paid before the wedding date.</li>
-                  <li>If safa is lost, torn, or burnt, it is mandatory to pay ₹400 / ₹600 / ₹800 per safa by the party.</li>
+                  <li>If safa is lost, torn, or burnt, it is mandatory to pay ₹400 / ₹600 / ₹800 per safa by the customer.</li>
                   <li>Our team will not ask guests directly to return rented safas (as per company reputation &amp; policies); client is responsible for collecting &amp; submitting items.</li>
                   <li>All rented safas must be submitted by client by next day, otherwise extra rent will be charged again from security deposit.</li>
-                  <li>Safawala&apos;s service will be maximum 1 hour. It is the responsibility of the party to wear safas on time. Overtime charges of ₹1,500/hr will be taken for delay.</li>
+                  <li>Safawala&apos;s service will be maximum 1 hour. It is the responsibility of the customer to wear safas on time. Overtime charges of ₹1,500/hr will be taken for delay.</li>
                   <li>Local city service is 1 hour and outstation service is maximum 4 hours till 9:30 PM. Late overtime will be charged from security deposit.</li>
                   <li>Final invoice &amp; products will be delivered after total amount is paid in full.</li>
                   <li>All disputes, if any, are subject to Vadodara jurisdiction only.</li>
