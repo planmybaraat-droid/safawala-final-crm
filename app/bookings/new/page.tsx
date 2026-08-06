@@ -4185,20 +4185,28 @@ export default function CreateInvoicePage() {
               {companySettings?.terms_conditions ? (
                 <div className="whitespace-pre-wrap">{companySettings.terms_conditions}</div>
               ) : invoiceData.invoice_type === "sale" ? (
-                <ul className="list-disc list-inside space-y-0.5">
-                  <li>Products purchased under the sale category are non-returnable and non-exchangeable.</li>
-                  <li>This agreement and any related matters shall be governed by the jurisdiction of Vadodara, Gujarat.</li>
-                </ul>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Sold products will not be returned or exchanged.</li>
+                  <li>Exchange is available within 2 days of invoice date with original invoice.</li>
+                  <li>No last-minute changes will be allowed in the placed order after confirmation.</li>
+                  <li>All products are selected, inspected &amp; checked by the customer.</li>
+                  <li>Final invoice &amp; product will be delivered after total amount is paid in full.</li>
+                  <li>All disputes, if any, are subject to Vadodara jurisdiction only.</li>
+                </ol>
               ) : (
                 <ol className="list-decimal list-inside space-y-0.5">
-                  <li>All product selections and order details are considered approved by the customer at the time of booking. Any changes after confirmation may not be possible, especially close to the event date.</li>
-                  <li>For the best service experience, Safa Wale bookings should preferably be confirmed at least 30 days before the event.</li>
-                  <li>The remaining payment, including the Security Deposit, must be completed before the event date.</li>
-                  <li>Safas and rental items remain the customer&apos;s responsibility until collected by our team. Any lost, damaged, torn, burnt, or unreturned items will be charged as per the applicable lost/damage rates.</li>
-                  <li>Our team will arrange collection of safas after the event. If items are unavailable on the agreed date, additional rental charges may be adjusted from the Security Deposit.</li>
-                  <li>Safa Wale service includes up to 3 hours of assistance. Out-of-town services include up to 3 hours. Additional hours will be charged at ₹1,500 per hour.</li>
-                  <li>Local city services include up to 1 hour; outstation services include up to 3 hours and must be completed by 9:30 PM. Any additional time will be charged from the Security Deposit.</li>
-                  <li>Sold products are non-returnable and non-exchangeable. All bookings and services are subject to Vadodara jurisdiction.</li>
+                  <li>Sold products will not be returned or exchanged. Exchange for sale items is available within 2 days with original invoice.</li>
+                  <li>Please book the Safa Wale service at least 1 month (30 days) in advance.</li>
+                  <li>No last-minute changes will be allowed in the placed order after confirmation.</li>
+                  <li>Your designated responsible person must count &amp; verify items before and after tying turbans at venue. All products are selected &amp; checked by customer.</li>
+                  <li>Total outstanding balance along with Security Deposit must be paid before the wedding date.</li>
+                  <li>If safa is lost, torn, or burnt, it is mandatory to pay ₹400 / ₹600 / ₹800 per safa by the party.</li>
+                  <li>Our team will not ask guests directly to return rented safas (as per company reputation &amp; policies); client is responsible for collecting &amp; submitting items.</li>
+                  <li>All rented safas must be submitted by client by next day, otherwise extra rent will be charged again from security deposit.</li>
+                  <li>Safawala&apos;s service will be maximum 1 hour. It is the responsibility of the party to wear safas on time. Overtime charges of ₹1,500/hr will be taken for delay.</li>
+                  <li>Local city service is 1 hour and outstation service is maximum 4 hours till 9:30 PM. Late overtime will be charged from security deposit.</li>
+                  <li>Final invoice &amp; products will be delivered after total amount is paid in full.</li>
+                  <li>All disputes, if any, are subject to Vadodara jurisdiction only.</li>
                 </ol>
               )}
             </div>

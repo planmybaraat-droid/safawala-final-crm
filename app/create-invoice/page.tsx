@@ -3364,22 +3364,27 @@ export default function CreateInvoicePage() {
                             <div className="text-[10px] text-gray-600 max-h-40 overflow-y-auto leading-relaxed">
                               {invoiceData.invoice_type === "sale" ? (
                                 <ol className="list-decimal list-inside space-y-1">
-                                  <li>Sale items cannot be returned.</li>
-                                  <li>Exchange is available within <strong>2 days</strong> of the invoice date.</li>
-                                  <li>Please keep the original invoice for any exchange.</li>
-                                  <li>Final invoice &amp; product will be delivered after total amount is paid.</li>
-                                  <li>All disputes, if any, are subject to <strong>Vadodara, Gujarat</strong> jurisdiction only.</li>
+                                  <li>Sold products will not be returned or exchanged.</li>
+                                  <li>Exchange is available within <strong>2 days</strong> of the invoice date with original invoice.</li>
+                                  <li>No last-minute changes will be allowed in the placed order after confirmation.</li>
+                                  <li>All products are selected, inspected &amp; checked by the customer.</li>
+                                  <li>Final invoice &amp; product will be delivered after total amount is paid in full.</li>
+                                  <li>All disputes, if any, are subject to <strong>Vadodara</strong> jurisdiction only.</li>
                                 </ol>
                               ) : (
-                                <ol className="list-decimal list-inside space-y-0.5">
-                                  <li>All product selections and order details are considered approved by the customer at the time of booking. Any changes requested after confirmation may not be possible, especially close to the event date.</li>
-                                  <li>For the best service experience, Safa Wale bookings should preferably be confirmed at least 30 days before the event.</li>
-                                  <li>The remaining payment, including the Security Deposit, must be completed before the event date.</li>
-                                  <li>Safas and rental items remain the responsibility of the customer until they are collected by our team. Any lost, damaged, torn, burnt, or unreturned items will be charged as per the applicable lost/damage rates.</li>
-                                  <li>Our team will arrange the collection of safas after the event. If items are not available for collection on the agreed date, additional rental charges may apply and can be adjusted from the Security Deposit.</li>
-                                  <li>Safa Wale service includes up to 5 hours of assistance. Additional hours, if required, will be charged at ₹1,500 per hour.</li>
-                                  <li>Service timings are subject to the booking location. Local city services include up to 1 hour of assistance, while outstation services are available for up to 4 hours and until 9:30 PM. Any additional time may be adjusted against the Security Deposit.</li>
-                                  <li>Sold products are non-returnable and non-exchangeable. All bookings and services are subject to Vadodara jurisdiction.</li>
+                                <ol className="list-decimal list-inside space-y-1">
+                                  <li>Sold products will not be returned or exchanged. Exchange for sale items is available within 2 days with original invoice.</li>
+                                  <li>Please book the Safa Wale service at least 1 month (30 days) in advance.</li>
+                                  <li>No last-minute changes will be allowed in the placed order after confirmation.</li>
+                                  <li>Your designated responsible person must count &amp; verify items before and after tying turbans at venue. All products are selected &amp; checked by customer.</li>
+                                  <li>Total outstanding balance along with Security Deposit must be paid before the wedding date.</li>
+                                  <li>If safa is lost, torn, or burnt, it is mandatory to pay ₹400 / ₹600 / ₹800 per safa by the party.</li>
+                                  <li>Our team will not ask guests directly to return rented safas (as per company reputation &amp; policies); client is responsible for collecting &amp; submitting items.</li>
+                                  <li>All rented safas must be submitted by client by next day, otherwise extra rent will be charged again from the security deposit.</li>
+                                  <li>Safawala&apos;s service will be maximum 1 hour. It is the responsibility of the party to wear safas on time. Overtime charges of ₹1,500/hr will be taken for delay.</li>
+                                  <li>Local city service is 1 hour and outstation service is maximum 4 hours till 9:30 PM. Late overtime will be charged from the security deposit.</li>
+                                  <li>Final invoice &amp; products will be delivered after total amount is paid in full.</li>
+                                  <li>All disputes, if any, are subject to <strong>Vadodara</strong> jurisdiction only.</li>
                                 </ol>
                               )}
                             </div>
@@ -4493,22 +4498,27 @@ export default function CreateInvoicePage() {
             <div className="text-[8px] text-gray-600 leading-tight">
               {invoiceData.invoice_type === "sale" ? (
                 <ol className="list-decimal list-inside space-y-0.5">
-                  <li>Sale items cannot be returned.</li>
-                  <li>Exchange is available within 2 days of the invoice date.</li>
-                  <li>Please keep the original invoice for any exchange.</li>
-                  <li>Final invoice &amp; product will be delivered after total amount is paid.</li>
-                  <li>All disputes, if any, are subject to Vadodara, Gujarat jurisdiction only.</li>
+                  <li>Sold products will not be returned or exchanged.</li>
+                  <li>Exchange is available within 2 days of invoice date with original invoice.</li>
+                  <li>No last-minute changes will be allowed in the placed order after confirmation.</li>
+                  <li>All products are selected, inspected &amp; checked by the customer.</li>
+                  <li>Final invoice &amp; product will be delivered after total amount is paid in full.</li>
+                  <li>All disputes, if any, are subject to Vadodara jurisdiction only.</li>
                 </ol>
               ) : (
                 <ol className="list-decimal list-inside space-y-0.5">
-                  <li>All product selections and order details are considered approved by the customer at the time of booking. Any changes after confirmation may not be possible, especially close to the event date.</li>
-                  <li>For the best service experience, Safa Wale bookings should preferably be confirmed at least 30 days before the event.</li>
-                  <li>The remaining payment, including the Security Deposit, must be completed before the event date.</li>
-                  <li>Safas and rental items remain the customer&apos;s responsibility until collected by our team. Any lost, damaged, torn, burnt, or unreturned items will be charged as per the applicable lost/damage rates.</li>
-                  <li>Our team will arrange collection of safas after the event. If items are unavailable on the agreed date, additional rental charges may be adjusted from the Security Deposit.</li>
-                  <li>Safa Wale service includes up to 5 hours of assistance. Additional hours will be charged at ₹1,500 per hour.</li>
-                  <li>Local city services include up to 1 hour; outstation services up to 4 hours and until 9:30 PM. Any additional time may be adjusted against the Security Deposit.</li>
-                  <li>Sold products are non-returnable and non-exchangeable. All bookings and services are subject to Vadodara jurisdiction.</li>
+                  <li>Sold products will not be returned or exchanged. Exchange for sale items is available within 2 days with original invoice.</li>
+                  <li>Please book the Safa Wale service at least 1 month (30 days) in advance.</li>
+                  <li>No last-minute changes will be allowed in the placed order after confirmation.</li>
+                  <li>Your designated responsible person must count &amp; verify items before and after tying turbans at venue. All products are selected &amp; checked by customer.</li>
+                  <li>Total outstanding balance along with Security Deposit must be paid before the wedding date.</li>
+                  <li>If safa is lost, torn, or burnt, it is mandatory to pay ₹400 / ₹600 / ₹800 per safa by the party.</li>
+                  <li>Our team will not ask guests directly to return rented safas (as per company reputation &amp; policies); client is responsible for collecting &amp; submitting items.</li>
+                  <li>All rented safas must be submitted by client by next day, otherwise extra rent will be charged again from security deposit.</li>
+                  <li>Safawala&apos;s service will be maximum 1 hour. It is the responsibility of the party to wear safas on time. Overtime charges of ₹1,500/hr will be taken for delay.</li>
+                  <li>Local city service is 1 hour and outstation service is maximum 4 hours till 9:30 PM. Late overtime will be charged from security deposit.</li>
+                  <li>Final invoice &amp; products will be delivered after total amount is paid in full.</li>
+                  <li>All disputes, if any, are subject to Vadodara jurisdiction only.</li>
                 </ol>
               )}
             </div>
