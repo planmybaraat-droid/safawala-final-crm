@@ -4210,20 +4210,16 @@ export default function CreateInvoicePage() {
               </div>
             </div>
             <div className="text-center w-[40%] flex flex-col items-center justify-end">
-              {companySettings?.signature_url ? (
-                <div className="h-10 w-auto mb-1 flex items-center justify-center">
-                  <img 
-                    src={companySettings.signature_url} 
-                    alt="Authorized Signature" 
-                    className="max-h-full max-w-full object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="h-10" />
-              )}
+              <div className="h-12 w-auto mb-1 flex items-center justify-center">
+                <img 
+                  src={companySettings?.signature_url || "/ronak-dave-signature.png"} 
+                  alt="Authorized Signature" 
+                  className="max-h-12 max-w-full object-contain mix-blend-multiply"
+                />
+              </div>
               <div className="border-t border-gray-400 pt-1 w-full">
                 <p className="text-[10px] font-semibold text-gray-700">Authorized Signature</p>
-                <p className="text-[8px] text-gray-500">{companySettings?.company_name || 'Safawala'}</p>
+                <p className="text-[8px] text-gray-500">{companySettings?.company_name || 'Safawala.com'}</p>
               </div>
             </div>
           </div>

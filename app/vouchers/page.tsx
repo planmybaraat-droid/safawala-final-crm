@@ -1061,17 +1061,13 @@ export default function VouchersPage() {
 
                   {/* Authorised Signatory */}
                   <div className="flex flex-col items-center justify-end text-center">
-                    {companySettings?.signature_url ? (
-                      <div className="h-12 w-32 flex items-center justify-center mb-1">
-                        <img 
-                          src={companySettings.signature_url} 
-                          alt="Authorized Signature" 
-                          className="max-h-12 max-w-full object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-12"></div>
-                    )}
+                    <div className="h-12 w-32 flex items-center justify-center mb-1">
+                      <img 
+                        src={companySettings?.signature_url || "/ronak-dave-signature.png"} 
+                        alt="Authorized Signature" 
+                        className="max-h-12 max-w-full object-contain mix-blend-multiply"
+                      />
+                    </div>
                     <div className="w-40 border-b border-gray-400 mb-1.5"></div>
                     <span className="text-[10px] font-semibold text-gray-700 uppercase">Authorised Signatory</span>
                   </div>

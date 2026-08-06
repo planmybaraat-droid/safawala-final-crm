@@ -972,17 +972,13 @@ export default function ChallansPage() {
                   </div>
 
                   <div className="flex flex-col items-center justify-end">
-                    {companySettings?.signature_url ? (
-                      <div className="h-12 w-32 flex items-center justify-center mb-1">
-                        <img 
-                          src={companySettings.signature_url} 
-                          alt="Authorised Signature" 
-                          className="max-h-12 max-w-full object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-40 border-b border-gray-600 mb-1.5 h-12"></div>
-                    )}
+                    <div className="h-12 w-32 flex items-center justify-center mb-1">
+                      <img 
+                        src={companySettings?.signature_url || "/ronak-dave-signature.png"} 
+                        alt="Authorised Signature" 
+                        className="max-h-12 max-w-full object-contain mix-blend-multiply"
+                      />
+                    </div>
                     <span className="text-[10px] font-semibold text-gray-700 uppercase">Authorised Signature</span>
                     <span className="text-[9px] text-gray-400 mt-0.5">(For {companySettings?.company_name || 'Safawala'})</span>
                   </div>

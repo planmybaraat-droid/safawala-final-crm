@@ -232,7 +232,7 @@ export function useInvoiceGenerator(franchiseId?: string) {
       companyGST: settings?.gst_number || 'XX AAXXXXXXX XXXXX',
       companyWebsite: settings?.website || undefined,
       companyLogo: settings?.logo_url || undefined,
-      companySignature: settings?.signature_url || undefined,
+      companySignature: settings?.signature_url || '/ronak-dave-signature.png',
       primaryColor: settings?.primary_color || '#3B82F6',
       secondaryColor: settings?.secondary_color || '#EF4444',
       accentColor: settings?.accent_color || '#10B981',

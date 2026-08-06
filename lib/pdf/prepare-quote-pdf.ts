@@ -49,7 +49,7 @@ export async function prepareQuotePDFData(options: PrepareQuotePDFOptions): Prom
           }
           // Get logo and signature from branding settings
           logoUrl = brandingData.data.logo_url || null
-          signatureUrl = brandingData.data.signature_url || null
+          signatureUrl = brandingData.data.signature_url || '/ronak-dave-signature.png'
           
           console.log(`[PDF Data] Logo URL: ${logoUrl}`)
           console.log(`[PDF Data] Signature URL: ${signatureUrl}`)
