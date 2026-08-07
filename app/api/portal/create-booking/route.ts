@@ -74,6 +74,11 @@ export async function POST(req: NextRequest) {
       order_number = `${order_number}-${Math.floor(Math.random() * 100)}`
     }
 
+    // Only pass sales_closed_by_id if it's a valid UUID — non-UUID strings like "sales-staff-1"
+    // will cause a Postgres "invalid input syntax for type uuid" error.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const validSalesStaffId = sales_staff_id && UUID_RE.test(String(sales_staff_id)) ? sales_staff_id : null
+
     const orderData: any = {
       order_number,
       customer_id,
@@ -94,7 +99,7 @@ export async function POST(req: NextRequest) {
       bride_name: booking_type === 'sale' ? '' : bride_name,
       bride_whatsapp: booking_type === 'sale' ? null : (bride_whatsapp || null),
       bride_address: booking_type === 'sale' ? '' : (bride_address || ''),
-      sales_closed_by_id: sales_staff_id || null,
+      sales_closed_by_id: validSalesStaffId,
       payment_method,
       amount_paid: Number(amount_paid) || 0,
       total_amount: Number(total_amount) || 0,
