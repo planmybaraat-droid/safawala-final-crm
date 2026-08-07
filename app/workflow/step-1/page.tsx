@@ -177,6 +177,20 @@ export default function WorkflowStep1Page() {
               </span>
             </div>
 
+            {/* 🎨 Styling (Safa Tying) */}
+            <div className="p-3 rounded-xl bg-pink-50/60 border border-pink-200 flex items-center justify-between hover:bg-white transition-all shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🎨</span>
+                <div>
+                  <h4 className="text-xs font-black text-pink-950">Styling (Safa Tying)</h4>
+                  <p className="text-[10px] font-bold text-pink-700">JOB #2026-0001</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                🟡 Waiting
+              </span>
+            </div>
+
             {/* 🚚 Travels */}
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:bg-white hover:border-purple-200 transition-all shadow-xs">
               <div className="flex items-center gap-2">
@@ -253,6 +267,7 @@ export default function WorkflowStep1Page() {
               <div className="text-slate-400">        │</div>
               <div className="text-slate-400">        ├── 📦 Warehouse Job #2026-0001</div>
               <div className="text-slate-400">        ├── ✅ QC Job #2026-0001</div>
+              <div className="text-slate-400">        ├── 🎨 Styling Job #2026-0001</div>
               <div className="text-slate-400">        ├── 🚚 Travels Job #2026-0001</div>
               <div className="text-slate-400">        ├── 🚛 Delivery Job #2026-0001</div>
               <div className="text-slate-400">        └── 💰 Accounts Job #2026-0001</div>
