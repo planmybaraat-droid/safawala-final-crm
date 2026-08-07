@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { authenticateRequest } from "@/lib/auth-middleware"
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request, { minRole: 'franchise_admin' })
   if (!auth.authorized) {
