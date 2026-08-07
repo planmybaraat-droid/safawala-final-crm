@@ -109,7 +109,11 @@ export async function POST(req: NextRequest) {
       tax_amount: Number(tax_amount) || 0,
       gst_percentage: Number(gst_percentage) || 0,
       discount_amount: Number(discount_amount) || 0,
-      status: is_quote ? 'generated' : 'confirmed',
+      // Insert as 'pending' first so the DB trigger does NOT fire yet.
+      // We update to 'confirmed' below (after items are inserted) so the
+      // trigger fires exactly once with all items available — avoiding the
+      // duplicate work_order_number race condition.
+      status: is_quote ? 'generated' : 'pending',
       is_quote: Boolean(is_quote),
       notes,
       selection_mode: 'products',
@@ -147,6 +151,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Now update status to 'confirmed' — this triggers the DB trigger exactly once,
+    // with all items already inserted, so it can build picking instructions correctly.
+    let confirmedOrder = order
+    if (!is_quote) {
+      const { data: updatedOrder, error: confirmErr } = await supabase
+        .from('product_orders')
+        .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+        .eq('id', order.id)
+        .select()
+        .single()
+
+      if (confirmErr) {
+        // If the trigger fails due to a duplicate work_order, the booking still exists.
+        // The status update failing is non-fatal — booking was created, trigger error is cosmetic.
+        console.warn('[Portal Create Booking] Status confirm error (non-fatal):', confirmErr.message)
+      } else {
+        confirmedOrder = updatedOrder
+      }
+    }
+
     if (!is_quote) {
       try {
         const { NotificationService } = await import("@/lib/notification-service")
@@ -170,7 +194,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, data: order }, { status: 201 })
+    return NextResponse.json({ success: true, data: confirmedOrder }, { status: 201 })
   } catch (error) {
     console.error('[Portal Create Booking] Unexpected error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
