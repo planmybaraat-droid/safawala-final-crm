@@ -559,13 +559,13 @@ export default function TasksPage() {
         ))}
       </div>
 
-      <PortalSectionLabel label={`${activeSubTab === 'picking' ? 'Picking' : 'Packing'} Tasks (${activeTasks.length})`} />
+      <PortalSectionLabel label={`${activeSubTab === 'picking' ? 'Picking' : 'Packing'} Jobs (${activeTasks.length})`} />
 
       <div className="mx-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
         {loading ? (
           <PortalSkeleton rows={6} />
         ) : activeTasks.length === 0 ? (
-          <PortalEmptyState icon="clipboard" title="No tasks found" subtitle="No active tasks in this queue." color={COLOR} />
+          <PortalEmptyState icon="clipboard" title="No jobs found" subtitle="No active jobs in this queue." color={COLOR} />
         ) : (
           activeTasks.map(({ workOrder, task }) => (
             <PortalListCard

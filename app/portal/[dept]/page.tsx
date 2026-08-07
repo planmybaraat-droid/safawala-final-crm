@@ -180,7 +180,7 @@ export default function PortalHomePage() {
           <>
             <PortalHomeCard
               title="Picking & Packing"
-              value="Open Tasks"
+              value="Open Jobs"
               subtitle="Process picking and packing workflows"
               icon="clipboard"
               color={config.color}
