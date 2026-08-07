@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-middleware"
 import { createClient } from "@/lib/supabase/server"
+import { ensureDepartmentJobsForOrder } from "@/lib/department-jobs"
 
 export const dynamic = "force-dynamic"
 
@@ -97,11 +98,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Create warehouse work order (Pick & Pack) non-fatally
-    const CONFIRMED_STATUSES = ["confirmed", "picked_up", "delivered", "in_progress"]
-    if (!order.is_quote && CONFIRMED_STATUSES.includes(targetStatus)) {
+    // 5. Create department jobs for all 7 portals non-fatally
+    if (!order.is_quote) {
       try {
-        const { error: woError } = await supabase.rpc("create_work_order_for_booking", {
+        await supabase.rpc("create_work_order_for_booking", {
           p_booking_id: order.id,
           p_booking_source: "product_orders",
           p_franchise_id: order.franchise_id,
@@ -109,10 +109,19 @@ export async function POST(req: NextRequest) {
           p_is_rental: order.booking_type === "rental",
           p_items: (items || []).map((item: any) => ({ product_name: item.product_name, quantity: item.quantity })),
         })
-        if (woError) console.warn("[Orders API] Work order creation notice (non-fatal):", woError.message)
       } catch (woErr) {
-        console.warn("[Orders API] Work order creation exception (non-fatal):", woErr)
+        console.warn("[Orders API] RPC work order notice (non-fatal):", woErr)
       }
+
+      // Ensure jobs across all 7 department portals
+      await ensureDepartmentJobsForOrder({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        franchiseId: order.franchise_id,
+        isRental: order.booking_type === "rental",
+        items: items || [],
+        customerName: order.customer_id,
+      })
     }
 
     // 6. Insert lost/damaged items
@@ -255,9 +264,9 @@ export async function PUT(req: NextRequest) {
       .eq("id", orderId)
       .single()
 
-    if (finalOrder && !finalOrder.is_quote && CONFIRMED_STATUSES.includes(finalOrder.status)) {
+    if (finalOrder && !finalOrder.is_quote) {
       try {
-        const { error: woError } = await supabase.rpc("create_work_order_for_booking", {
+        await supabase.rpc("create_work_order_for_booking", {
           p_booking_id: finalOrder.id,
           p_booking_source: "product_orders",
           p_franchise_id: finalOrder.franchise_id,
@@ -265,10 +274,17 @@ export async function PUT(req: NextRequest) {
           p_is_rental: finalOrder.booking_type === "rental",
           p_items: (items || []).map((item: any) => ({ product_name: item.product_name, quantity: item.quantity })),
         })
-        if (woError) console.warn("[Orders API] Work order creation notice (non-fatal):", woError.message)
       } catch (woErr) {
-        console.warn("[Orders API] Work order creation exception (non-fatal):", woErr)
+        console.warn("[Orders API] Work order creation notice (non-fatal):", woErr)
       }
+
+      await ensureDepartmentJobsForOrder({
+        orderId: finalOrder.id,
+        orderNumber: finalOrder.order_number,
+        franchiseId: finalOrder.franchise_id,
+        isRental: finalOrder.booking_type === "rental",
+        items: items || [],
+      })
     }
 
     return NextResponse.json({ success: true, orderId })
