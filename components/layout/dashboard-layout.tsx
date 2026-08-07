@@ -151,41 +151,6 @@ export function DashboardLayout({ children, userRole, compactHeader = false, hid
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* Lock Date button */}
-            {!compactHeader && <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowLockDate(true)}
-              className="gap-1 text-xs px-2 text-[#F1D696] border-[#4A1F5E] bg-[#4A1F5E] hover:bg-[#5C2A72] hover:text-white hover:border-[#5C2A72]"
-              title="Lock a date"
-            >
-              <Lock className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Lock Date</span>
-            </Button>}
-
-            {!compactHeader && <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 bg-[#4A1F5E] border-[#4A1F5E] text-white hover:bg-[#5C2A72] hover:text-white"
-                >
-                  <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Create Order</span>
-                  <span className="sm:hidden">Order</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Create New</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/create-invoice" className="cursor-pointer">
-                    New Booking
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>}
-
             {/* New Notification Bell Component */}
             <NotificationBell />
 
