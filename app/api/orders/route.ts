@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Create department jobs for all 7 portals non-fatally
+    // 5. Create department jobs for all 7 portals non-fatally via RPC
     if (!order.is_quote) {
       try {
         await supabase.rpc("create_work_order_for_booking", {
@@ -113,15 +113,19 @@ export async function POST(req: NextRequest) {
         console.warn("[Orders API] RPC work order notice (non-fatal):", woErr)
       }
 
-      // Ensure jobs across all 7 department portals
-      await ensureDepartmentJobsForOrder({
-        orderId: order.id,
-        orderNumber: order.order_number,
-        franchiseId: order.franchise_id,
-        isRental: order.booking_type === "rental",
-        items: items || [],
-        customerName: order.customer_id,
-      })
+      // Ensure department tasks across all 7 portals (non-fatal, idempotent)
+      try {
+        await ensureDepartmentJobsForOrder({
+          orderId: order.id,
+          orderNumber: order.order_number,
+          franchiseId: order.franchise_id,
+          isRental: order.booking_type === "rental",
+          items: items || [],
+          customerName: order.customer_id,
+        })
+      } catch (deptErr) {
+        console.warn("[Orders API] Department jobs notice (non-fatal):", deptErr)
+      }
     }
 
     // 6. Insert lost/damaged items
@@ -278,13 +282,18 @@ export async function PUT(req: NextRequest) {
         console.warn("[Orders API] Work order creation notice (non-fatal):", woErr)
       }
 
-      await ensureDepartmentJobsForOrder({
-        orderId: finalOrder.id,
-        orderNumber: finalOrder.order_number,
-        franchiseId: finalOrder.franchise_id,
-        isRental: finalOrder.booking_type === "rental",
-        items: items || [],
-      })
+      // Ensure department tasks non-fatally
+      try {
+        await ensureDepartmentJobsForOrder({
+          orderId: finalOrder.id,
+          orderNumber: finalOrder.order_number,
+          franchiseId: finalOrder.franchise_id,
+          isRental: finalOrder.booking_type === "rental",
+          items: items || [],
+        })
+      } catch (deptErr) {
+        console.warn("[Orders API] Department jobs notice (non-fatal):", deptErr)
+      }
     }
 
     return NextResponse.json({ success: true, orderId })
