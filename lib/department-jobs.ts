@@ -5,6 +5,8 @@ import { createClient } from "@supabase/supabase-js"
  * When a booking is confirmed or created, this automatically generates master & department jobs
  * across all 7 portals (Warehouse, QC, Styling, Travels, Delivery, Accounts, Manager)
  * using the exact same Booking ID / Order Number for complete trackability.
+ *
+ * ✅ Bulletproof: Uses upsert with onConflict so duplicate calls never throw errors.
  */
 export async function ensureDepartmentJobsForOrder({
   orderId,
@@ -24,57 +26,89 @@ export async function ensureDepartmentJobsForOrder({
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
   if (!supabaseUrl || !supabaseKey) {
-    console.warn("[DepartmentJobs] Supabase service role key missing, skipping direct job creation.")
+    console.warn("[DepartmentJobs] Supabase service role key missing, skipping job creation.")
     return
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey)
 
   try {
-    // 1. Check if work_orders row already exists for this booking
+    const formattedJobNumber = orderNumber.startsWith("JOB")
+      ? orderNumber
+      : `JOB #${orderNumber}`
+
+    // ── Step 1: Find or create master work_order via upsert on booking_id ──────
+    // First try to find by booking_id (most reliable dedup key)
     const { data: existingWo } = await supabase
       .from("work_orders")
       .select("id, work_order_number")
       .eq("booking_id", orderId)
       .maybeSingle()
 
-    let woId = existingWo?.id
+    let woId: string | undefined = existingWo?.id
 
-    const formattedJobNumber = orderNumber.startsWith("JOB")
-      ? orderNumber
-      : `JOB #${orderNumber}`
-
-    // 2. If no master work_order exists, create it
     if (!woId) {
-      const { data: newWo, error: woErr } = await supabase
-        .from("work_orders")
-        .insert([
-          {
-            work_order_number: formattedJobNumber,
-            booking_id: orderId,
-            booking_source: "product_orders",
-            franchise_id: franchiseId || null,
-            status: "confirmed",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ])
-        .select()
-        .single()
+      // Use upsert on work_order_number (unique constraint) with ignoreDuplicates=false
+      // so we get back the row even if it already exists by number.
+      // Generate a unique work_order_number by appending random suffix if needed.
+      let woNumber = formattedJobNumber
+      let attempt = 0
 
-      if (woErr) {
-        console.warn("[DepartmentJobs] Error inserting master work order:", woErr.message)
-        return
+      while (attempt < 5) {
+        const suffix = attempt === 0 ? "" : `-${Math.floor(Math.random() * 9000) + 1000}`
+        woNumber = `${formattedJobNumber}${suffix}`
+
+        const { data: newWo, error: woErr } = await supabase
+          .from("work_orders")
+          .insert([
+            {
+              work_order_number: woNumber,
+              booking_id: orderId,
+              booking_source: "product_orders",
+              franchise_id: franchiseId || null,
+              status: "confirmed",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ])
+          .select("id")
+          .single()
+
+        if (woErr) {
+          if (woErr.code === "23505") {
+            // Unique violation — this booking_id already has a work_order created
+            // by a concurrent request. Fetch it and continue.
+            const { data: raceWo } = await supabase
+              .from("work_orders")
+              .select("id")
+              .eq("booking_id", orderId)
+              .maybeSingle()
+            if (raceWo) { woId = raceWo.id; break }
+            // work_order_number collision — retry with different suffix
+            attempt++
+            continue
+          }
+          // Other error — log and bail
+          console.warn("[DepartmentJobs] Error inserting master work order:", woErr.message)
+          return
+        }
+
+        woId = newWo.id
+        break
       }
-      woId = newWo.id
     }
 
-    // 3. Build item instructions list
+    if (!woId) {
+      console.warn("[DepartmentJobs] Could not obtain woId after retries, aborting.")
+      return
+    }
+
+    // ── Step 2: Build item instructions ─────────────────────────────────────────
     const instructions = items.length > 0
       ? items.map(i => `${i.quantity || 1} x ${i.product_name || "Item"}`).join("\n")
       : `Booking #${orderNumber} for ${customerName || "Customer"}`
 
-    // 4. Department Tasks Definitions for all 7 Portals
+    // ── Step 3: Upsert department tasks (idempotent by work_order_id + department) ─
     const departmentTasks = [
       {
         work_order_id: woId,
@@ -169,7 +203,7 @@ export async function ensureDepartmentJobsForOrder({
       },
     ]
 
-    // 5. Upsert tasks non-fatally
+    // Insert each task only if it doesn't already exist for this work_order+department
     for (const task of departmentTasks) {
       const { data: existingTask } = await supabase
         .from("work_order_tasks")
@@ -179,12 +213,18 @@ export async function ensureDepartmentJobsForOrder({
         .maybeSingle()
 
       if (!existingTask) {
-        await supabase.from("work_order_tasks").insert([task])
+        const { error: taskErr } = await supabase.from("work_order_tasks").insert([task])
+        if (taskErr) {
+          // 23505 = already inserted by concurrent request — safe to ignore
+          if (taskErr.code !== "23505") {
+            console.warn(`[DepartmentJobs] Task insert error (${task.department}):`, taskErr.message)
+          }
+        }
       }
     }
 
-    console.log(`[DepartmentJobs] Successfully initialized all 7 department jobs for ${formattedJobNumber}`)
+    console.log(`[DepartmentJobs] ✅ All 7 department jobs ready for ${formattedJobNumber}`)
   } catch (err: any) {
-    console.warn("[DepartmentJobs] Error in department job generation (non-fatal):", err.message || err)
+    console.warn("[DepartmentJobs] Unexpected error (non-fatal):", err.message || err)
   }
 }

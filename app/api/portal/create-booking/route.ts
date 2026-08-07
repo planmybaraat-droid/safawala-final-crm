@@ -59,11 +59,13 @@ export async function POST(req: NextRequest) {
 
     const supabase = createClient()
 
-    // Generate a unique order number
+    // Generate a unique order number using timestamp + 4-digit random to avoid collisions
     const prefix = is_quote ? 'QUO' : (booking_type === 'sale' ? 'SAL' : 'ORD')
-    const ts = Date.now().toString().slice(-7)
-    let order_number = `${prefix}-${ts}`
+    const ts = Date.now().toString().slice(-8)
+    const rand = Math.floor(Math.random() * 9000) + 1000
+    let order_number = `${prefix}-${ts}-${rand}`
 
+    // Final safety check — re-roll if this exact number somehow exists
     const { data: existing } = await supabase
       .from('product_orders')
       .select('id')
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
       .limit(1)
 
     if (existing && existing.length > 0) {
-      order_number = `${order_number}-${Math.floor(Math.random() * 100)}`
+      order_number = `${prefix}-${ts}-${Math.floor(Math.random() * 90000) + 10000}`
     }
 
     // Only pass sales_closed_by_id if it's a valid UUID — non-UUID strings like "sales-staff-1"
