@@ -191,6 +191,10 @@ export default function BookingDetailPage() {
   }, [id])
 
   async function downloadPDF() {
+    // Open the tab synchronously (inside the click gesture) so the browser
+    // doesn't block it as a popup once the PDF finishes generating async.
+    const pdfWindow = window.open("", "_blank")
+    if (pdfWindow) pdfWindow.document.write("Generating PDF…")
     try {
       const orderType = kind === "package" ? "package_booking" : kind === "sale" ? "direct_sale" : "product_order"
       const res = await fetch("/api/generate-invoice-pdf", {
@@ -200,9 +204,13 @@ export default function BookingDetailPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.pdfUrl) throw new Error(data.error || "Failed to generate PDF")
-      const a = document.createElement("a"); a.href = data.pdfUrl; a.target = "_blank"; a.rel = "noreferrer"; a.download = `${booking?.order_number || id}.pdf`; a.click()
+      if (pdfWindow) pdfWindow.location.href = data.pdfUrl
+      else window.open(data.pdfUrl, "_blank")
       toast.success("PDF ready")
-    } catch (e: any) { toast.error(e.message || "PDF not available") }
+    } catch (e: any) {
+      pdfWindow?.close()
+      toast.error(e.message || "PDF not available")
+    }
   }
 
   if (loading) return (
