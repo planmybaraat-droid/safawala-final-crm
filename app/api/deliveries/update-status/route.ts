@@ -167,6 +167,33 @@ export async function POST(request: NextRequest) {
       } catch (syncErr) {
         console.warn("[Deliveries Update Status] Main CRM sync notice:", syncErr)
       }
+
+      // Best-effort sync to the new Job system's delivery department task.
+      try {
+        const { data: job } = await supabaseServer
+          .from("jobs")
+          .select("id")
+          .eq("booking_id", bookingId)
+          .maybeSingle()
+
+        if (job?.id) {
+          let jobTaskStatus: string | null = null
+          if (body.status === "delivered") jobTaskStatus = "completed"
+          else if (body.status === "in_transit" || body.status === "pending") jobTaskStatus = "in_progress"
+
+          if (jobTaskStatus) {
+            const updatePayload: Record<string, any> = { status: jobTaskStatus, updated_at: new Date().toISOString() }
+            if (jobTaskStatus === "completed") updatePayload.completed_at = new Date().toISOString()
+            await supabaseServer
+              .from("job_tasks")
+              .update(updatePayload)
+              .eq("job_id", job.id)
+              .eq("department", "delivery")
+          }
+        }
+      } catch (jobSyncErr) {
+        console.warn("[Deliveries Update Status] Job system sync notice:", jobSyncErr)
+      }
     }
 
     console.log('[Deliveries Update Status] Successfully updated delivery:', deliveryId)

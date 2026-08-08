@@ -12,6 +12,14 @@ export type RbacPermission =
   | "qc.update"
   | "delivery.view"
   | "delivery.update"
+  | "job.view"
+  | "job.update"
+  | "styling.view"
+  | "styling.update"
+  | "travels.view"
+  | "travels.update"
+  | "accounts.view"
+  | "accounts.update"
   | "users.manage"
   | "roles.manage"
   | "permissions.manage"
@@ -74,6 +82,14 @@ export async function getRbacContext(request: NextRequest): Promise<RbacContext 
     permissions.add("qc.update")
     permissions.add("delivery.view")
     permissions.add("delivery.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
+    permissions.add("styling.view")
+    permissions.add("styling.update")
+    permissions.add("travels.view")
+    permissions.add("travels.update")
+    permissions.add("accounts.view")
+    permissions.add("accounts.update")
   }
   if (auth.user.role === "franchise_admin") {
     permissions.add("warehouse.view")
@@ -82,18 +98,50 @@ export async function getRbacContext(request: NextRequest): Promise<RbacContext 
     permissions.add("qc.update")
     permissions.add("delivery.view")
     permissions.add("delivery.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
+    permissions.add("styling.view")
+    permissions.add("styling.update")
+    permissions.add("travels.view")
+    permissions.add("travels.update")
+    permissions.add("accounts.view")
+    permissions.add("accounts.update")
   }
   if (auth.user.role === "warehouse_staff" || auth.user.department === "warehouse") {
     permissions.add("warehouse.view")
     permissions.add("warehouse.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
   }
   if (auth.user.role === "qc_staff" || auth.user.department === "qc") {
     permissions.add("qc.view")
     permissions.add("qc.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
   }
   if (auth.user.role === "delivery_staff" || auth.user.department === "delivery") {
     permissions.add("delivery.view")
     permissions.add("delivery.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
+  }
+  if (auth.user.role === "stylist" || auth.user.department === "styling") {
+    permissions.add("styling.view")
+    permissions.add("styling.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
+  }
+  if (auth.user.role === "travels_staff" || auth.user.department === "travels") {
+    permissions.add("travels.view")
+    permissions.add("travels.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
+  }
+  if (auth.user.role === "accounts_staff" || auth.user.department === "accounts") {
+    permissions.add("accounts.view")
+    permissions.add("accounts.update")
+    permissions.add("job.view")
+    permissions.add("job.update")
   }
 
   return { user: auth.user, permissions }

@@ -1,26 +1,32 @@
 "use client"
 
-import { useState, useEffect, useCallback, Suspense } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { validatePhoneWithCountry } from "@/lib/form-validation"
 import { toast } from "sonner"
+import { fetchProductsWithBarcodes } from "@/lib/product-barcode-service"
+import { supabase as supabaseClient } from "@/lib/supabase"
 
-const COLOR = "#4A1F5E"
-const COLOR_DARK = "#351044"
+const COLOR = "#22c55e"
+const COLOR_DARK = "#16803c"
 
 function fmt(n: number) { return `₹${(n??0).toLocaleString("en-IN")}` }
 
 /* ── Types ── */
 interface Customer { id:string; name:string; phone:string; customer_code:string; email?:string; whatsapp?:string; city?:string }
-interface Product  { id:string; name:string; product_code:string; category:string; rental_price:number; sale_price:number }
+interface Product  { id:string; name:string; product_code:string; category:string; rental_price:number; sale_price:number; image_url?:string; stock_available?:number; category_id?:string }
 interface CartItem { product:Product; quantity:number; unit_price:number }
 interface StaffMember { id:string; name:string; role?:string; department?:string }
 
 const EVENT_TYPES = ["Wedding","Engagement","Reception","Birthday","Anniversary","Corporate","Other"]
 const PAYMENT_METHODS = ["Cash","UPI","Card","Bank Transfer","Cheque","Online"]
 const BOOKING_TYPES = [
-  { key:"rental", label:"Rental", desc:"Products rented for an event", icon:"👔" },
-  { key:"sale",   label:"Sale",   desc:"Direct product sale to customer", icon:"🛍️" },
+  { key:"rental", label:"Rental", desc:"Products rented for an event", icon:(
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 20V8a2 2 0 0 0-2-2h-3a3 3 0 0 1-6 0H6a2 2 0 0 0-2 2v12"/><path d="M4 12H2v7a1 1 0 0 0 1 1h3"/><path d="M20 12h2v7a1 1 0 0 1-1 1h-3"/></svg>
+  ) },
+  { key:"sale",   label:"Sale",   desc:"Direct product sale to customer", icon:(
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  ) },
 ]
 const PRODUCT_CATEGORIES = [
   "Sherwani",
@@ -95,6 +101,13 @@ function NewBookingInner() {
   const [amountPaid, setAmountPaid] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState("Cash")
 
+  // Coupon
+  const [couponCode, setCouponCode] = useState("")
+  const [couponDiscount, setCouponDiscount] = useState(0)
+  const [couponApplied, setCouponApplied] = useState<{ code:string; message:string }|null>(null)
+  const [couponError, setCouponError] = useState("")
+  const [applyingCoupon, setApplyingCoupon] = useState(false)
+
   // Saving
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
@@ -119,44 +132,147 @@ function NewBookingInner() {
     } catch {} finally { setLoadingCustomers(false) }
   }, [])
 
-  // Load products
+  // Load products (with images/stock/category, like create-invoice's loadProductsAndCategories)
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true)
     try {
-      const res = await fetch("/api/products")
-      const data = await res.json()
-      const list: any[] = Array.isArray(data) ? data : data.data || data.products || []
-      setProducts(list.filter((p:any) => p.name && (Number(p.rental_price) > 0 || Number(p.sale_price) > 0)))
-    } catch {} finally { setLoadingProducts(false) }
+      const userRes = await fetch('/api/auth/user', { cache: 'no-store' })
+      const user = userRes.ok ? await userRes.json() : null
+      const franchiseId = user?.franchise_id
+
+      const productsWithBarcodes = await fetchProductsWithBarcodes(franchiseId)
+
+      const { data: categoriesData } = await supabaseClient
+        .from('product_categories')
+        .select('*')
+
+      const categoryMap: { [key: string]: string } = {}
+      if (categoriesData) {
+        categoriesData.forEach((c: any) => { categoryMap[c.id] = c.name })
+      }
+
+      const mappedProducts: Product[] = productsWithBarcodes
+        .filter((p: any) => p.name && (Number(p.rental_price) > 0 || Number((p as any).price || (p as any).sale_price) > 0))
+        .map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          product_code: p.product_code || '',
+          category: p.category_id ? (categoryMap[p.category_id] || '') : '',
+          category_id: p.category_id,
+          rental_price: p.rental_price || 0,
+          sale_price: (p as any).price || (p as any).sale_price || 0,
+          image_url: (p as any).image_url || undefined,
+          stock_available: p.stock_available ?? 0,
+        }))
+
+      setProducts(mappedProducts)
+    } catch (e) {
+      console.warn("[New Booking] Failed to load products:", e)
+    } finally { setLoadingProducts(false) }
   }, [])
 
-  // Load staff list
-  const loadStaff = useCallback(async () => {
+  // Barcode scan (camera) — mirrors app/portal/warehouse/scan/page.tsx
+  const [showScanModal, setShowScanModal] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [scanError, setScanError] = useState("")
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const rafRef = useRef<number | null>(null)
+
+  function stopScan() {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+    setScanning(false)
+  }
+
+  async function lookupAndAddBarcode(code: string) {
+    if (!code.trim()) return
     try {
-      const res = await fetch("/api/staff")
+      const res = await fetch(`/api/products?barcode=${encodeURIComponent(code)}&limit=1`)
       const data = await res.json()
-      const list: any[] = Array.isArray(data) ? data : data.data || data.staff || []
-      if (list.length > 0) {
-        setStaffList(list)
-        setSalesStaffId(list[0].id)
+      const list: any[] = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : [])
+      const product = list[0]
+      if (product) {
+        addToCart({
+          id: product.id,
+          name: product.name,
+          product_code: product.product_code || '',
+          category: product.category || '',
+          rental_price: product.rental_price || 0,
+          sale_price: product.price || product.sale_price || 0,
+          image_url: product.image_url,
+          stock_available: product.stock_available,
+        })
+        toast.success(`${product.name} added to cart`)
+        setShowScanModal(false)
       } else {
-        fallbackStaff()
+        setScanError("No product found for this barcode.")
       }
     } catch {
-      fallbackStaff()
+      setScanError("Lookup failed. Try again.")
+    }
+  }
+
+  async function startScan() {
+    setScanError("")
+    if (!("BarcodeDetector" in window)) {
+      setScanError("This browser doesn't support camera scanning. Use the barcode search box instead.")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+      setScanning(true)
+      const detector = new (window as any).BarcodeDetector({
+        formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"],
+      })
+      const tick = async () => {
+        if (!videoRef.current || videoRef.current.readyState < 2) {
+          rafRef.current = requestAnimationFrame(tick)
+          return
+        }
+        try {
+          const codes = await detector.detect(videoRef.current)
+          if (codes.length > 0) {
+            const value = codes[0].rawValue
+            stopScan()
+            lookupAndAddBarcode(value)
+            return
+          }
+        } catch {}
+        rafRef.current = requestAnimationFrame(tick)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    } catch (e: any) {
+      setScanError(e?.name === "NotAllowedError" ? "Camera access denied." : "Couldn't access the camera.")
+    }
+  }
+
+  useEffect(() => () => stopScan(), [])
+
+  // Load staff list (franchise-isolated, safe for any portal staff role to call)
+  const loadStaff = useCallback(async () => {
+    try {
+      const res = await fetch("/api/portal/staff")
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to load staff")
+      const list: any[] = Array.isArray(data) ? data : data.data || []
+      setStaffList(list)
+      if (list.length > 0) setSalesStaffId(list[0].id)
+    } catch (e) {
+      // Leave the list empty rather than injecting fake IDs — sales_staff_id
+      // is stored as a uuid FK, so a placeholder value would break booking
+      // creation. The field is optional; the user can still save without it.
+      console.warn("[New Booking] Failed to load staff list:", e)
+      setStaffList([])
     }
   }, [])
-
-  function fallbackStaff() {
-    const defaultStaff = [
-      { id: "sales-staff-1", name: "Rahul Sharma (Sales Executive)", role: "sales" },
-      { id: "sales-staff-2", name: "Priya Patel (Sales Lead)", role: "sales" },
-      { id: "sales-staff-3", name: "Amit Kumar (Store Manager)", role: "manager" },
-      { id: "sales-staff-4", name: "Devam Patel (Admin)", role: "admin" }
-    ]
-    setStaffList(defaultStaff)
-    setSalesStaffId(defaultStaff[0].id)
-  }
 
   useEffect(() => { if(step===1&&!prefilledCustomerId) loadCustomers() }, [step, prefilledCustomerId, loadCustomers])
   useEffect(() => { if(step===3) loadProducts() }, [step, loadProducts])
@@ -215,8 +331,33 @@ function NewBookingInner() {
   }
 
   const subtotal = cart.reduce((s,i)=>s+(i.quantity*i.unit_price),0)
-  const grandTotal = Math.max(0, subtotal - discountAmount)
+  const grandTotal = Math.max(0, subtotal - discountAmount - couponDiscount)
   const balance = Math.max(0, grandTotal - amountPaid)
+
+  async function applyCoupon() {
+    if (!couponCode.trim()) return
+    setApplyingCoupon(true); setCouponError(""); setCouponApplied(null)
+    try {
+      const res = await fetch("/api/offers/validate", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ code: couponCode.trim(), orderValue: subtotal }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.valid) {
+        setCouponError(data.error || data.message || "Invalid coupon code")
+        setCouponDiscount(0)
+        return
+      }
+      setCouponDiscount(Number(data.discount) || 0)
+      setCouponApplied({ code: couponCode.trim().toUpperCase(), message: data.message || "Coupon applied!" })
+    } catch {
+      setCouponError("Failed to validate coupon")
+    } finally { setApplyingCoupon(false) }
+  }
+
+  function removeCoupon() {
+    setCouponApplied(null); setCouponDiscount(0); setCouponCode(""); setCouponError("")
+  }
 
   const filteredProducts = products.filter(p=>
     !productSearch ||
@@ -255,7 +396,7 @@ function NewBookingInner() {
   }
 
   // Save booking
-  async function saveBooking() {
+  async function saveBooking(asDraft = false) {
     if (!selectedCustomer) return
     setSaving(true); setSaveError("")
     try {
@@ -265,6 +406,7 @@ function NewBookingInner() {
           customer_id: selectedCustomer.id,
           booking_type: bookingType,
           is_quote: isQuote,
+          is_draft: asDraft,
           event_date: eventDate,
           delivery_date: deliveryDate||null,
           return_date: returnDate||null,
@@ -277,6 +419,8 @@ function NewBookingInner() {
           total_amount: grandTotal,
           subtotal_amount: subtotal,
           discount_amount: discountAmount,
+          coupon_code: couponApplied?.code || null,
+          coupon_discount: couponDiscount,
           amount_paid: amountPaid,
           payment_method: paymentMethod,
           items: cart.map(i=>({
@@ -547,6 +691,14 @@ function NewBookingInner() {
               </div>
 
               <button
+                onClick={() => { setShowScanModal(true); setScanError("") }}
+                style={{ width:46, height:46, borderRadius:14, border:"none", background:"#1e1208", color:"white", fontSize:16, cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}
+                title="Scan barcode"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+
+              <button
                 onClick={() => setShowCustomModal(true)}
                 style={{ padding:"0 14px", height:46, borderRadius:14, border:"none", background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:"white", fontSize:12, fontWeight:800, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:`0 2px 8px ${COLOR}40` }}
               >
@@ -558,14 +710,26 @@ function NewBookingInner() {
               <p style={{ textAlign:"center", color:"rgba(80,55,30,0.4)", fontSize:12, padding:"30px 0" }}>Loading products…</p>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                {filteredProducts.slice(0,50).map(p=>{
+                {filteredProducts.map(p=>{
                   const price = bookingType==="sale" ? p.sale_price : p.rental_price
                   const inCart = cart.find(i=>i.product.id===p.id)
+                  const outOfStock = p.stock_available !== undefined && p.stock_available <= 0
+                  const initials = (p.name||"?").split(" ").map((w:string)=>w[0]).join("").slice(0,2).toUpperCase()
                   return (
-                    <div key={p.id} style={{ background:"white", borderRadius:14, padding:"12px 14px", display:"flex", alignItems:"center", gap:12 }}>
-                      <div style={{ flex:1 }}>
-                        <p style={{ margin:"0 0 2px", fontSize:13, fontWeight:700, color:"#1e1208" }}>{p.name}</p>
+                    <div key={p.id} style={{ background:"white", borderRadius:14, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, opacity:outOfStock?0.55:1 }}>
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} style={{ width:44, height:44, borderRadius:10, objectFit:"cover", flexShrink:0, background:"#f3f4f6" }} />
+                      ) : (
+                        <div style={{ width:44, height:44, borderRadius:10, background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:13, fontWeight:800, flexShrink:0 }}>{initials}</div>
+                      )}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ margin:"0 0 2px", fontSize:13, fontWeight:700, color:"#1e1208", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
                         <p style={{ margin:0, fontSize:10, color:"rgba(80,55,30,0.45)" }}>{p.category} · {p.product_code}</p>
+                        {p.stock_available !== undefined && (
+                          <span style={{ display:"inline-block", marginTop:4, fontSize:9, fontWeight:800, padding:"1px 7px", borderRadius:8, background:outOfStock?"#fee2e2":"#dcfce7", color:outOfStock?"#b91c1c":"#15803d" }}>
+                            {outOfStock ? "Out of stock" : `${p.stock_available} in stock`}
+                          </span>
+                        )}
                       </div>
                       <div style={{ textAlign:"right", flexShrink:0, marginLeft:8 }}>
                         <p style={{ margin:"0 0 6px", fontSize:13, fontWeight:800, color:COLOR_DARK }}>{fmt(price)}</p>
@@ -576,8 +740,8 @@ function NewBookingInner() {
                             <button onClick={()=>updateQty(p.id, inCart.quantity+1)} style={{ width:26, height:26, borderRadius:7, border:"none", background:COLOR, color:"white", cursor:"pointer", fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
                           </div>
                         ) : (
-                          <button onClick={()=>addToCart(p)}
-                            style={{ padding:"5px 12px", borderRadius:10, border:"none", background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:"white", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                          <button onClick={()=>!outOfStock && addToCart(p)} disabled={outOfStock}
+                            style={{ padding:"5px 12px", borderRadius:10, border:"none", background:outOfStock?"#e5e7eb":`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:outOfStock?"#9ca3af":"white", fontSize:12, fontWeight:700, cursor:outOfStock?"not-allowed":"pointer", fontFamily:"inherit" }}>
                             + Add
                           </button>
                         )}
@@ -642,6 +806,31 @@ function NewBookingInner() {
                 <span style={{ fontSize:11, color:"rgba(80,55,30,0.5)", fontWeight:600 }}>Subtotal</span>
                 <span style={{ fontSize:12, color:"#1e1208", fontWeight:700 }}>{fmt(subtotal)}</span>
               </div>
+
+              {/* Coupon */}
+              <div style={{ padding:"10px 0", borderBottom:"1px solid rgba(0,0,0,0.04)" }}>
+                <span style={{ fontSize:11, color:"rgba(80,55,30,0.5)", fontWeight:600, display:"block", marginBottom:6 }}>Coupon Code</span>
+                {couponApplied ? (
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#dcfce7", borderRadius:10, padding:"8px 12px" }}>
+                    <span style={{ fontSize:12, fontWeight:800, color:"#15803d" }}>✓ {couponApplied.code} · − {fmt(couponDiscount)}</span>
+                    <button onClick={removeCoupon} style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, color:"#b91c1c", fontWeight:700, fontFamily:"inherit" }}>Remove</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <input type="text" value={couponCode} onChange={e=>{ setCouponCode(e.target.value.toUpperCase()); setCouponError("") }}
+                        placeholder="Enter coupon code"
+                        style={{ flex:1, padding:"9px 12px", borderRadius:10, border:"1px solid rgba(0,0,0,0.1)", fontSize:12, outline:"none", fontFamily:"inherit", textTransform:"uppercase" }} />
+                      <button onClick={applyCoupon} disabled={!couponCode.trim()||applyingCoupon}
+                        style={{ padding:"0 16px", borderRadius:10, border:"none", background:!couponCode.trim()||applyingCoupon?"#e5e7eb":`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:!couponCode.trim()||applyingCoupon?"#9ca3af":"white", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        {applyingCoupon?"…":"Apply"}
+                      </button>
+                    </div>
+                    {couponError && <p style={{ margin:"6px 0 0", fontSize:11, color:"#dc2626", fontWeight:600 }}>{couponError}</p>}
+                  </div>
+                )}
+              </div>
+
               <div style={{ padding:"10px 0", borderBottom:"1px solid rgba(0,0,0,0.04)" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <span style={{ fontSize:11, color:"rgba(80,55,30,0.5)", fontWeight:600 }}>Discount (₹)</span>
@@ -676,10 +865,19 @@ function NewBookingInner() {
 
             {saveError && <div style={{ background:"#fee2e2", borderRadius:14, padding:"12px 16px" }}><p style={{ margin:0, fontSize:12, color:"#b91c1c", fontWeight:600 }}>⚠️ {saveError}</p></div>}
 
-            <button onClick={saveBooking} disabled={saving||!canSave}
-              style={{ width:"100%", height:56, borderRadius:16, border:"none", background:saving||!canSave?"#e5e7eb":`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:saving||!canSave?"#9ca3af":"white", fontSize:16, fontWeight:800, cursor:saving||!canSave?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:saving||!canSave?"none":`0 6px 20px ${COLOR}55` }}>
-              {saving ? "Creating…" : isQuote ? "💾 Save as Quote" : "✓ Confirm Booking"}
-            </button>
+            <div style={{ display:"flex", gap:10 }}>
+              {!isQuote && (
+                <button onClick={()=>saveBooking(true)} disabled={saving||!selectedCustomer}
+                  style={{ flex:1, height:56, borderRadius:16, border:`1.5px solid ${COLOR}`, background:"white", color:saving||!selectedCustomer?"#9ca3af":COLOR_DARK, fontSize:14, fontWeight:800, cursor:saving||!selectedCustomer?"not-allowed":"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                  Save as Draft
+                </button>
+              )}
+              <button onClick={()=>saveBooking(false)} disabled={saving||!canSave}
+                style={{ flex:2, height:56, borderRadius:16, border:"none", background:saving||!canSave?"#e5e7eb":`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:saving||!canSave?"#9ca3af":"white", fontSize:16, fontWeight:800, cursor:saving||!canSave?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:saving||!canSave?"none":`0 6px 20px ${COLOR}55` }}>
+                {saving ? "Creating…" : isQuote ? "Save as Quote" : "✓ Confirm Booking"}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -688,7 +886,7 @@ function NewBookingInner() {
       {showCustomModal && (
         <div style={{ position:"fixed", inset:0, zIndex:100, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
           <form onSubmit={handleAddCustomProduct} style={{ width:"100%", maxWidth:420, background:"white", borderRadius:24, padding:20, boxShadow:"0 20px 40px rgba(0,0,0,0.2)", position:"relative" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, borderBottom:"1px solid rgba(0,0,0,0.06)", pb:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, paddingBottom:12, borderBottom:"1px solid rgba(0,0,0,0.06)" }}>
               <h3 style={{ margin:0, fontSize:16, fontWeight:900, color:"#1e1208" }}>+ Add Custom Product</h3>
               <button type="button" onClick={()=>setShowCustomModal(false)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"rgba(0,0,0,0.4)" }}>×</button>
             </div>
@@ -754,6 +952,39 @@ function NewBookingInner() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Barcode Scan Modal */}
+      {showScanModal && (
+        <div style={{ position:"fixed", inset:0, zIndex:100, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div style={{ width:"100%", maxWidth:420, background:"white", borderRadius:24, padding:20, boxShadow:"0 20px 40px rgba(0,0,0,0.2)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:900, color:"#1e1208" }}>Scan Barcode</h3>
+              <button onClick={()=>{ stopScan(); setShowScanModal(false) }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:"rgba(0,0,0,0.4)" }}>×</button>
+            </div>
+            {scanning ? (
+              <>
+                <video ref={videoRef} muted playsInline style={{ width:"100%", borderRadius:12, marginBottom:12, background:"#000", maxHeight:260, objectFit:"cover" }} />
+                <button onClick={stopScan} style={{ width:"100%", padding:"10px 0", borderRadius:12, border:`1px solid ${COLOR}`, background:"white", color:COLOR_DARK, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Cancel Scan</button>
+              </>
+            ) : (
+              <button onClick={startScan} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:"white", fontSize:14, fontWeight:800, cursor:"pointer", fontFamily:"inherit", marginBottom:12 }}>
+                📷 Open Camera
+              </button>
+            )}
+            {scanError && <p style={{ margin:"10px 0 0", fontSize:12, color:"#b91c1c", fontWeight:600 }}>{scanError}</p>}
+            <div style={{ marginTop:14 }}>
+              <p style={{ margin:"0 0 6px", fontSize:11, fontWeight:700, color:"rgba(80,55,30,0.5)" }}>OR ENTER MANUALLY</p>
+              <div style={{ display:"flex", gap:8 }}>
+                <input type="text" id="manual-barcode-input" placeholder="Type barcode…"
+                  onKeyDown={e=>{ if(e.key==="Enter") lookupAndAddBarcode((e.target as HTMLInputElement).value) }}
+                  style={{ flex:1, padding:"10px 12px", borderRadius:10, border:"1px solid rgba(0,0,0,0.1)", fontSize:13, outline:"none", fontFamily:"inherit" }} />
+                <button onClick={()=>{ const el=document.getElementById('manual-barcode-input') as HTMLInputElement; if(el) lookupAndAddBarcode(el.value) }}
+                  style={{ padding:"0 16px", borderRadius:10, border:"none", background:COLOR, color:"white", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Go</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { PortalIcon } from "@/components/portal/portal-icons"
+
+const PhoneIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+)
 
 const COLOR = "#f97316"
 const COLOR_DARK = "#c2410c"
@@ -86,16 +93,16 @@ function DeliverySheet({ delivery, onClose, onUpdated, canUpdate }: { delivery: 
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <StatusBadge status={delivery.status} />
-            <span style={{ fontSize: 10, color: "rgba(80,55,30,0.45)", fontWeight: 600 }}>📅 {fmtDate(delivery.delivery_date)}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "rgba(80,55,30,0.45)", fontWeight: 600 }}><PortalIcon name="calendar" size={12} /> {fmtDate(delivery.delivery_date)}</span>
           </div>
 
           {/* Quick Actions */}
           <div style={{ display: "flex", gap: 10 }}>
             {delivery.customer_phone && (
-              <a href={`tel:${delivery.customer_phone}`} style={{ flex: 1, height: 44, borderRadius: 12, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none", fontSize: 13, fontWeight: 700, color: "#1d4ed8" }}>📞 Call</a>
+              <a href={`tel:${delivery.customer_phone}`} style={{ flex: 1, height: 44, borderRadius: 12, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none", fontSize: 13, fontWeight: 700, color: "#1d4ed8" }}><PhoneIcon size={15} /> Call</a>
             )}
             {mapUrl && (
-              <a href={mapUrl} target="_blank" rel="noreferrer" style={{ flex: 1, height: 44, borderRadius: 12, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none", fontSize: 13, fontWeight: 700, color: "#c2410c" }}>🗺️ Map</a>
+              <a href={mapUrl} target="_blank" rel="noreferrer" style={{ flex: 1, height: 44, borderRadius: 12, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none", fontSize: 13, fontWeight: 700, color: "#c2410c" }}><PortalIcon name="map-pin" size={15} /> Map</a>
             )}
           </div>
 
@@ -225,10 +232,10 @@ export default function DeliveriesPortalPage() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15,18 9,12 15,6"/></svg>
           </button>
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: "white", fontSize: 19, fontWeight: 900, margin: 0 }}>🚚 Deliveries</h1>
+            <h1 style={{ color: "white", fontSize: 19, fontWeight: 900, margin: 0, display: "flex", alignItems: "center", gap: 8 }}><PortalIcon name="truck" size={18} /> Deliveries</h1>
             <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 11, margin: 0 }}>{stats.inTransit} in transit · {stats.pending} pending</p>
           </div>
-          <button onClick={fetchData} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", cursor: "pointer", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>🔄</button>
+          <button onClick={fetchData} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", cursor: "pointer", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}><PortalIcon name="refresh" size={16} /></button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, position: "relative", zIndex: 1 }}>
@@ -249,7 +256,7 @@ export default function DeliveriesPortalPage() {
       {/* Today Banner */}
       {todayDeliveries.length > 0 && (
         <div style={{ margin: "12px 16px 0", padding: "10px 14px", background: "#fff7ed", borderRadius: 14, border: "1px solid #fed7aa", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 18 }}>🗓️</span>
+          <span style={{ color: "#c2410c", display: "inline-flex" }}><PortalIcon name="calendar" size={18} /></span>
           <div>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#c2410c" }}>{todayDeliveries.length} Delivery Today!</p>
             <p style={{ margin: 0, fontSize: 10, color: "#ea580c" }}>{todayDeliveries.map(d => d.customer_name).join(", ")}</p>
@@ -291,7 +298,7 @@ export default function DeliveriesPortalPage() {
           ))
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🚚</div>
+            <div style={{ color: "rgba(80,55,30,0.25)", marginBottom: 12, display: "flex", justifyContent: "center" }}><PortalIcon name="truck" size={48} /></div>
             <p style={{ fontWeight: 700, fontSize: 15, color: "#1e1208" }}>No deliveries found</p>
           </div>
         ) : filtered.map(d => {
@@ -300,8 +307,8 @@ export default function DeliveriesPortalPage() {
             <div key={d.id} onClick={() => setSelected(d)}
               style={{ background: isToday ? "#fff7ed" : "white", borderRadius: 18, padding: "14px 16px", cursor: "pointer", boxShadow: "0 2px 10px rgba(0,0,0,0.06)", border: isToday ? "2px solid #fed7aa" : "1px solid rgba(249,115,22,0.08)", display: "flex", gap: 12, alignItems: "flex-start" }}>
               {/* Icon */}
-              <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg, ${COLOR}25, ${COLOR}15)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
-                {d.status === "delivered" ? "✅" : d.status === "in_transit" ? "🚚" : d.status === "return_completed" ? "📦" : "📋"}
+              <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg, ${COLOR}25, ${COLOR}15)`, color: COLOR_DARK, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <PortalIcon name={d.status === "delivered" ? "check-circle" : d.status === "in_transit" ? "truck" : d.status === "return_completed" ? "package" : "clipboard"} size={20} />
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -310,20 +317,20 @@ export default function DeliveriesPortalPage() {
                   <StatusBadge status={d.status} />
                 </div>
                 <p style={{ margin: "0 0 4px", fontSize: 11, color: "rgba(80,55,30,0.5)", fontFamily: "monospace" }}>{d.delivery_number}</p>
-                {d.delivery_address && <p style={{ margin: "0 0 4px", fontSize: 11, color: "rgba(80,55,30,0.4)" }}>📍 {d.delivery_address.length > 40 ? d.delivery_address.slice(0, 40) + "…" : d.delivery_address}</p>}
+                {d.delivery_address && <p style={{ margin: "0 0 4px", fontSize: 11, color: "rgba(80,55,30,0.4)", display: "flex", alignItems: "center", gap: 4 }}><PortalIcon name="map-pin" size={11} /> {d.delivery_address.length > 40 ? d.delivery_address.slice(0, 40) + "…" : d.delivery_address}</p>}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 10, color: isToday ? "#c2410c" : "rgba(80,55,30,0.4)", fontWeight: isToday ? 800 : 600 }}>
-                    📅 {isToday ? "TODAY" : fmtDate(d.delivery_date)}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: isToday ? "#c2410c" : "rgba(80,55,30,0.4)", fontWeight: isToday ? 800 : 600 }}>
+                    <PortalIcon name="calendar" size={11} /> {isToday ? "TODAY" : fmtDate(d.delivery_date)}
                     {d.delivery_time ? ` · ${d.delivery_time}` : ""}
                   </span>
-                  {d.driver_name && <span style={{ fontSize: 10, color: "rgba(80,55,30,0.4)" }}>🧑 {d.driver_name}</span>}
+                  {d.driver_name && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "rgba(80,55,30,0.4)" }}><PortalIcon name="user" size={11} /> {d.driver_name}</span>}
                 </div>
               </div>
 
               {/* Quick call */}
               {d.customer_phone && (
                 <div onClick={e => e.stopPropagation()}>
-                  <a href={`tel:${d.customer_phone}`} style={{ width: 34, height: 34, borderRadius: 10, background: "#fff7ed", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", fontSize: 16 }}>📞</a>
+                  <a href={`tel:${d.customer_phone}`} style={{ width: 34, height: 34, borderRadius: 10, background: "#fff7ed", color: "#c2410c", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}><PhoneIcon size={15} /></a>
                 </div>
               )}
             </div>

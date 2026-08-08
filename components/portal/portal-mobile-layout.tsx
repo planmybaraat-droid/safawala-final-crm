@@ -18,7 +18,7 @@ export function PortalMobileLayout({ config, children }: PortalMobileLayoutProps
       <div className="hidden md:flex min-h-screen" style={{ background: "#F7F6F9" }}>
         <PortalSidebar config={config} />
         <main className="flex-1 overflow-y-auto" style={{ marginLeft: 240 }}>
-          <PortalTopNav />
+          <PortalTopNav color={config.color} />
           <div className="max-w-6xl mx-auto py-7 px-8">
             {children}
           </div>

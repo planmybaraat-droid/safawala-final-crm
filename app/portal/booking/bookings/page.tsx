@@ -2,9 +2,17 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { PortalIcon } from "@/components/portal/portal-icons"
 
-const COLOR = "#4A1F5E"
-const COLOR_DARK = "#351044"
+const SHIRT_ICON_PATH = "M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 .55.45 1 1 1h10c.55 0 1-.45 1-1V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"
+const BAG_ICON = (
+  <>
+    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" />
+  </>
+)
+
+const COLOR = "#22c55e"
+const COLOR_DARK = "#16803c"
 
 const STATUS_META: Record<string, { bg: string; text: string; dot: string }> = {
   confirmed:         { bg: "#F1EAF5", text: "#15803d", dot: "#22c55e" },
@@ -18,7 +26,7 @@ const STATUS_META: Record<string, { bg: string; text: string; dot: string }> = {
   cancelled:         { bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444" },
 }
 
-const STATUS_FILTERS = ["all", "confirmed", "pending", "delivered", "returned", "order_complete", "cancelled"]
+const STATUS_FILTERS = ["all", "draft", "confirmed", "pending", "delivered", "returned", "order_complete", "cancelled"]
 
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_META[status?.toLowerCase()] ?? { bg: "#f1f5f9", text: "#64748b", dot: "#94a3b8" }
@@ -42,6 +50,7 @@ export default function BookingListPage() {
   const [bookingTab, setBookingTab] = useState<"rental" | "sales">("rental")
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
+  const [showNewMenu, setShowNewMenu] = useState(false)
 
   const fetchBookings = useCallback(async () => {
     setLoading(true)
@@ -134,12 +143,12 @@ export default function BookingListPage() {
 
         {/* Rental / Sales tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
-          {([
-            { key: "rental", label: "Rental", count: rentalCount, icon: "👔" },
-            { key: "sales", label: "Sales", count: salesCount, icon: "🛍️" },
-          ] as const).map(t => (
+          {[
+            { key: "rental" as const, label: "Rental", count: rentalCount, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={SHIRT_ICON_PATH} /></svg> },
+            { key: "sales" as const, label: "Sales", count: salesCount, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{BAG_ICON}</svg> },
+          ].map(t => (
             <button key={t.key} onClick={() => { setBookingTab(t.key); setStatusFilter("all") }}
-              style={{ flex: 1, padding: "10px 0", border: "none", background: "none", cursor: "pointer", color: bookingTab === t.key ? "white" : "rgba(255,255,255,0.5)", fontWeight: bookingTab === t.key ? 800 : 600, fontSize: 13, borderBottom: bookingTab === t.key ? "2.5px solid white" : "2.5px solid transparent", transition: "all 0.2s", fontFamily: "inherit" }}>
+              style={{ flex: 1, padding: "10px 0", border: "none", background: "none", cursor: "pointer", color: bookingTab === t.key ? "white" : "rgba(255,255,255,0.5)", fontWeight: bookingTab === t.key ? 800 : 600, fontSize: 13, borderBottom: bookingTab === t.key ? "2.5px solid white" : "2.5px solid transparent", transition: "all 0.2s", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
               {t.icon} {t.label} <span style={{ fontSize: 10, opacity: 0.8 }}>({t.count})</span>
             </button>
           ))}
@@ -149,7 +158,7 @@ export default function BookingListPage() {
       {/* Today's events banner */}
       {todayBookings.length > 0 && (
         <div style={{ margin: "12px 16px 0", padding: "10px 14px", background: "#fef9c3", borderRadius: 14, border: "1px solid #fde68a", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 18 }}>📅</span>
+          <span style={{ display: "inline-flex", color: "#a16207" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
           <div>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#a16207" }}>{todayBookings.length} Event{todayBookings.length > 1 ? "s" : ""} Today!</p>
             <p style={{ margin: 0, fontSize: 10, color: "#ca8a04" }}>{todayBookings.map(b => (b.customer as any)?.name || b.booking_number).join(", ")}</p>
@@ -214,9 +223,10 @@ export default function BookingListPage() {
               const balance = (b.total_amount ?? 0) - (b.paid_amount ?? b.amount_paid ?? 0)
               const initials = (customer?.name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
               const isPackage = b.booking_kind === "package"
+              const detailKind = isPackage ? "package" : b.source === "direct_sales" ? "sale" : "product"
               return (
                 <div key={b.id}
-                  onClick={() => router.push(`/portal/booking/bookings/${b.id}?kind=${b.booking_kind || "product"}`)}
+                  onClick={() => router.push(`/portal/booking/bookings/${b.id}?kind=${detailKind}`)}
                   style={{ background: "white", borderRadius: 18, padding: "14px 16px", cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid rgba(34,197,94,0.1)", transition: "transform 0.15s", display: "flex", gap: 12, alignItems: "flex-start" }}
                   onTouchStart={e => (e.currentTarget.style.transform = "scale(0.98)")}
                   onTouchEnd={e => (e.currentTarget.style.transform = "scale(1)")}
@@ -259,10 +269,52 @@ export default function BookingListPage() {
       </div>
 
       {/* FAB */}
-      <button onClick={() => router.push("/portal/booking/bookings/new")}
+      <button onClick={() => setShowNewMenu(true)}
         style={{ position: "fixed", bottom: "calc(72px + env(safe-area-inset-bottom, 0px) + 12px)", right: 16, zIndex: 40, display: "flex", alignItems: "center", gap: 8, background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`, border: "none", borderRadius: 18, padding: "14px 20px", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", boxShadow: `0 8px 24px ${COLOR}55` }}>
-        <span style={{ fontSize: 18 }}>+</span> New Booking
+        <span style={{ fontSize: 18 }}>+</span> New
       </button>
+
+      {/* New booking type action sheet */}
+      {showNewMenu && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }} onClick={() => setShowNewMenu(false)} />
+          <div style={{ position: "relative", marginTop: "auto", background: "white", borderRadius: "24px 24px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom,20px) + 20px)", zIndex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.1)" }} /></div>
+            <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 900, color: "#1e1208" }}>Create New</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "rgba(80,55,30,0.5)" }}>Choose what you'd like to create</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                {
+                  href: "/portal/booking/bookings/new", title: "New Rental", desc: "Event rental booking with delivery & return", color: COLOR,
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a4 4 0 0 1 8 0v2" />
+                    </svg>
+                  ),
+                },
+                {
+                  href: "/portal/booking/bookings/new-sale", title: "New Sale", desc: "Direct product sale — no event/return dates", color: "#f97316",
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" />
+                    </svg>
+                  ),
+                },
+              ].map(opt => (
+                <button key={opt.href} onClick={() => { setShowNewMenu(false); router.push(opt.href) }}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 16, border: "1px solid rgba(0,0,0,0.06)", background: "white", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 12, background: `${opt.color}18`, color: opt.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{opt.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 800, color: "#1e1208" }}>{opt.title}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "rgba(80,55,30,0.5)" }}>{opt.desc}</p>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(80,55,30,0.25)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9,18 15,12 9,6"/></svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

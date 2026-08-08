@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-const COLOR = "#4A1F5E"
-const COLOR_DARK = "#351044"
+const COLOR = "#22c55e"
+const COLOR_DARK = "#16803c"
 
 export default function NewCustomerPortalPage() {
   const router = useRouter()

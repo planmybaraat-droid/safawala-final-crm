@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import { JobTracker } from "@/components/portal/job-tracker"
+import { PortalIcon } from "@/components/portal/portal-icons"
 
-const COLOR = "#4A1F5E"
-const COLOR_DARK = "#351044"
+const COLOR = "#22c55e"
+const COLOR_DARK = "#16803c"
 
 const STATUS_META: Record<string, { bg: string; text: string; dot: string; label: string }> = {
   confirmed:         { bg: "#F1EAF5", text: "#15803d", dot: "#22c55e",  label: "Confirmed" },
@@ -47,7 +49,7 @@ function PaymentSheet({ booking, onClose, onSaved }: { booking: any; onClose: ()
     if (amt > balance+0.01) return setErr(`Exceeds balance of ${fmt(balance)}`)
     setSaving(true); setErr("")
     try {
-      const type = booking._kind==="package" ? "package_booking" : "product_order"
+      const type = booking._kind==="package" ? "package_booking" : booking._kind==="sale" ? "direct_sale" : "product_order"
       const res = await fetch(`/api/bookings/${booking.id}?type=${type}`, {
         method:"PATCH", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ amount_paid: (Number(booking.amount_paid)||0)+amt, payment_method: method }),
@@ -78,7 +80,7 @@ function PaymentSheet({ booking, onClose, onSaved }: { booking: any; onClose: ()
           <input type="number" inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" autoFocus
             style={{ width:"100%", border:"none", background:"transparent", outline:"none", fontSize:28, fontWeight:900, color:"#1e1208", fontFamily:"inherit" }} />
         </div>
-        {err && <p style={{ margin:"0 0 10px", fontSize:12, color:"#dc2626", fontWeight:600 }}>⚠️ {err}</p>}
+        {err && <p style={{ margin:"0 0 10px", fontSize:12, color:"#dc2626", fontWeight:600, display:"flex", alignItems:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> {err}</p>}
         <button onClick={save} disabled={saving||!amount}
           style={{ width:"100%", height:52, borderRadius:16, border:"none", background:saving||!amount?"#e5e7eb":`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, color:saving||!amount?"#9ca3af":"white", fontSize:15, fontWeight:800, cursor:saving||!amount?"not-allowed":"pointer", fontFamily:"inherit" }}>
           {saving ? "Saving…" : `Record ${method} Payment`}
@@ -93,7 +95,7 @@ function StatusSheet({ booking, onClose, onUpdated }: { booking:any; onClose:()=
   async function update(status: string) {
     setUpdating(status)
     try {
-      const type = booking._kind==="package" ? "package_booking" : "product_order"
+      const type = booking._kind==="package" ? "package_booking" : booking._kind==="sale" ? "direct_sale" : "product_order"
       const res = await fetch(`/api/bookings/${booking.id}?type=${type}`, {
         method:"PATCH", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ status }),
@@ -143,6 +145,7 @@ export default function BookingDetailPage() {
   const [error, setError] = useState("")
   const [showPayment, setShowPayment] = useState(false)
   const [showStatus, setShowStatus] = useState(false)
+  const [jobId, setJobId] = useState<string | null>(null)
 
   function showToast(msg: string) { toast.success(msg) }
 
@@ -150,7 +153,7 @@ export default function BookingDetailPage() {
     if (!id) return
     setLoading(true); setError("")
     try {
-      const type = kind==="package" ? "package_booking" : "product_order"
+      const type = kind==="package" ? "package_booking" : kind==="sale" ? "direct_sale" : "product_order"
       const [bRes, iRes] = await Promise.all([
         fetch(`/api/bookings/${id}?type=${type}`),
         fetch(`/api/bookings/${id}/items?source=${type}`),
@@ -162,7 +165,13 @@ export default function BookingDetailPage() {
       }
       const bData = await bRes.json()
       const iData = iRes.ok ? await iRes.json() : {}
-      setBooking({ ...(bData.booking || bData.data || bData), _kind: kind })
+      const rawBooking = bData.booking || bData.data || bData
+      // direct_sales_orders has no event_date/event_type columns — normalize
+      // from its sale_date so the shared Event Details section still renders.
+      const normalizedBooking = kind === "sale"
+        ? { ...rawBooking, event_date: rawBooking.event_date || rawBooking.sale_date, event_type: rawBooking.event_type || "Direct Sale" }
+        : rawBooking
+      setBooking({ ...normalizedBooking, _kind: kind })
       setItems(iData.items || iData.data || [])
     } catch { setError("Failed to load — check connection") }
     finally { setLoading(false) }
@@ -170,9 +179,20 @@ export default function BookingDetailPage() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    if (!id) return
+    fetch(`/api/jobs?booking_id=${id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const list = Array.isArray(d.data) ? d.data : []
+        if (list[0]?.id) setJobId(list[0].id)
+      })
+      .catch(() => {})
+  }, [id])
+
   async function downloadPDF() {
     try {
-      const orderType = kind === "package" ? "package_booking" : "product_order"
+      const orderType = kind === "package" ? "package_booking" : kind === "sale" ? "direct_sale" : "product_order"
       const res = await fetch("/api/generate-invoice-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,12 +215,12 @@ export default function BookingDetailPage() {
 
   if (error||!booking) return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#F1EAF5,#F1EAF5)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16, padding:20, fontFamily:"var(--font-inter), Inter, sans-serif" }}>
-      <div style={{ fontSize:48 }}>😕</div>
+      <div style={{ color:"rgba(80,55,30,0.4)" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5-2 4-2 4 2 4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div>
       <p style={{ fontWeight:700, fontSize:16, color:"#1e1208" }}>{error||"Booking not found"}</p>
       <p style={{ fontSize:12, color:"rgba(80,55,30,0.5)", textAlign:"center", maxWidth:280 }}>
         {error?.includes("403")||error?.includes("Forbidden") ? "You may not have permission to view this booking." : "The booking may not exist or the link is incorrect."}
       </p>
-      <button onClick={()=>router.push("/portal/booking/bookings")} style={{ background:COLOR, color:"white", border:"none", borderRadius:14, padding:"12px 24px", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>← Back</button>
+      <button onClick={()=>router.push("/portal/booking/bookings")} style={{ background:COLOR, color:"white", border:"none", borderRadius:14, padding:"12px 24px", fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15,18 9,12 15,6"/></svg> Back</button>
     </div>
   )
 
@@ -220,15 +240,17 @@ export default function BookingDetailPage() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15,18 9,12 15,6"/></svg>
           </button>
           <div style={{ flex:1 }}><p style={{ color:"rgba(255,255,255,0.6)", fontSize:11, margin:0 }}>Booking Detail</p></div>
-          <button onClick={downloadPDF} style={{ padding:"6px 14px", borderRadius:10, background:"rgba(255,255,255,0.2)", border:"none", cursor:"pointer", color:"white", fontSize:12, fontWeight:700, fontFamily:"inherit" }}>⬇ PDF</button>
+          <button onClick={downloadPDF} style={{ padding:"6px 14px", borderRadius:10, background:"rgba(255,255,255,0.2)", border:"none", cursor:"pointer", color:"white", fontSize:12, fontWeight:700, fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> PDF</button>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:14, position:"relative", zIndex:1, marginBottom:16 }}>
           <div style={{ width:56, height:56, borderRadius:"50%", background:"rgba(255,255,255,0.25)", border:"3px solid rgba(255,255,255,0.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:900, color:"white", flexShrink:0 }}>
-            {kind==="package" ? "📦" : initials}
+            {kind==="package" ? <PortalIcon name="package" size={24} /> : kind==="sale" ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            ) : initials}
           </div>
           <div>
             <h1 style={{ color:"white", fontSize:18, fontWeight:900, margin:"0 0 3px" }}>{customer.name||"Unknown Customer"}</h1>
-            <p style={{ color:"rgba(255,255,255,0.7)", fontSize:11, margin:"0 0 6px", fontFamily:"monospace" }}>{booking.order_number||booking.package_number||id?.slice(0,8)}</p>
+            <p style={{ color:"rgba(255,255,255,0.7)", fontSize:11, margin:"0 0 6px", fontFamily:"monospace" }}>{booking.order_number||booking.package_number||booking.sale_number||id?.slice(0,8)}</p>
             <StatusBadge status={booking.status||"pending"} />
           </div>
         </div>
@@ -248,10 +270,16 @@ export default function BookingDetailPage() {
 
       {/* Quick actions */}
       <div style={{ padding:"12px 16px 0", display:"flex", gap:10 }}>
-        {customer.phone && <a href={`tel:${customer.phone}`} style={{ flex:1, height:44, borderRadius:13, background:"#eff6ff", display:"flex", alignItems:"center", justifyContent:"center", gap:6, textDecoration:"none", fontSize:13, fontWeight:700, color:"#1d4ed8" }}>📞 Call</a>}
-        {(customer.whatsapp||customer.phone) && <a href={waLink(customer.whatsapp||customer.phone)} target="_blank" rel="noreferrer" style={{ flex:1, height:44, borderRadius:13, background:"#25d366", display:"flex", alignItems:"center", justifyContent:"center", gap:6, textDecoration:"none", fontSize:13, fontWeight:700, color:"white" }}>💬 WhatsApp</a>}
-        {balance>0 && <button onClick={()=>setShowPayment(true)} style={{ flex:1, height:44, borderRadius:13, background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:13, fontWeight:700, color:"white", cursor:"pointer", fontFamily:"inherit" }}>💰 Pay</button>}
+        {customer.phone && <a href={`tel:${customer.phone}`} style={{ flex:1, height:44, borderRadius:13, background:"#eff6ff", display:"flex", alignItems:"center", justifyContent:"center", gap:6, textDecoration:"none", fontSize:13, fontWeight:700, color:"#1d4ed8" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</a>}
+        {(customer.whatsapp||customer.phone) && <a href={waLink(customer.whatsapp||customer.phone)} target="_blank" rel="noreferrer" style={{ flex:1, height:44, borderRadius:13, background:"#25d366", display:"flex", alignItems:"center", justifyContent:"center", gap:6, textDecoration:"none", fontSize:13, fontWeight:700, color:"white" }}><PortalIcon name="whatsapp" size={15} /> WhatsApp</a>}
+        {balance>0 && <button onClick={()=>setShowPayment(true)} style={{ flex:1, height:44, borderRadius:13, background:`linear-gradient(135deg,${COLOR},${COLOR_DARK})`, border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:13, fontWeight:700, color:"white", cursor:"pointer", fontFamily:"inherit" }}><PortalIcon name="rupee" size={15} /> Pay</button>}
       </div>
+
+      {jobId && (
+        <div style={{ padding:"12px 0 0" }}>
+          <JobTracker jobId={jobId} />
+        </div>
+      )}
 
       <div style={{ padding:"12px 16px 0", display:"flex", flexDirection:"column", gap:12 }}>
         {/* Event Details */}

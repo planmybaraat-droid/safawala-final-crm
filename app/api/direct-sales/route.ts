@@ -159,12 +159,37 @@ export async function POST(request: NextRequest) {
 
     console.log('[Direct Sales API] ✅ Inventory updates:', inventoryUpdates.length)
 
+    // Create a Job (jobs/job_tasks) for this sale — shared department-task
+    // tracking system, wired to all three booking-creation paths. Non-fatal:
+    // if the RPC isn't deployed yet or errors, the sale still stands.
+    let job: { id: string; job_number: string } | null = null
+    try {
+      const { data: jobId, error: jobErr } = await supabase.rpc('create_job_for_booking', {
+        p_booking_id: saleData.id,
+        p_booking_source: 'direct_sales_orders',
+        p_franchise_id: user.franchise_id,
+      })
+      if (jobErr) {
+        console.error('[Direct Sales API] Job creation error (non-fatal):', jobErr.message)
+      } else if (jobId) {
+        const { data: jobRow } = await supabase
+          .from('jobs')
+          .select('id, job_number')
+          .eq('id', jobId)
+          .single()
+        job = jobRow || null
+      }
+    } catch (jobError) {
+      console.error('[Direct Sales API] Job creation failed (non-fatal):', jobError)
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         sale: saleData,
         items_count: itemsToInsert.length,
-        inventory_updates: inventoryUpdates
+        inventory_updates: inventoryUpdates,
+        job,
       },
       message: 'Direct sale created successfully'
     })

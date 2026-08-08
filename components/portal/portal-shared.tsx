@@ -111,6 +111,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   sent:              { bg: "#dbeafe", text: "#1d4ed8" },
   accepted:          { bg: "#dcfce7", text: "#16a34a" },
   converted:         { bg: "#f3e8ff", text: "#7c3aed" },
+  waiting:           { bg: "#f4f4f5", text: "#71717a" },
 }
 
 export function PortalStatusBadge({ status }: { status: string }) {

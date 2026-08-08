@@ -42,6 +42,13 @@ export async function GET(
         .eq('id', id)
         .single()
       booking = res.data; error = res.error
+    } else if (type === 'direct_sale' || type === 'direct_sales') {
+      const res = await supabase
+        .from('direct_sales_orders')
+        .select(`*, franchise_id, customer:customers(*)`)
+        .eq('id', id)
+        .single()
+      booking = res.data; error = res.error
     } else {
       const res = await supabase
         .from("bookings")
@@ -93,6 +100,7 @@ export async function PATCH(
     let table = 'bookings'
     if (type === 'product_order') table = 'product_orders'
     if (type === 'package_booking') table = 'package_bookings'
+    if (type === 'direct_sale' || type === 'direct_sales') table = 'direct_sales_orders'
 
     // Check franchise ownership and fetch previous status/amount_paid before update
     const { data: existing, error: fetchErr } = await supabase

@@ -113,7 +113,7 @@ export default function DashboardPage() {
   const fetchDashboardWorkOrders = async () => {
     try {
       setLoadingWorkOrders(true)
-      const res = await fetch("/api/work-orders")
+      const res = await fetch("/api/jobs")
       if (res.ok) {
         const json = await res.json()
         setWorkOrders(json.data || [])
@@ -253,23 +253,23 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Department flow order used by the work-orders widget (Booking -> ... -> Accounts)
+  // Department flow order used by the Jobs widget (Booking -> ... -> Accounts)
   const DEPARTMENT_FLOW = [
     { key: "warehouse", label: "Warehouse" },
-    { key: "packing", label: "Packing" },
-    { key: "dispatch", label: "Dispatch" },
-    { key: "event_team", label: "Event Team" },
-    { key: "returns", label: "Returns" },
+    { key: "qc", label: "QC" },
+    { key: "delivery", label: "Delivery" },
+    { key: "travels", label: "Travels" },
+    { key: "styling", label: "Styling" },
     { key: "accounts", label: "Accounts" },
   ]
 
-  // Pending task count per department, across all active work orders — the "whole business" strip
+  // Pending task count per department, across all active jobs — the "whole business" strip
   const departmentCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     DEPARTMENT_FLOW.forEach((d) => { counts[d.key] = 0 })
     workOrders.forEach((wo) => {
-      (wo.work_order_tasks || []).forEach((t: any) => {
-        if (t && t.status !== "completed" && t.status !== "cancelled" && counts[t.department] !== undefined) {
+      (wo.job_tasks || []).forEach((t: any) => {
+        if (t && t.status !== "completed" && counts[t.department] !== undefined) {
           counts[t.department]++
         }
       })
@@ -277,50 +277,31 @@ export default function DashboardPage() {
     return counts
   }, [workOrders])
 
-  // First not-yet-done task for a work order, in department flow order — used by the Bookings tab's Remind button
+  // First not-yet-done task for a job, in department flow order
   const getActiveTask = (wo: any) => {
     const order = DEPARTMENT_FLOW.map((d) => d.key)
-    const sorted = [...(wo.work_order_tasks || [])].sort(
+    const sorted = [...(wo.job_tasks || [])].sort(
       (a: any, b: any) => order.indexOf(a.department) - order.indexOf(b.department)
     )
-    return sorted.find((t: any) => t.status !== "completed" && t.status !== "cancelled") || sorted[sorted.length - 1]
+    return sorted.find((t: any) => t.status !== "completed") || sorted[sorted.length - 1]
   }
 
-  const [remindingIds, setRemindingIds] = useState<Set<string>>(new Set())
-
-  const handleRemind = async (taskId: string) => {
-    if (!taskId || remindingIds.has(taskId)) return
-    setRemindingIds((prev) => new Set(prev).add(taskId))
-    try {
-      const res = await fetch(`/api/work-orders/tasks/${taskId}/remind`, { method: "POST" })
-      const data = await res.json()
-      if (res.ok) {
-        toast.success(`Reminded ${data.notified?.join(", ") || "the team"}`)
-      } else {
-        toast.error(data.error || "Failed to send reminder")
-      }
-    } catch (e) {
-      toast.error("Failed to send reminder")
-    } finally {
-      setTimeout(() => {
-        setRemindingIds((prev) => {
-          const next = new Set(prev)
-          next.delete(taskId)
-          return next
-        })
-      }, 10000)
-    }
+  // Reminders were part of the retired work-orders system; the Jobs system does not
+  // have an equivalent endpoint yet, so this is a no-op placeholder to avoid dead calls.
+  const [remindingIds] = useState<Set<string>>(new Set())
+  const handleRemind = async (_taskId: string) => {
+    toast.info("Reminders aren't available yet for the new Jobs system.")
   }
 
   // Department tabs shown on the Business Flow widget — "Bookings" is the overview tab,
-  // the rest mirror the work_order_tasks department enum in flow order.
+  // the rest mirror the job_tasks department enum in flow order.
   const DASHBOARD_TABS = [
     { key: "bookings", label: "Bookings", icon: Calendar },
     { key: "warehouse", label: "Warehouse", icon: Warehouse },
-    { key: "packing", label: "Packing", icon: Package },
-    { key: "dispatch", label: "Dispatch", icon: Truck },
-    { key: "event_team", label: "Event Team", icon: MapPin },
-    { key: "returns", label: "Returns", icon: RotateCcw },
+    { key: "qc", label: "QC", icon: Package },
+    { key: "delivery", label: "Delivery", icon: Truck },
+    { key: "travels", label: "Travels", icon: MapPin },
+    { key: "styling", label: "Styling", icon: RotateCcw },
     { key: "accounts", label: "Accounts", icon: DollarSign },
   ] as const
 
@@ -337,7 +318,7 @@ export default function DashboardPage() {
     if (activeDeptTab === "bookings") return []
     const list: Array<{ workOrder: any; task: any }> = []
     activeWorkOrders.forEach((wo) => {
-      const task = (wo.work_order_tasks || []).find((t: any) => t && t.department === activeDeptTab)
+      const task = (wo.job_tasks || []).find((t: any) => t && t.department === activeDeptTab)
       if (task) list.push({ workOrder: wo, task })
     })
     return list
@@ -375,7 +356,8 @@ export default function DashboardPage() {
   const getTaskStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-blue-600 text-white hover:bg-blue-600">Active</Badge>
+      case "in_progress":
+        return <Badge className="bg-blue-600 text-white hover:bg-blue-600">In Progress</Badge>
       case "picked":
         return <Badge className="bg-green-600 text-white hover:bg-green-600">Picked</Badge>
       case "shortage":
@@ -461,7 +443,7 @@ export default function DashboardPage() {
               </Card>
             </Link>
 
-            <Link href="/work-orders">
+            <Link href="/portal/qc/jobs">
               <Card className="hover:shadow-md hover:border-orange-200 transition-all cursor-pointer bg-white">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Orders in Packing</CardTitle>
@@ -474,7 +456,7 @@ export default function DashboardPage() {
               </Card>
             </Link>
 
-            <Link href="/work-orders">
+            <Link href="/portal/delivery/jobs">
               <Card className="hover:shadow-md hover:border-cyan-200 transition-all cursor-pointer bg-white">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Orders in Dispatch</CardTitle>
@@ -513,7 +495,7 @@ export default function DashboardPage() {
               </Card>
             </Link>
 
-            <Link href="/work-orders">
+            <Link href="/portal/styling/jobs">
               <Card className="hover:shadow-md hover:border-slate-300 transition-all cursor-pointer bg-white">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Material Not Returned</CardTitle>
@@ -526,7 +508,7 @@ export default function DashboardPage() {
               </Card>
             </Link>
 
-            <Link href="/work-orders">
+            <Link href="/portal/warehouse/jobs">
               <Card className="hover:shadow-md hover:border-violet-300 transition-all cursor-pointer bg-slate-50/50">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Operations Board</CardTitle>
@@ -534,7 +516,7 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-violet-600 font-bold">Launch Board</div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Open Work Orders board →</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Open Jobs board →</p>
                 </CardContent>
               </Card>
             </Link>
@@ -697,8 +679,8 @@ export default function DashboardPage() {
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-[480px] overflow-y-auto pr-1">
                     {activeWorkOrders.map((wo) => {
                       const isRental = wo.booking_source === 'product_orders' || wo.booking_source === 'package_bookings'
-                      const totalTasks = wo.work_order_tasks?.length || 0
-                      const completedTasks = wo.work_order_tasks?.filter((t: any) => t && (t.status === 'completed' || t.status === 'picked')).length || 0
+                      const totalTasks = wo.job_tasks?.length || 0
+                      const completedTasks = wo.job_tasks?.filter((t: any) => t && t.status === 'completed').length || 0
                       const progressPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
                       const isUrgent = getWoPriorityLabel(wo.event_date).includes("Critical")
                       const activeTask = getActiveTask(wo)
@@ -714,7 +696,7 @@ export default function DashboardPage() {
                           <div className="pb-2 pt-3 px-4 flex flex-row items-start justify-between space-y-0">
                             <div className="space-y-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs font-black text-indigo-600 tracking-wider">{wo.work_order_number || ''}</span>
+                                <span className="text-xs font-black text-indigo-600 tracking-wider">{wo.job_number || ''}</span>
                                 <span className="text-[10px] text-slate-400 font-bold">•</span>
                                 <span className="text-xs font-semibold text-slate-500">{wo.booking_number || ''}</span>
                                 {isRental ? (
@@ -726,11 +708,11 @@ export default function DashboardPage() {
                               <p className="text-sm font-bold text-slate-800 line-clamp-1">{wo.customer_name || 'N/A'}</p>
                             </div>
                             <Badge className={
-                              wo.status === 'new'
+                              completedTasks === 0
                                 ? 'bg-blue-50 text-blue-700 border-blue-100 shrink-0'
                                 : 'bg-amber-50 text-amber-700 border-amber-100 shrink-0'
                             } variant="outline">
-                              {wo.status === 'new' ? 'New' : 'In Progress'}
+                              {completedTasks === 0 ? 'New' : 'In Progress'}
                             </Badge>
                           </div>
 
@@ -805,9 +787,9 @@ export default function DashboardPage() {
                         <div className="pb-2 pt-3 px-4 flex flex-row items-start justify-between space-y-0">
                           <div className="space-y-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-black text-indigo-600 tracking-wider">{task.task_number || ''}</span>
+                              <span className="text-xs font-black text-indigo-600 tracking-wider capitalize">{task.department || ''}</span>
                               <span className="text-[10px] text-slate-400 font-bold">•</span>
-                              <span className="text-xs font-semibold text-slate-500">{wo.work_order_number || ''}</span>
+                              <span className="text-xs font-semibold text-slate-500">{wo.job_number || ''}</span>
                               {isRental ? (
                                 <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full">Rental</span>
                               ) : (
@@ -829,7 +811,7 @@ export default function DashboardPage() {
                               {getWoPriorityLabel(wo.event_date)}
                             </Badge>
                           </div>
-                          <p className="text-xs font-bold text-slate-700 leading-snug">{task.title}</p>
+                          <p className="text-xs font-bold text-slate-700 leading-snug capitalize">{task.department} task</p>
 
                           {totalChecklist > 0 && (
                             <div className="space-y-1 pt-1">

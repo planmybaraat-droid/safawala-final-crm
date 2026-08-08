@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-const COLOR = "#4A1F5E"
-const COLOR_DARK = "#351044"
+const COLOR = "#22c55e"
+const COLOR_DARK = "#16803c"
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
   generated: { bg: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6", label: "Generated" },

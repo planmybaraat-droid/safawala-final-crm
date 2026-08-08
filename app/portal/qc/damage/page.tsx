@@ -67,7 +67,7 @@ export default function QCPage() {
   async function fetchReports() {
     setLoading(true)
     try {
-      const res = await fetch("/api/work-orders?type=damage&limit=50")
+      const res = await fetch("/api/jobs")
       const json = await res.json()
       const raw = Array.isArray(json.data) ? json.data : []
       

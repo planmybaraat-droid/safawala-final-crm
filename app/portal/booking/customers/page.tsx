@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 
-const COLOR = "#4A1F5E"
-const COLOR_DARK = "#351044"
+const COLOR = "#22c55e"
+const COLOR_DARK = "#16803c"
 
 function fmtDate(d: string) { return d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—" }
 function waLink(phone: string) {

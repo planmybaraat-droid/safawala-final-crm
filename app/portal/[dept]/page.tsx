@@ -242,7 +242,7 @@ export default function PortalHomePage() {
                 subtitle="Approved for delivery"
                 icon="check-circle"
                 color="#10b981"
-                onClick={() => router.push("/portal/qc/work-orders")}
+                onClick={() => router.push("/portal/qc/jobs")}
               />
               <PortalHomeCard
                 title="Failed / Rework"
@@ -250,7 +250,7 @@ export default function PortalHomePage() {
                 subtitle="Returned to warehouse"
                 icon="alert-triangle"
                 color="#f59e0b"
-                onClick={() => router.push("/portal/qc/work-orders")}
+                onClick={() => router.push("/portal/qc/jobs")}
               />
               <PortalHomeCard
                 title="Damage Reported"

@@ -40,9 +40,9 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
         top: 0,
         left: 0,
         bottom: 0,
-        background: "#2B1738",
-        borderRight: "1px solid #493455",
-        boxShadow: "4px 0 24px rgba(43,23,56,0.12)",
+        background: adjustColor(config.color, -170),
+        borderRight: `1px solid ${adjustColor(config.color, -140)}`,
+        boxShadow: `4px 0 24px ${hexToRgba(config.color, 0.12)}`,
         display: "flex",
         flexDirection: "column",
         zIndex: 50,
@@ -52,7 +52,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
       <div
         style={{
           padding: "20px 20px 16px",
-          borderBottom: "1px solid #493455",
+          borderBottom: `1px solid ${adjustColor(config.color, -140)}`,
         }}
       >
         {/* Accent bar */}
@@ -62,7 +62,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
           <div
             style={{
               width: 36, height: 36, borderRadius: 10,
-              background: "#4A1F5E",
+              background: config.color,
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0, color: "white",
             }}
@@ -119,8 +119,8 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
                 padding: "10px 12px",
                 borderRadius: 12,
                 marginBottom: 2,
-                background: isActive ? "#4A1F5E" : "transparent",
-                color: isActive ? "#F1D696" : "#BDAFC5",
+                background: isActive ? hexToRgba(config.color, 0.22) : "transparent",
+                color: isActive ? "#ffffff" : "rgba(255,255,255,0.55)",
                 fontWeight: isActive ? 700 : 500,
                 fontSize: 13,
                 textDecoration: "none",
@@ -131,7 +131,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
               {isActive && (
                 <div style={{ width: 3, height: 18, borderRadius: 2, background: config.color, flexShrink: 0 }} />
               )}
-              <span style={{ color: isActive ? "#F1D696" : "#C8BACF", flexShrink: 0, display: "flex" }}>
+              <span style={{ color: isActive ? "#ffffff" : "rgba(255,255,255,0.45)", flexShrink: 0, display: "flex" }}>
                 <PortalIcon name={tab.icon as any} size={18} />
               </span>
               <span>{tab.label}</span>
@@ -144,7 +144,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
       <div
         style={{
           padding: "12px 16px",
-          borderTop: "1px solid #493455",
+          borderTop: `1px solid ${adjustColor(config.color, -140)}`,
         }}
       >
         {user && (
@@ -152,7 +152,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
             <div
               style={{
                 width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                background: "#4A1F5E",
+                background: config.color,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: "white", fontSize: 12, fontWeight: 800,
               }}
@@ -198,4 +198,12 @@ function adjustColor(hex: string, amount: number): string {
   const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00ff) + amount))
   const b = Math.max(0, Math.min(255, (num & 0x0000ff) + amount))
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const num = parseInt(hex.replace("#", ""), 16)
+  const r = (num >> 16) & 0xff
+  const g = (num >> 8) & 0xff
+  const b = num & 0xff
+  return `rgba(${r},${g},${b},${alpha})`
 }

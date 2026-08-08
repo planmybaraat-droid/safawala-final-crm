@@ -45,9 +45,9 @@ const HR_SECTIONS = [
     color: "#0891b2",
   },
   {
-    title: "Work Orders",
-    description: "Assign and track department-wise work tasks",
-    href: "/work-orders",
+    title: "Jobs",
+    description: "Assign and track department-wise job tasks",
+    href: "/portal/warehouse/jobs",
     icon: ClipboardList,
     color: "#ef4444",
   },

@@ -73,7 +73,7 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     allowedRoles: ["super_admin", "franchise_admin", "warehouse_staff"],
     tabs: [
       { icon: "home", label: "Home", href: "/portal/warehouse", permission: "warehouse.view" },
-      { icon: "clipboard", label: "Pick & Pack", href: "/portal/warehouse/tasks", permission: "warehouse.view" },
+      { icon: "clipboard", label: "Jobs", href: "/portal/warehouse/jobs", permission: "warehouse.view" },
       { icon: "package", label: "Stock", href: "/portal/warehouse/inventory", permission: "warehouse.update" },
       { icon: "laundry", label: "Laundry", href: "/portal/warehouse/laundry", permission: "warehouse.view" },
       { icon: "user", label: "Me", href: "/portal/warehouse/profile" },
@@ -92,7 +92,7 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
       { icon: "home", label: "Home", href: "/portal/qc", permission: "qc.view" },
       { icon: "search", label: "Inspect", href: "/portal/qc/inspect", permission: "qc.view" },
       { icon: "alert-triangle", label: "Damage", href: "/portal/qc/damage", permission: "qc.update" },
-      { icon: "clipboard", label: "Orders", href: "/portal/qc/work-orders", permission: "qc.view" },
+      { icon: "clipboard", label: "Jobs", href: "/portal/qc/jobs", permission: "qc.view" },
       { icon: "user", label: "Me", href: "/portal/qc/profile" },
     ],
   },
@@ -107,6 +107,7 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     allowedRoles: ["super_admin", "franchise_admin", "delivery_staff"],
     tabs: [
       { icon: "home", label: "Home", href: "/portal/delivery", permission: "delivery.view" },
+      { icon: "clipboard", label: "Jobs", href: "/portal/delivery/jobs", permission: "delivery.view" },
       { icon: "truck", label: "Dispatch", href: "/portal/delivery/deliveries", permission: "delivery.view" },
       { icon: "refresh", label: "Returns", href: "/portal/delivery/returns", permission: "delivery.view" },
       { icon: "map-pin", label: "Track", href: "/portal/delivery/routes", permission: "delivery.view" },
@@ -124,6 +125,7 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     allowedRoles: ["super_admin", "franchise_admin", "staff", "stylist"],
     tabs: [
       { icon: "home", label: "Home", href: "/portal/styling" },
+      { icon: "clipboard", label: "My Jobs", href: "/portal/styling/jobs" },
       { icon: "clipboard", label: "Assignments", href: "/portal/styling/assignments" },
       { icon: "rupee", label: "Earnings", href: "/portal/styling/earnings" },
       { icon: "user", label: "Me", href: "/portal/styling/profile" },
@@ -140,6 +142,7 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     allowedRoles: ["super_admin", "franchise_admin", "accounts_staff"],
     tabs: [
       { icon: "home", label: "Home", href: "/portal/accounts" },
+      { icon: "clipboard", label: "Jobs", href: "/portal/accounts/jobs" },
       { icon: "credit-card", label: "Payments", href: "/portal/accounts/payments" },
       { icon: "receipt", label: "Expenses", href: "/portal/accounts/expenses" },
       { icon: "bar-chart", label: "Reports", href: "/portal/accounts/reports" },

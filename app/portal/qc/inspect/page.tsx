@@ -25,11 +25,25 @@ import {
   ArrowLeft,
   SwitchCamera,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Zap,
+  Package,
+  Hash,
+  Palette,
+  Crown
 } from "lucide-react"
 
 const COLOR = "#a855f7"
 const COLOR_DARK = "#7c3aed"
+
+function NeedleThreadIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 21c3-1 5-3 6-6l9-9a2.5 2.5 0 0 0-3.5-3.5l-9 9c-3 1-5 3-6 6z" />
+      <circle cx="17" cy="5" r="1.5" />
+    </svg>
+  )
+}
 
 interface InspectionItem {
   id: string
@@ -111,7 +125,7 @@ export default function QCInspectPage() {
   async function fetchOrders() {
     setLoading(true)
     try {
-      const res = await fetch("/api/work-orders")
+      const res = await fetch("/api/jobs")
       const json = await res.json()
       const raw = Array.isArray(json.data) ? json.data : []
       
@@ -279,10 +293,10 @@ export default function QCInspectPage() {
       {/* Status Segmented Tabs */}
       <div className="px-4 py-3 bg-white border-b border-slate-200/80 flex items-center gap-2 overflow-x-auto no-scrollbar">
         {[
-          { key: "pending", label: "QC Pending", count: orders.filter(o => o.status === "qc_pending").length },
-          { key: "urgent", label: "⚡ Urgent Priority", count: orders.filter(o => o.urgent && o.status === "qc_pending").length },
-          { key: "in_progress", label: "In Inspection", count: orders.filter(o => o.status === "qc_in_progress").length },
-          { key: "all", label: "All Orders", count: orders.length },
+          { key: "pending", label: "QC Pending", count: orders.filter(o => o.status === "qc_pending").length, urgent: false },
+          { key: "urgent", label: "Urgent Priority", count: orders.filter(o => o.urgent && o.status === "qc_pending").length, urgent: true },
+          { key: "in_progress", label: "In Inspection", count: orders.filter(o => o.status === "qc_in_progress").length, urgent: false },
+          { key: "all", label: "All Orders", count: orders.length, urgent: false },
         ].map(tab => (
           <button
             key={tab.key}
@@ -293,6 +307,7 @@ export default function QCInspectPage() {
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
+            {tab.urgent && <Zap size={12} />}
             {tab.label}
             <span
               className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${
@@ -332,7 +347,7 @@ export default function QCInspectPage() {
             >
               {order.urgent && (
                 <div className="absolute top-0 right-0 bg-amber-500 text-white px-3 py-1 rounded-bl-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-                  ⚡ Urgent Order
+                  <Zap size={11} /> Urgent Order
                 </div>
               )}
 
@@ -565,8 +580,8 @@ function QCOrderInspectorModal({
                 {order.booking_number}
               </span>
               {order.urgent && (
-                <span className="bg-amber-500 text-white px-2 py-0.5 rounded text-[9px] font-black">
-                  ⚡ URGENT
+                <span className="bg-amber-500 text-white px-2 py-0.5 rounded text-[9px] font-black inline-flex items-center gap-1">
+                  <Zap size={10} /> URGENT
                 </span>
               )}
             </div>
@@ -641,13 +656,13 @@ function QCOrderInspectorModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
-                { key: "correctProduct", label: "📦 Correct Product Match" },
-                { key: "correctQuantity", label: "🔢 Correct Quantity" },
-                { key: "colorMatch", label: "🎨 Colour / Design Match" },
-                { key: "cleanliness", label: "🧼 Cleanliness & Pressing" },
-                { key: "stitching", label: "🪡 Stitching & Finishing" },
-                { key: "damageCheck", label: "🔍 Damage Check" },
-                { key: "accessoriesComplete", label: "👑 Accessories Complete" },
+                { key: "correctProduct", label: "Correct Product Match", Icon: Package },
+                { key: "correctQuantity", label: "Correct Quantity", Icon: Hash },
+                { key: "colorMatch", label: "Colour / Design Match", Icon: Palette },
+                { key: "cleanliness", label: "Cleanliness & Pressing", Icon: Sparkles },
+                { key: "stitching", label: "Stitching & Finishing", Icon: NeedleThreadIcon },
+                { key: "damageCheck", label: "Damage Check", Icon: Search },
+                { key: "accessoriesComplete", label: "Accessories Complete", Icon: Crown },
               ].map(check => {
                 const passed = (currentItem.checklist as any)[check.key]
                 return (
@@ -661,7 +676,10 @@ function QCOrderInspectorModal({
                         : "bg-rose-50/60 border-rose-200 text-rose-900"
                     }`}
                   >
-                    <span>{check.label}</span>
+                    <span className="flex items-center gap-1.5">
+                      <check.Icon size={14} />
+                      {check.label}
+                    </span>
                     {passed ? <CheckCircle2 size={16} className="text-emerald-600" /> : <XCircle size={16} className="text-rose-600" />}
                   </button>
                 )

@@ -80,6 +80,31 @@ export default function TravelsAssignmentsPage() {
           body: JSON.stringify({ ...body, status: sheet.status }),
         })
       }
+
+      // Best-effort: also flip the new Job system's travels task, if a Job exists for
+      // this booking. Never let a failure here break the travel-booking save above.
+      try {
+        const jobRes = await fetch(`/api/jobs?booking_id=${sheet.event.id}`)
+        const jobData = await jobRes.json()
+        const job = Array.isArray(jobData.data) ? jobData.data[0] : null
+        const travelsTask = job?.job_tasks?.find((t: any) => t.department === "travels")
+        if (travelsTask) {
+          const jobTaskStatus = sheet.status === "fully_booked" || sheet.status === "departed" || sheet.status === "returned"
+            ? "completed"
+            : sheet.status === "pending"
+              ? "waiting"
+              : "in_progress"
+          if (travelsTask.status !== jobTaskStatus) {
+            await fetch(`/api/jobs/tasks/${travelsTask.id}/status`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: jobTaskStatus }),
+            })
+          }
+        }
+      } catch (jobSyncErr) {
+        console.warn("[Travels] Job system sync notice:", jobSyncErr)
+      }
+
       await load()
       setSheet(null)
     } catch { alert("Failed to save assignment") }

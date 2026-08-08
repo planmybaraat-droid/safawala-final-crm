@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       customer_id,
       booking_type = 'rental',
       is_quote = false,
+      is_draft = false,
       event_date,
       event_time,
       delivery_date,
@@ -42,6 +43,8 @@ export async function POST(req: NextRequest) {
       subtotal_amount = 0,
       amount_paid = 0,
       discount_amount = 0,
+      coupon_code = null,
+      coupon_discount = 0,
       tax_amount = 0,
       gst_percentage = 0,
       payment_method = 'Cash',
@@ -53,14 +56,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Customer is required" }, { status: 400 })
     }
     // For rental bookings, event_date is required. For sales, delivery_date or no date is fine.
-    if (booking_type === 'rental' && !is_quote && !event_date) {
+    // Drafts skip this check entirely — a draft can be saved incomplete and finished later.
+    if (booking_type === 'rental' && !is_quote && !is_draft && !event_date) {
       return NextResponse.json({ error: "Event date is required for rental bookings" }, { status: 400 })
     }
 
     const supabase = createClient()
 
     // Generate a unique order number using timestamp + 4-digit random to avoid collisions
-    const prefix = is_quote ? 'QUO' : (booking_type === 'sale' ? 'SAL' : 'ORD')
+    const prefix = is_draft ? 'DFT' : is_quote ? 'QUO' : (booking_type === 'sale' ? 'SAL' : 'ORD')
     const ts = Date.now().toString().slice(-8)
     const rand = Math.floor(Math.random() * 9000) + 1000
     let order_number = `${prefix}-${ts}-${rand}`
@@ -109,11 +113,13 @@ export async function POST(req: NextRequest) {
       tax_amount: Number(tax_amount) || 0,
       gst_percentage: Number(gst_percentage) || 0,
       discount_amount: Number(discount_amount) || 0,
+      coupon_code: coupon_code || null,
+      coupon_discount: Number(coupon_discount) || 0,
       // Insert as 'pending' first so the DB trigger does NOT fire yet.
       // We update to 'confirmed' below (after items are inserted) so the
       // trigger fires exactly once with all items available — avoiding the
       // duplicate work_order_number race condition.
-      status: is_quote ? 'generated' : 'pending',
+      status: is_draft ? 'draft' : is_quote ? 'generated' : 'pending',
       is_quote: Boolean(is_quote),
       notes,
       selection_mode: 'products',
@@ -154,7 +160,7 @@ export async function POST(req: NextRequest) {
     // Now update status to 'confirmed' — this triggers the DB trigger exactly once,
     // with all items already inserted, so it can build picking instructions correctly.
     let confirmedOrder = order
-    if (!is_quote) {
+    if (!is_quote && !is_draft) {
       const { data: updatedOrder, error: confirmErr } = await supabase
         .from('product_orders')
         .update({ status: 'confirmed', updated_at: new Date().toISOString() })
@@ -171,7 +177,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!is_quote) {
+    let job: { id: string; job_number: string } | null = null
+    if (!is_quote && !is_draft) {
+      try {
+        const { data: jobId, error: jobErr } = await supabase.rpc('create_job_for_booking', {
+          p_booking_id: confirmedOrder.id,
+          p_booking_source: 'product_orders',
+          p_franchise_id: franchiseId,
+        })
+        if (jobErr) {
+          console.error('[Portal Create Booking] Job creation error (non-fatal):', jobErr.message)
+        } else if (jobId) {
+          const { data: jobRow } = await supabase
+            .from('jobs')
+            .select('id, job_number')
+            .eq('id', jobId)
+            .single()
+          job = jobRow || null
+        }
+      } catch (jobError) {
+        console.error('[Portal Create Booking] Job creation failed (non-fatal):', jobError)
+      }
+    }
+
+    if (!is_quote && !is_draft) {
       try {
         const { NotificationService } = await import("@/lib/notification-service")
         const { data: customer } = await supabase
@@ -194,7 +223,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, data: confirmedOrder }, { status: 201 })
+    return NextResponse.json({ success: true, data: confirmedOrder, job }, { status: 201 })
   } catch (error) {
     console.error('[Portal Create Booking] Unexpected error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

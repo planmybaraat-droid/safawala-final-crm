@@ -68,6 +68,40 @@ export async function GET(
           items = data
         }
       }
+    } else if (source === 'direct_sale') {
+      // Fetch direct sale items WITHOUT joins (FK doesn't exist), same pattern as product_order
+      const { data, error } = await supabase
+        .from('direct_sales_items')
+        .select('*')
+        .eq('sale_id', id)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('[Booking Items API] Error fetching direct sale items:', error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      if (data && data.length > 0) {
+        const productIds = [...new Set(data.map((item: any) => item.product_id).filter(Boolean))]
+
+        if (productIds.length > 0) {
+          const { data: products } = await supabase
+            .from('products')
+            .select('id, name, barcode, product_code, category, image_url, price, rental_price, stock_available, category_id')
+            .in('id', productIds)
+
+          const productsMap = new Map(products?.map((p: any) => [p.id, p]) || [])
+
+          items = data.map((item: any) => ({
+            ...item,
+            product_name: productsMap.get(item.product_id)?.name || item.product_name,
+            category: productsMap.get(item.product_id)?.category || null,
+            product: productsMap.get(item.product_id) || null
+          }))
+        } else {
+          items = data
+        }
+      }
     } else if (source === 'package_booking') {
       // First try the new dedicated table for product items
       console.log('[Booking Items API] Fetching from package_booking_product_items...')
