@@ -143,6 +143,12 @@ export async function getRbacContext(request: NextRequest): Promise<RbacContext 
     permissions.add("job.view")
     permissions.add("job.update")
   }
+  if (auth.user.department === "booking" || auth.user.department === "bookings") {
+    // Booking staff originate the job and should be able to see its full
+    // progress across every department, even though they don't own any
+    // other department's tasks.
+    permissions.add("job.view")
+  }
 
   return { user: auth.user, permissions }
 }

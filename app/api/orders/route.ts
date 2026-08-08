@@ -126,6 +126,18 @@ export async function POST(req: NextRequest) {
       } catch (deptErr) {
         console.warn("[Orders API] Department jobs notice (non-fatal):", deptErr)
       }
+
+      // Create a Job in the unified job-tracking system (non-fatal, idempotent) —
+      // this is what powers the portal's JobTracker UI.
+      try {
+        await supabase.rpc("create_job_for_booking", {
+          p_booking_id: order.id,
+          p_booking_source: "product_orders",
+          p_franchise_id: order.franchise_id,
+        })
+      } catch (jobErr) {
+        console.warn("[Orders API] Job creation notice (non-fatal):", jobErr)
+      }
     }
 
     // 6. Insert lost/damaged items
@@ -293,6 +305,18 @@ export async function PUT(req: NextRequest) {
         })
       } catch (deptErr) {
         console.warn("[Orders API] Department jobs notice (non-fatal):", deptErr)
+      }
+
+      // Create a Job in the unified job-tracking system (non-fatal, idempotent) —
+      // this is what powers the portal's JobTracker UI.
+      try {
+        await supabase.rpc("create_job_for_booking", {
+          p_booking_id: finalOrder.id,
+          p_booking_source: "product_orders",
+          p_franchise_id: finalOrder.franchise_id,
+        })
+      } catch (jobErr) {
+        console.warn("[Orders API] Job creation notice (non-fatal):", jobErr)
       }
     }
 
