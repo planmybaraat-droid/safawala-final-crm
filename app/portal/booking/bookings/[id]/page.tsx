@@ -160,7 +160,8 @@ export default function BookingDetailPage() {
       ])
       if (!bRes.ok) {
         const e = await bRes.json().catch(()=>({}))
-        setError(e.error || `Error ${bRes.status}`)
+        const msg = typeof e.error === "string" ? e.error : e.error?.message
+        setError(msg || `Error ${bRes.status}`)
         return
       }
       const bData = await bRes.json()

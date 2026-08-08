@@ -91,7 +91,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Fetch by ID only (no franchise filter). Keep payload lean.
     const { data: customer, error } = await supabaseServer
       .from("customers")
-      .select("id, customer_code, name, phone, whatsapp, email, address, city, state, pincode, franchise_id, status, kyc_status, aadhar_number, pan_number, kyc_document_url, kyc_notes, lead_id, created_at, updated_at")
+      .select("id, customer_code, name, phone, whatsapp, email, address, city, state, pincode, franchise_id, is_active, kyc_status, aadhar_number, pan_number, kyc_document_url, kyc_notes, lead_id, created_at, updated_at")
       .eq("id", id)
       .single()
 
@@ -644,7 +644,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .from("customers")
       .update(updateData)
       .eq("id", id)
-      .select("id, customer_code, name, phone, whatsapp, email, address, city, state, pincode, franchise_id, status, kyc_status, aadhar_number, pan_number, kyc_document_url, kyc_notes, lead_id, created_at, updated_at")
+      .select("id, customer_code, name, phone, whatsapp, email, address, city, state, pincode, franchise_id, is_active, kyc_status, aadhar_number, pan_number, kyc_document_url, kyc_notes, lead_id, created_at, updated_at")
       .single()
 
     if (updateError) {

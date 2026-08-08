@@ -49,7 +49,8 @@ export default function CustomerDetailPage() {
 
       if (!cRes.ok) {
         const e = await cRes.json().catch(()=>({}))
-        setError(e.error || `Error ${cRes.status}`)
+        const msg = typeof e.error === "string" ? e.error : e.error?.message
+        setError(msg || `Error ${cRes.status}`)
         return
       }
 
@@ -244,7 +245,7 @@ export default function CustomerDetailPage() {
               { label:"Address",        value:customer.address },
               { label:"Bride Name",     value:customer.bride_name },
               { label:"KYC Status",     value:customer.kyc_status },
-              { label:"Status",         value:customer.status },
+              { label:"Status",         value:customer.is_active===false?"Inactive":"Active" },
               { label:"Notes",          value:customer.notes },
               { label:"Member Since",   value:fmtDate(customer.created_at) },
             ].map(({label,value})=>(
