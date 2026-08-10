@@ -53,10 +53,19 @@ export async function GET(
     if (workOrder.booking_source === "product_orders") {
       const [orderRes, itemsRes] = await Promise.all([
         supabase.from("product_orders").select("*, customer:customers(*)").eq("id", workOrder.booking_id).single(),
-        supabase.from("product_order_items").select("*, product:products(*)").eq("order_id", workOrder.booking_id)
+        // product_order_items has no FK to products, so PostgREST can't embed
+        // it — fetch products separately and merge instead.
+        supabase.from("product_order_items").select("*").eq("order_id", workOrder.booking_id)
       ])
       bookingDetails = orderRes.data
-      itemsList = itemsRes.data || []
+      const rawItems = itemsRes.data || []
+      const productIds = Array.from(new Set(rawItems.map((it: any) => it.product_id).filter(Boolean)))
+      const productsMap = new Map<string, any>()
+      if (productIds.length > 0) {
+        const { data: productsData } = await supabase.from("products").select("*").in("id", productIds)
+        for (const p of productsData || []) productsMap.set(p.id, p)
+      }
+      itemsList = rawItems.map((it: any) => ({ ...it, product: productsMap.get(it.product_id) || null }))
       if (orderRes.data) {
         bookingNumber = orderRes.data.order_number
         eventDate = orderRes.data.event_date
