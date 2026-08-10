@@ -15,6 +15,11 @@ interface Task {
   status: 'pending' | 'active' | 'completed' | 'cancelled'
   instructions: string
   checklist: Array<{ text: string; checked: boolean }>
+  assigned_to?: string | null
+  metadata?: {
+    interested_stylists?: Array<{ user_id: string; name: string; note?: string; at: string }>
+    assigned_stylist?: { id: string; name: string; assigned_at: string }
+  } | null
 }
 
 interface WorkOrder {
@@ -24,6 +29,13 @@ interface WorkOrder {
   customer_name: string
   customer_phone: string
   work_order_tasks: Task[]
+}
+
+interface StylistOption {
+  id: string
+  name: string
+  role: string
+  department: string
 }
 
 export default function DeliveryJobsPage() {
@@ -38,6 +50,11 @@ export default function DeliveryJobsPage() {
   const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([])
   const [updating, setUpdating] = useState(false)
 
+  const [stylingTask, setStylingTask] = useState<Task | null>(null)
+  const [stylistRoster, setStylistRoster] = useState<StylistOption[]>([])
+  const [assigningStylistId, setAssigningStylistId] = useState<string | null>(null)
+  const [stylistPickerOpen, setStylistPickerOpen] = useState(false)
+
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" } | null>(null)
   function showToast(message: string, kind: "success" | "error" = "success") {
     setToast({ message, kind })
@@ -45,6 +62,16 @@ export default function DeliveryJobsPage() {
   }
 
   useEffect(() => { fetchWorkOrders() }, [])
+
+  useEffect(() => {
+    fetch("/api/portal/staff")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const all = Array.isArray(d?.data) ? d.data : []
+        setStylistRoster(all.filter((u: StylistOption) => u.department === "styling"))
+      })
+      .catch(() => {})
+  }, [])
 
   async function fetchWorkOrders() {
     setLoading(true)
@@ -76,12 +103,44 @@ export default function DeliveryJobsPage() {
     setSelectedWO(wo)
     setSelectedTask(t)
     setChecklist(t.checklist ? [...t.checklist] : [])
+    setStylingTask(null)
+    setStylistPickerOpen(false)
+    fetch(`/api/work-orders/${wo.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const tasks: Task[] = d?.data?.work_order_tasks || []
+        setStylingTask(tasks.find(task => task.department === "styling") || null)
+      })
+      .catch(() => {})
   }
 
   function handleCloseTask() {
     setSelectedTask(null)
     setSelectedWO(null)
     setChecklist([])
+    setStylingTask(null)
+    setStylistPickerOpen(false)
+  }
+
+  async function assignStylist(stylistId: string) {
+    if (!stylingTask || assigningStylistId) return
+    setAssigningStylistId(stylistId)
+    try {
+      const res = await fetch(`/api/work-orders/tasks/${stylingTask.id}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stylist_id: stylistId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to assign stylist")
+      setStylingTask(data.data)
+      setStylistPickerOpen(false)
+      showToast("Stylist assigned!")
+    } catch (err: any) {
+      showToast(err.message || "Failed to assign stylist", "error")
+    } finally {
+      setAssigningStylistId(null)
+    }
   }
 
   function toggleChecklistItem(index: number) {
@@ -214,10 +273,84 @@ export default function DeliveryJobsPage() {
                 <PortalIcon name="map-pin" size={14} /> Track this Job
               </button>
 
-              {checklist.length > 0 && (
+              {(checklist.length > 0 || stylingTask) && (
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checklist Items</p>
                   <div className="space-y-2">
+                    {stylingTask && (
+                      <div className="rounded-xl border border-slate-100 overflow-hidden bg-slate-50/50">
+                        <div
+                          onClick={() => !stylingTask.assigned_to && setStylistPickerOpen(o => !o)}
+                          className={`flex items-center gap-3 p-3.5 transition-colors ${stylingTask.assigned_to ? "" : "cursor-pointer hover:bg-slate-50"}`}
+                        >
+                          <div className="w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0"
+                            style={{ background: stylingTask.assigned_to ? "#ec4899" : "white", borderColor: stylingTask.assigned_to ? "#ec4899" : "rgba(0,0,0,0.15)" }}
+                          >
+                            {stylingTask.assigned_to && <PortalIcon name="check" size={12} className="text-white" />}
+                          </div>
+                          <span className="text-[13px] font-bold text-slate-700 flex-1">
+                            Stylist Confirmed
+                            {stylingTask.assigned_to && (
+                              <span className="text-slate-400 font-semibold"> — {stylingTask.metadata?.assigned_stylist?.name || "Assigned"}</span>
+                            )}
+                          </span>
+                          {!stylingTask.assigned_to && (
+                            <PortalIcon
+                              name="chevron-right"
+                              size={14}
+                              className={`text-slate-400 flex-shrink-0 transition-transform ${stylistPickerOpen ? "rotate-90" : ""}`}
+                            />
+                          )}
+                        </div>
+
+                        {stylistPickerOpen && !stylingTask.assigned_to && (
+                          <div className="p-3 pt-0 space-y-2 border-t border-slate-100">
+                            {(stylingTask.metadata?.interested_stylists || []).length > 0 && (
+                              <div className="space-y-1.5 pt-3">
+                                <p className="text-[9px] font-bold text-pink-500 uppercase tracking-wider">Interested ({(stylingTask.metadata?.interested_stylists || []).length})</p>
+                                {(stylingTask.metadata?.interested_stylists || []).map(s => (
+                                  <div key={s.user_id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-pink-100 bg-pink-50/40">
+                                    <div className="min-w-0">
+                                      <p className="text-[11px] font-bold text-slate-700 truncate">{s.name}</p>
+                                      {s.note && <p className="text-[10px] text-slate-500 truncate">{s.note}</p>}
+                                    </div>
+                                    <button
+                                      onClick={() => assignStylist(s.user_id)}
+                                      disabled={assigningStylistId === s.user_id}
+                                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white flex-shrink-0 disabled:opacity-60"
+                                      style={{ background: "#ec4899" }}
+                                    >
+                                      {assigningStylistId === s.user_id ? "…" : "Assign"}
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="space-y-1.5 pt-2">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">All Stylists</p>
+                              {stylistRoster.length === 0 ? (
+                                <p className="text-[11px] text-slate-400 p-1">No stylists on the roster yet.</p>
+                              ) : (
+                                stylistRoster.map(s => (
+                                  <div key={s.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 bg-white">
+                                    <p className="text-[11px] font-bold text-slate-700 truncate">{s.name}</p>
+                                    <button
+                                      onClick={() => assignStylist(s.id)}
+                                      disabled={assigningStylistId === s.id}
+                                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-700 bg-white border border-slate-200 flex-shrink-0 disabled:opacity-60"
+                                    >
+                                      {assigningStylistId === s.id ? "…" : "Assign"}
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {checklist.map((item, i) => (
                       <div
                         key={i}

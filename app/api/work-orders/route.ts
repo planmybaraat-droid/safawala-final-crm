@@ -188,7 +188,16 @@ export async function GET(request: NextRequest) {
             // QC owns both the packing step (any status) and the post-pack audit register.
             (wo.work_order_tasks || []).some((t: any) => t.department === "packing")
           )
-        : (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+        : rbacContext?.user.department === "styling"
+        ? enrichedWorkOrders.filter((wo: any) =>
+            // Open job board — any stylist can browse & register interest,
+            // so show every work order with a styling task, any status.
+            (wo.work_order_tasks || []).some((t: any) => t.department === "styling")
+          ).map((wo: any) => ({
+            ...wo,
+            work_order_tasks: (wo.work_order_tasks || []).filter((t: any) => t.department === "styling"),
+          }))
+      : (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
           ? enrichedWorkOrders.map((wo: any) => ({
               ...wo,
               work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>

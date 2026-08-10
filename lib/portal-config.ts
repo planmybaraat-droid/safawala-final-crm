@@ -107,7 +107,6 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     tabs: [
       { icon: "home", label: "Home", href: "/portal/delivery", permission: "delivery.view" },
       { icon: "truck", label: "Dispatch", href: "/portal/delivery/deliveries", permission: "delivery.view" },
-      { icon: "refresh", label: "Returns", href: "/portal/delivery/returns", permission: "delivery.view" },
       { icon: "map-pin", label: "Track", href: "/portal/delivery/routes", permission: "delivery.view" },
       { icon: "user", label: "Me", href: "/portal/delivery/profile" },
     ],

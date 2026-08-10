@@ -333,15 +333,6 @@ export default function PortalHomePage() {
               variant="action"
               onClick={() => router.push("/portal/delivery/deliveries")}
             />
-            <PortalHomeCard
-              title="Track Returns"
-              value="View"
-              subtitle="Monitor incoming return shipments"
-              icon="refresh"
-              color={config.color}
-              variant="action"
-              onClick={() => router.push("/portal/delivery/returns")}
-            />
           </>
         )}
 
