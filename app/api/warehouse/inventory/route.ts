@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   // silently truncated the list to half of what Main CRM shows.
   let query = supabaseServer
     .from("products")
-    .select("id, name, product_code, sku, barcode, category, stock_available, stock_total, stock_booked, stock_damaged, stock_in_laundry, reorder_level, is_active, franchise_id")
+    .select("id, name, product_code, sku, barcode, category, category_id, description, color, size, material, price, regular_price, rental_price, cost_price, security_deposit, image_url, stock_available, stock_total, stock_booked, stock_damaged, stock_in_laundry, reorder_level, is_active, franchise_id")
     .eq("is_active", true)
     .order("name")
     .limit(1000)

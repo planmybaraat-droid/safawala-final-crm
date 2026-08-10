@@ -179,7 +179,6 @@ export default function ScanPage() {
               ["Code", result.product_code || result.sku],
               ["Barcode", result.barcode],
               ["Stock Available", typeof result.stock_available === "number" ? result.stock_available.toString() : null],
-              ["Price", result.price ? `₹${result.price.toLocaleString("en-IN")}` : null],
             ].map(([label, value]) => value ? (
               <div key={label} className="flex justify-between items-center px-4 py-3 border-b" style={{ borderColor: "rgba(0,0,0,0.04)" }}>
                 <span className="text-[11px] font-semibold" style={{ color: "rgba(80,55,30,0.4)" }}>{label}</span>

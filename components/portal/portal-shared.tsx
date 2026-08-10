@@ -105,6 +105,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   lead:              { bg: "#fef9c3", text: "#ca8a04" },
   pass:              { bg: "#dcfce7", text: "#16a34a" },
   fail:              { bg: "#fee2e2", text: "#dc2626" },
+  shortage:          { bg: "#fee2e2", text: "#dc2626" },
   in_progress:       { bg: "#dbeafe", text: "#1d4ed8" },
   new:               { bg: "#e0f2fe", text: "#0284c7" },
   generated:         { bg: "#fef9c3", text: "#ca8a04" },

@@ -28,6 +28,18 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // The logo is uploaded via Settings > Branding, which lives in its own
+    // table — fall back to it when company_settings.logo_url isn't set.
+    let logoUrl = settings?.logo_url || null
+    if (!logoUrl) {
+      const { data: branding } = await supabase
+        .from('branding_settings')
+        .select('logo_url')
+        .eq('franchise_id', franchiseId)
+        .single()
+      logoUrl = branding?.logo_url || null
+    }
+
     // Return settings or default values
     const defaultSettings = {
       id: 1,
@@ -49,7 +61,7 @@ export async function GET(request: NextRequest) {
       updated_at: new Date().toISOString()
     }
 
-    return NextResponse.json(settings || defaultSettings)
+    return NextResponse.json({ ...(settings || defaultSettings), logo_url: logoUrl })
   } catch (error) {
     console.error('Company settings API error:', error)
     return NextResponse.json(

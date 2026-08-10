@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -55,6 +56,10 @@ interface ProductEditorModalProps {
   product?: Product | null
   onSave: (data: any) => Promise<void>
   franchiseId?: string
+  /** Extra classes merged onto DialogContent — e.g. lets a mobile host re-skin this as a bottom sheet. */
+  contentClassName?: string
+  /** Inline style on DialogContent — e.g. CSS var overrides (--primary etc.) to re-theme every shadcn control inside, since Radix portals this content to document.body so a wrapping div's vars wouldn't reach it. */
+  contentStyle?: React.CSSProperties
 }
 
 export function ProductEditorModal({
@@ -63,6 +68,8 @@ export function ProductEditorModal({
   product,
   onSave,
   franchiseId,
+  contentClassName,
+  contentStyle,
 }: ProductEditorModalProps) {
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState("info")
@@ -426,7 +433,7 @@ export function ProductEditorModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className={cn("max-w-3xl max-h-[90vh] overflow-hidden flex flex-col", contentClassName)} style={contentStyle}>
         <DialogHeader>
           <DialogTitle className="text-lg">
             {product ? `Edit: ${product.name}` : "Add New Product"}

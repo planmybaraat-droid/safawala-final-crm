@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { PortalPageHeader, PortalListCard, PortalEmptyState, PortalSkeleton, PortalSectionLabel } from "@/components/portal/portal-shared"
+import { PortalIcon } from "@/components/portal/portal-icons"
 
 const COLOR = "#a855f7"
 
@@ -66,7 +67,7 @@ export default function LaundryPage() {
       {errorState && (
         <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-1.5 shadow-sm">
           <p className="text-[12px] font-extrabold text-red-800 flex items-center gap-1.5">
-            ⚠️ Error
+            <PortalIcon name="alert-triangle" size={13} /> Error
           </p>
           <p className="text-[11px] font-medium text-red-700 leading-relaxed">
             {errorState}

@@ -10,6 +10,8 @@ interface PortalHomeCardProps {
   color: string
   onClick?: () => void
   variant?: "stat" | "action"
+  /** Small red count pill, pinned to the top-right corner of the card. */
+  badge?: string | number
 }
 
 export function PortalHomeCard({
@@ -20,6 +22,7 @@ export function PortalHomeCard({
   color,
   onClick,
   variant = "stat",
+  badge,
 }: PortalHomeCardProps) {
   return (
     <div
@@ -36,6 +39,15 @@ export function PortalHomeCard({
         className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 -translate-y-4 translate-x-4"
         style={{ background: color }}
       />
+
+      {badge !== undefined && badge !== null && (
+        <span
+          className="absolute top-3 right-3 min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-black text-white flex items-center justify-center shadow-sm"
+          style={{ background: "#dc2626" }}
+        >
+          {badge}
+        </span>
+      )}
 
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">

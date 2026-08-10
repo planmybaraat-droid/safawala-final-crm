@@ -103,6 +103,9 @@ export async function GET(
         booking_number: bookingNumber || workOrder.work_order_number.replace('WO-', 'BKG-'),
         event_date: eventDate || null,
         customer: customerDetails || { name: "N/A", phone: "N/A" },
+        customer_name: customerDetails?.name || "N/A",
+        customer_phone: customerDetails?.phone || "N/A",
+        venue_address: bookingDetails?.venue_address || null,
         booking: bookingDetails,
         items: itemsList,
       }

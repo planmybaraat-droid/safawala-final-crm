@@ -3,8 +3,13 @@
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { PortalPageHeader, PortalSectionLabel, PortalInfoRow, PortalSkeleton } from "@/components/portal/portal-shared"
+import { PortalIcon } from "@/components/portal/portal-icons"
+import { ProductFormSheet } from "../product-form-sheet"
+import { BarcodePrintDialog } from "@/components/inventory/barcode-print-dialog"
 
 const COLOR = "#a855f7"
+
+function fmtRupee(n?: number) { return `₹${(n ?? 0).toLocaleString("en-IN")}` }
 
 export default function ProductDetailPortalPage() {
   const router = useRouter()
@@ -22,6 +27,16 @@ export default function ProductDetailPortalPage() {
   const [damageSeverity, setDamageSeverity] = useState("minor")
   const [damageNotes, setDamageNotes] = useState("")
   const [damageReporting, setDamageReporting] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [barcodeOpen, setBarcodeOpen] = useState(false)
+  const [franchiseId, setFranchiseId] = useState<string | undefined>()
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("safawala_user")
+      if (raw) setFranchiseId(JSON.parse(raw)?.franchise_id)
+    } catch {}
+  }, [])
 
   useEffect(() => { if (id) load() }, [id])
   useEffect(() => { if (toast) setTimeout(() => setToast(null), 3000) }, [toast])
@@ -52,6 +67,45 @@ export default function ProductDetailPortalPage() {
       else setToast("Failed to update stock")
     } catch { setToast("Error updating stock") }
     setSaving(false)
+  }
+
+  // Mirrors the list page's save handler — same two endpoints the main
+  // dashboard uses (create is unused here since this page only edits).
+  async function handleSaveProduct(data: any) {
+    const { images, variants, _variation_count, category_name, product_code, ...productData } = data
+    const res = await fetch(`/api/products/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...productData, images }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || `Update failed (${res.status})`)
+    }
+    if (variants && variants.length > 0) {
+      for (const variant of variants) {
+        if (variant.id) continue
+        await fetch(`/api/products/${id}/variations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            variation_name: variant.variation_name,
+            color: variant.color,
+            design: variant.design,
+            material: variant.material,
+            size: variant.size,
+            sku: variant.sku,
+            price_adjustment: variant.price_adjustment || 0,
+            rental_price_adjustment: variant.rental_price_adjustment || 0,
+            stock_total: variant.stock_total || 0,
+            stock_available: variant.stock_available || 0,
+            image_url: variant.image_url || null,
+          }),
+        })
+      }
+    }
+    setEditorOpen(false)
+    load()
   }
 
   async function handleReportDamage() {
@@ -100,7 +154,6 @@ export default function ProductDetailPortalPage() {
     }
   }
 
-  const fmt = (n: number) => `₹${(n ?? 0).toLocaleString("en-IN")}`
   const available = product?.available_quantity ?? product?.quantity ?? 0
   const booked = product?.booked_quantity ?? 0
   const total = product?.total_quantity ?? product?.quantity ?? 0
@@ -127,7 +180,7 @@ export default function ProductDetailPortalPage() {
         subtitle={product.category ?? product.sku ?? ""}
         color={COLOR}
         backHref="/portal/warehouse/inventory"
-        action={{ label: "Full Edit", onClick: () => router.push(`/inventory/edit/${id}`) }}
+        action={{ label: "Edit", onClick: () => setEditorOpen(true) }}
       />
 
       {toast && (
@@ -179,18 +232,43 @@ export default function ProductDetailPortalPage() {
       </div>
 
       {/* Damaged Stock Reporting */}
-      <PortalSectionLabel label="⚠️ Damaged Stock Reporting" />
+      <PortalSectionLabel label="Damaged Stock Reporting" />
       <div className="mx-4 rounded-2xl overflow-hidden p-4 bg-red-50/40 border border-red-100 flex flex-col items-center">
         <p className="text-[11px] font-bold text-red-700/80 text-center mb-3 leading-relaxed">
           Mark units as damaged to archive them and remove them from available inventory.
         </p>
         <button
           onClick={() => setDamageModalOpen(true)}
-          className="w-full py-2.5 rounded-xl text-[12px] font-bold text-white transition-opacity"
+          className="w-full py-2.5 rounded-xl text-[12px] font-bold text-white transition-opacity flex items-center justify-center gap-2"
           style={{ background: "#ef4444" }}
         >
-          ⚠️ Report Damaged Stock
+          <PortalIcon name="alert-triangle" size={14} /> Report Damaged Stock
         </button>
+      </div>
+
+      {/* Pricing */}
+      <PortalSectionLabel label="Pricing" />
+      <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
+        <PortalInfoRow label="Cost Price" value={fmtRupee(product.cost_price)} />
+        <PortalInfoRow label="Rental Price" value={fmtRupee(product.rental_price)} />
+        <PortalInfoRow label="Regular Price" value={fmtRupee(product.regular_price)} />
+        <PortalInfoRow label="Sale Price" value={fmtRupee(product.price)} />
+        <PortalInfoRow label="Security Deposit" value={fmtRupee(product.security_deposit)} />
+      </div>
+
+      {/* Barcode */}
+      <PortalSectionLabel label="Barcode" />
+      <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
+        <PortalInfoRow label="Code" value={product.barcode || "Not generated"} />
+        <div className="px-4 py-3">
+          <button
+            onClick={() => setBarcodeOpen(true)}
+            className="w-full py-2.5 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-2"
+            style={{ background: COLOR }}
+          >
+            <PortalIcon name="printer" size={14} /> Print Barcode Label
+          </button>
+        </div>
       </div>
 
       {/* Product Info */}
@@ -198,11 +276,11 @@ export default function ProductDetailPortalPage() {
       <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
         <PortalInfoRow label="Name" value={product.name ?? "—"} />
         <PortalInfoRow label="Category" value={product.category ?? "—"} />
+        {product.color && <PortalInfoRow label="Color" value={product.color} />}
+        {product.size && <PortalInfoRow label="Size" value={product.size} />}
+        {product.material && <PortalInfoRow label="Material" value={product.material} />}
         {product.sku && <PortalInfoRow label="SKU" value={product.sku} />}
-        {product.barcode && <PortalInfoRow label="Barcode" value={product.barcode} />}
         {product.product_code && <PortalInfoRow label="Code" value={product.product_code} />}
-        {product.rental_price && <PortalInfoRow label="Rental Price" value={fmt(product.rental_price)} />}
-        {product.sale_price && <PortalInfoRow label="Sale Price" value={fmt(product.sale_price)} />}
         {product.description && <PortalInfoRow label="Description" value={product.description} />}
       </div>
 
@@ -213,7 +291,7 @@ export default function ProductDetailPortalPage() {
             {/* Header */}
             <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50">
               <h3 className="font-extrabold text-[15px]" style={{ color: "#1e1208" }}>Report Damaged Stock</h3>
-              <button onClick={() => setDamageModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-black">✕</button>
+              <button onClick={() => setDamageModalOpen(false)} className="text-slate-400 hover:text-slate-600"><PortalIcon name="x" size={18} /></button>
             </div>
 
             {/* Form */}
@@ -296,6 +374,22 @@ export default function ProductDetailPortalPage() {
             </div>
           </div>
         </div>
+      )}
+
+      <ProductFormSheet
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        product={product}
+        onSave={handleSaveProduct}
+        franchiseId={franchiseId}
+      />
+
+      {barcodeOpen && (
+        <BarcodePrintDialog
+          open={barcodeOpen}
+          onOpenChange={setBarcodeOpen}
+          product={product}
+        />
       )}
     </div>
   )

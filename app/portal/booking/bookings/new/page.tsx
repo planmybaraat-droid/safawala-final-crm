@@ -130,33 +130,23 @@ function NewBookingInner() {
     } catch {} finally { setLoadingProducts(false) }
   }, [])
 
-  // Load staff list
+  // Load staff list (franchise-isolated, safe for any portal staff role to call)
   const loadStaff = useCallback(async () => {
     try {
-      const res = await fetch("/api/staff")
+      const res = await fetch("/api/portal/staff")
       const data = await res.json()
-      const list: any[] = Array.isArray(data) ? data : data.data || data.staff || []
-      if (list.length > 0) {
-        setStaffList(list)
-        setSalesStaffId(list[0].id)
-      } else {
-        fallbackStaff()
-      }
-    } catch {
-      fallbackStaff()
+      if (!res.ok) throw new Error(data.error || "Failed to load staff")
+      const list: any[] = Array.isArray(data) ? data : data.data || []
+      setStaffList(list)
+      if (list.length > 0) setSalesStaffId(list[0].id)
+    } catch (e) {
+      // Leave the list empty rather than injecting fake IDs — sales_staff_id
+      // is stored as a uuid FK, so a placeholder value would break booking
+      // creation. The field is optional; the user can still save without it.
+      console.warn("[New Booking] Failed to load staff list:", e)
+      setStaffList([])
     }
   }, [])
-
-  function fallbackStaff() {
-    const defaultStaff = [
-      { id: "sales-staff-1", name: "Rahul Sharma (Sales Executive)", role: "sales" },
-      { id: "sales-staff-2", name: "Priya Patel (Sales Lead)", role: "sales" },
-      { id: "sales-staff-3", name: "Amit Kumar (Store Manager)", role: "manager" },
-      { id: "sales-staff-4", name: "Devam Patel (Admin)", role: "admin" }
-    ]
-    setStaffList(defaultStaff)
-    setSalesStaffId(defaultStaff[0].id)
-  }
 
   useEffect(() => { if(step===1&&!prefilledCustomerId) loadCustomers() }, [step, prefilledCustomerId, loadCustomers])
   useEffect(() => { if(step===3) loadProducts() }, [step, loadProducts])

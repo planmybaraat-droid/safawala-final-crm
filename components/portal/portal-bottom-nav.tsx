@@ -25,7 +25,9 @@ export function PortalBottomNav({ tabs, color }: PortalBottomNavProps) {
     if (user?.is_super_admin || user?.role === "franchise_admin") return true
     return user?.permissions?.[tab.permission] === true ||
       (user?.department === "warehouse" && (user?.role === "warehouse_staff" || user?.role === "staff") && ["warehouse.view", "warehouse.update"].includes(tab.permission)) ||
-      (user?.department === "qc" && (user?.role === "qc_staff" || user?.role === "staff") && ["qc.view", "qc.update"].includes(tab.permission))
+      (user?.department === "qc" && (user?.role === "qc_staff" || user?.role === "staff") && ["qc.view", "qc.update"].includes(tab.permission)) ||
+      (user?.department === "delivery" && (user?.role === "delivery_staff" || user?.role === "staff") && ["delivery.view", "delivery.update"].includes(tab.permission)) ||
+      (user?.department === "accounts" && (user?.role === "accounts_staff" || user?.role === "staff") && ["accounts.view", "accounts.update"].includes(tab.permission))
   })
 
   return (

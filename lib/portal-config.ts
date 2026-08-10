@@ -73,7 +73,7 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     allowedRoles: ["super_admin", "franchise_admin", "warehouse_staff"],
     tabs: [
       { icon: "home", label: "Home", href: "/portal/warehouse", permission: "warehouse.view" },
-      { icon: "clipboard", label: "Pick & Pack", href: "/portal/warehouse/tasks", permission: "warehouse.view" },
+      { icon: "clipboard", label: "Picking", href: "/portal/warehouse/tasks", permission: "warehouse.view" },
       { icon: "package", label: "Stock", href: "/portal/warehouse/inventory", permission: "warehouse.update" },
       { icon: "laundry", label: "Laundry", href: "/portal/warehouse/laundry", permission: "warehouse.view" },
       { icon: "user", label: "Me", href: "/portal/warehouse/profile" },
@@ -90,9 +90,8 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     allowedRoles: ["super_admin", "franchise_admin", "staff", "qc_staff"],
     tabs: [
       { icon: "home", label: "Home", href: "/portal/qc", permission: "qc.view" },
-      { icon: "search", label: "Inspect", href: "/portal/qc/inspect", permission: "qc.view" },
+      { icon: "laundry", label: "Packing", href: "/portal/qc/packing", permission: "qc.update" },
       { icon: "alert-triangle", label: "Damage", href: "/portal/qc/damage", permission: "qc.update" },
-      { icon: "clipboard", label: "Orders", href: "/portal/qc/work-orders", permission: "qc.view" },
       { icon: "user", label: "Me", href: "/portal/qc/profile" },
     ],
   },
@@ -140,6 +139,7 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     allowedRoles: ["super_admin", "franchise_admin", "accounts_staff"],
     tabs: [
       { icon: "home", label: "Home", href: "/portal/accounts" },
+      { icon: "clipboard", label: "Jobs", href: "/portal/accounts/jobs", permission: "accounts.view" },
       { icon: "credit-card", label: "Payments", href: "/portal/accounts/payments" },
       { icon: "receipt", label: "Expenses", href: "/portal/accounts/expenses" },
       { icon: "bar-chart", label: "Reports", href: "/portal/accounts/reports" },

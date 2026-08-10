@@ -17,6 +17,14 @@ export async function GET(request: NextRequest) {
       const rbacDenied = await requireRbacPermission(request, "qc.view")
       if ("response" in rbacDenied) return rbacDenied.response
     }
+    if (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") {
+      const rbacDenied = await requireRbacPermission(request, "delivery.view")
+      if ("response" in rbacDenied) return rbacDenied.response
+    }
+    if (rbacContext?.user.department === "accounts" || rbacContext?.user.role === "accounts_staff") {
+      const rbacDenied = await requireRbacPermission(request, "accounts.view")
+      if ("response" in rbacDenied) return rbacDenied.response
+    }
     const authResult = await requireAuth(request, 'readonly')
     if (!authResult.success) {
       return NextResponse.json(authResult.response, { status: 401 })
@@ -69,10 +77,10 @@ export async function GET(request: NextRequest) {
     // Execute queries in parallel
     const [productOrdersRes, packageBookingsRes, directSalesRes] = await Promise.all([
       productOrderIds.length > 0
-        ? supabase.from("product_orders").select("id, order_number, event_date, customer:customers(name, phone)").in("id", productOrderIds)
+        ? supabase.from("product_orders").select("id, order_number, event_date, booking_type, venue_address, customer:customers(name, phone)").in("id", productOrderIds)
         : Promise.resolve({ data: [] as any }),
       packageBookingIds.length > 0
-        ? supabase.from("package_bookings").select("id, package_number, event_date, customer:customers(name, phone)").in("id", packageBookingIds)
+        ? supabase.from("package_bookings").select("id, package_number, event_date, venue_address, customer:customers(name, phone)").in("id", packageBookingIds)
         : Promise.resolve({ data: [] as any }),
       directSalesIds.length > 0
         ? supabase.from("direct_sales_orders").select("id, sale_number, sale_date, customer:customers(name, phone)").in("id", directSalesIds)
@@ -110,6 +118,10 @@ export async function GET(request: NextRequest) {
       let eventDate = ""
       let customerName = ""
       let customerPhone = ""
+      let venueAddress = ""
+      // direct_sales_orders is always a sale; package_bookings has no booking_type
+      // column and is always a rental package; product_orders can be either.
+      let isRental = true
 
       if (wo.booking_source === "product_orders") {
         bookingDetails = productOrdersMap.get(wo.booking_id)
@@ -118,6 +130,8 @@ export async function GET(request: NextRequest) {
           eventDate = bookingDetails.event_date
           customerName = bookingDetails.customer?.name
           customerPhone = bookingDetails.customer?.phone
+          venueAddress = bookingDetails.venue_address
+          isRental = bookingDetails.booking_type !== "sale"
         }
       } else if (wo.booking_source === "package_bookings") {
         bookingDetails = packageBookingsMap.get(wo.booking_id)
@@ -126,6 +140,7 @@ export async function GET(request: NextRequest) {
           eventDate = bookingDetails.event_date
           customerName = bookingDetails.customer?.name
           customerPhone = bookingDetails.customer?.phone
+          venueAddress = bookingDetails.venue_address
         }
       } else if (wo.booking_source === "direct_sales_orders") {
         bookingDetails = directSalesMap.get(wo.booking_id)
@@ -135,6 +150,7 @@ export async function GET(request: NextRequest) {
           customerName = bookingDetails.customer?.name
           customerPhone = bookingDetails.customer?.phone
         }
+        isRental = false
       }
 
       return {
@@ -143,6 +159,8 @@ export async function GET(request: NextRequest) {
         event_date: eventDate || null,
         customer_name: customerName || "N/A",
         customer_phone: customerPhone || "N/A",
+        venue_address: venueAddress || null,
+        is_rental: isRental,
         work_order_tasks: (wo.work_order_tasks || []).map((t: any) => {
           const assignee = t?.assigned_to ? assigneeMap.get(t.assigned_to) : null
           return {
@@ -155,17 +173,34 @@ export async function GET(request: NextRequest) {
     })
 
     const visibleWorkOrders = rbacContext?.user.department === "warehouse" && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
-      ? enrichedWorkOrders.map((wo: any) => ({
-          ...wo,
-          work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>
-            ["warehouse", "packing"].includes(t.department) && (!t.assigned_to || t.assigned_to === rbacContext.user.id)
-          ),
-        })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
+      ? enrichedWorkOrders
+          // Warehouse picking is rental-only — direct sales don't go through this queue.
+          .filter((wo: any) => wo.is_rental)
+          .map((wo: any) => ({
+            ...wo,
+            // Warehouse only handles picking — packing moved to the QC portal.
+            work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>
+              t.department === "warehouse" && (!t.assigned_to || t.assigned_to === rbacContext.user.id)
+            ),
+          })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
       : (rbacContext?.user.department === "qc" || rbacContext?.user.role === "qc_staff")
         ? enrichedWorkOrders.filter((wo: any) =>
-            (wo.work_order_tasks || []).some((t: any) => t.department === "packing" && ["picked", "completed"].includes(t.status))
+            // QC owns both the packing step (any status) and the post-pack audit register.
+            (wo.work_order_tasks || []).some((t: any) => t.department === "packing")
           )
-        : enrichedWorkOrders
+        : (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+          ? enrichedWorkOrders.map((wo: any) => ({
+              ...wo,
+              work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>
+                t.department === "dispatch" && (!t.assigned_to || t.assigned_to === rbacContext.user.id)
+              ),
+            })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
+          : (rbacContext?.user.department === "accounts" || rbacContext?.user.role === "accounts_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+            ? enrichedWorkOrders.map((wo: any) => ({
+                ...wo,
+                work_order_tasks: (wo.work_order_tasks || []).filter((t: any) => t.department === "accounts"),
+              })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
+            : enrichedWorkOrders
 
     return NextResponse.json({ success: true, data: visibleWorkOrders })
   } catch (error: any) {

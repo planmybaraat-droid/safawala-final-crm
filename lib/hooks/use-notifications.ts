@@ -4,8 +4,14 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+
+// lib/supabase.ts's default client has persistSession disabled, so
+// supabase.auth.getUser() always comes back empty there. This client
+// restores the session from storage — required for the realtime
+// subscription below to actually resolve the logged-in user.
+const supabase = createClient()
 
 export interface Notification {
   id: string
@@ -36,11 +42,22 @@ interface UseNotificationsReturn {
   archiveNotification: (notificationId: string) => Promise<void>
   deleteNotification: (notificationId: string) => Promise<void>
   refreshNotifications: () => Promise<void>
+  browserPermission: NotificationPermission | "unsupported"
+  requestBrowserPermission: () => Promise<void>
 }
 
 export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
+  )
+
+  const requestBrowserPermission = useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return
+    const result = await Notification.requestPermission()
+    setBrowserPermission(result)
+  }, [])
 
   // Calculate unread count
   const unreadCount = notifications.filter((n) => !n.is_read && !n.is_archived).length
@@ -206,6 +223,11 @@ export function useNotifications(): UseNotificationsReturn {
 
             // Show toast notification
             showToastNotification(newNotification)
+
+            // Also fire a real browser/desktop notification if permission was
+            // granted — this is what lets a job land while the tab is
+            // backgrounded (or the phone is locked, on supporting browsers).
+            showBrowserNotification(newNotification)
           }
         )
         .on(
@@ -252,7 +274,31 @@ export function useNotifications(): UseNotificationsReturn {
     markAllAsRead,
     archiveNotification,
     deleteNotification,
-    refreshNotifications
+    refreshNotifications,
+    browserPermission,
+    requestBrowserPermission
+  }
+}
+
+// Fire a real OS-level notification (works even when the tab is
+// backgrounded) — only if the user has already granted permission.
+function showBrowserNotification(notification: Notification) {
+  if (typeof window === "undefined" || !("Notification" in window)) return
+  if (Notification.permission !== "granted") return
+  if (document.visibilityState === "visible") return // toast already covers the foreground case
+
+  try {
+    const n = new Notification(notification.title, {
+      body: notification.message,
+      icon: "/safawalalogo.png",
+      tag: notification.id,
+    })
+    n.onclick = () => {
+      window.focus()
+      if (notification.action_url) window.location.href = notification.action_url
+    }
+  } catch {
+    // Some browsers throw if permission changed mid-session — non-fatal.
   }
 }
 

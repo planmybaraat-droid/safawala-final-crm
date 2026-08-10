@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
         const { NotificationService } = await import("@/lib/notification-service")
         const { data: customer } = await supabase
           .from("customers")
-          .select("name, phone")
+          .select("name, phone, city")
           .eq("id", customer_id)
           .eq("franchise_id", franchiseId)
           .single()
@@ -188,6 +188,48 @@ export async function POST(req: NextRequest) {
           venue: venue_address || null,
           booking_type,
           type: booking_type,
+        })
+
+        // The DB trigger just created 'warehouse' (picking) and 'accounts'
+        // (billing) tasks for this booking — both start life 'active', so
+        // those two departments' staff need to know right away.
+        const { notifyDepartment } = await import("@/lib/notify-department")
+        const custName = customer?.name || "a customer"
+        await Promise.all([
+          notifyDepartment(supabase, {
+            franchiseId,
+            department: "warehouse",
+            title: "New picking job",
+            message: `${custName} — ${order_number} needs items picked.`,
+            entityType: "product_orders",
+            entityId: order.id,
+            actionUrl: "/portal/warehouse/tasks",
+            actionLabel: "Open Picking",
+          }),
+          notifyDepartment(supabase, {
+            franchiseId,
+            department: "accounts",
+            title: "New billing job",
+            message: `${custName} — ${order_number} needs advance/invoice verification.`,
+            entityType: "product_orders",
+            entityId: order.id,
+            actionUrl: "/portal/accounts/jobs",
+            actionLabel: "Open Billing Jobs",
+          }),
+        ])
+
+        // Franchise-wide "live sale" ticker — shown as a small toast on
+        // every portal, not just the two departments notified above.
+        const firstItemName = items?.[0]?.product_name || items?.[0]?.name
+        const itemSummary = firstItemName
+          ? `${firstItemName}${items.length > 1 ? ` +${items.length - 1} more` : ""}`
+          : (booking_type === "sale" ? "a direct sale" : "a rental")
+        await supabase.from("booking_activity").insert({
+          franchise_id: franchiseId,
+          customer_name: customer?.name || null,
+          customer_city: customer?.city || null,
+          summary: itemSummary,
+          order_number,
         })
       } catch (notificationError) {
         console.error('[Portal Create Booking] Notification failed:', notificationError)

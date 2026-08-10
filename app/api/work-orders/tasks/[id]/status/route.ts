@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth-middleware"
 import { getRbacContext, requireRbacPermission, writeAuditLog } from "@/lib/rbac"
+import { notifyDepartment } from "@/lib/notify-department"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -43,8 +44,9 @@ export async function POST(
     if (rbacContext?.user.department === "warehouse") {
       const denied = await requireRbacPermission(request, "warehouse.update")
       if ("response" in denied) return denied.response
-      if (!["warehouse", "packing"].includes(department)) {
-        return NextResponse.json({ error: "Warehouse users can only update warehouse and packing tasks" }, { status: 403 })
+      // Warehouse only handles picking — packing moved to the QC portal.
+      if (department !== "warehouse") {
+        return NextResponse.json({ error: "Warehouse users can only update warehouse (picking) tasks" }, { status: 403 })
       }
       if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -52,6 +54,47 @@ export async function POST(
       const isWarehouseStaff = !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
       if (task.assigned_to && task.assigned_to !== rbacContext.user.id && isWarehouseStaff) {
         return NextResponse.json({ error: "This task is assigned to another warehouse user" }, { status: 403 })
+      }
+    }
+
+    if (rbacContext?.user.department === "qc" || rbacContext?.user.role === "qc_staff") {
+      const denied = await requireRbacPermission(request, "qc.update")
+      if ("response" in denied) return denied.response
+      if (department !== "packing") {
+        return NextResponse.json({ error: "QC users can only update packing tasks" }, { status: 403 })
+      }
+      if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      const isQcStaff = !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+      if (task.assigned_to && task.assigned_to !== rbacContext.user.id && isQcStaff) {
+        return NextResponse.json({ error: "This task is assigned to another QC user" }, { status: 403 })
+      }
+    }
+
+    if (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") {
+      const denied = await requireRbacPermission(request, "delivery.update")
+      if ("response" in denied) return denied.response
+      if (department !== "dispatch") {
+        return NextResponse.json({ error: "Delivery users can only update dispatch tasks" }, { status: 403 })
+      }
+      if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      const isDeliveryStaff = !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+      if (task.assigned_to && task.assigned_to !== rbacContext.user.id && isDeliveryStaff) {
+        return NextResponse.json({ error: "This task is assigned to another delivery user" }, { status: 403 })
+      }
+    }
+
+    if (rbacContext?.user.department === "accounts" || rbacContext?.user.role === "accounts_staff") {
+      const denied = await requireRbacPermission(request, "accounts.update")
+      if ("response" in denied) return denied.response
+      if (department !== "accounts") {
+        return NextResponse.json({ error: "Accounts users can only update accounts tasks" }, { status: 403 })
+      }
+      if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }
     }
 
@@ -120,12 +163,24 @@ export async function POST(
     let transitionLog = []
 
     if (status === "picked" && department === "warehouse") {
-      // WH Picked -> Update PK Task to Active
+      // WH Picked -> Update PK Task to Active. Also reset any prior QC
+      // verdict — this fires again after a rework loop (QC failed -> WH
+      // re-picked), so QC needs to redo the Quality Check step fresh.
       await supabase
         .from("work_order_tasks")
-        .update({ status: "active", updated_at: new Date().toISOString() })
+        .update({
+          status: "active",
+          updated_at: new Date().toISOString(),
+          metadata: { qc_status: "pending", qc_checklist: null, qc_notes: null },
+        })
         .eq("work_order_id", workOrderId)
         .eq("department", "packing")
+
+      // Clear this task's own rework banner now that a fresh pick was submitted.
+      await supabase
+        .from("work_order_tasks")
+        .update({ metadata: null })
+        .eq("id", task.id)
 
       // Update Work Order to in_progress if it is still new
       if (workOrder.status === "new") {
@@ -135,6 +190,17 @@ export async function POST(
           .eq("id", workOrderId)
       }
       transitionLog.push("Activated Packing task and updated Work Order status to in_progress")
+
+      await notifyDepartment(supabase, {
+        franchiseId: workOrder.franchise_id,
+        department: "qc",
+        title: "New packing job",
+        message: `${workOrder.work_order_number} is picked and ready to pack.`,
+        entityType: "work_orders",
+        entityId: workOrderId,
+        actionUrl: "/portal/qc/packing",
+        actionLabel: "Open Packing Queue",
+      })
     }
 
     else if (status === "completed" && department === "packing") {
@@ -145,29 +211,96 @@ export async function POST(
         .eq("work_order_id", workOrderId)
         .eq("department", "dispatch")
       transitionLog.push("Activated Dispatch task")
+
+      await notifyDepartment(supabase, {
+        franchiseId: workOrder.franchise_id,
+        department: "delivery",
+        title: "New dispatch job",
+        message: `${workOrder.work_order_number} is packed and ready to ship.`,
+        entityType: "work_orders",
+        entityId: workOrderId,
+        actionUrl: "/portal/delivery/jobs",
+        actionLabel: "Open Dispatch Jobs",
+      })
+    }
+
+    else if (status === "shortage" && department === "packing") {
+      // QC failed the Quality Check step -> send the picking task back to
+      // Warehouse for rework, carrying over exactly which item(s) failed and
+      // why so Warehouse doesn't have to go ask QC. When Warehouse re-picks,
+      // the "picked" branch above clears this banner and resets QC's state.
+      const failedItems = (metadata?.qc_checklist || []).filter((i: any) => i.status === "fail")
+      const reworkSummary = failedItems.length > 0
+        ? failedItems.map((i: any) => `${i.name}: ${i.note}`).join(" | ")
+        : (metadata?.qc_notes || "Failed Quality Check")
+
+      await supabase
+        .from("work_order_tasks")
+        .update({
+          status: "active",
+          updated_at: new Date().toISOString(),
+          metadata: { rework_reason: reworkSummary, rework_items: failedItems, rework_at: new Date().toISOString() },
+        })
+        .eq("work_order_id", workOrderId)
+        .eq("department", "warehouse")
+      transitionLog.push("Sent back to Warehouse for rework")
+
+      await notifyDepartment(supabase, {
+        franchiseId: workOrder.franchise_id,
+        department: "warehouse",
+        title: "Item sent back for rework",
+        message: `${workOrder.work_order_number} failed QC — ${reworkSummary}`,
+        entityType: "work_orders",
+        entityId: workOrderId,
+        priority: "high",
+        actionUrl: "/portal/warehouse/tasks",
+        actionLabel: "Open Picking",
+      })
     }
 
     else if (status === "completed" && department === "dispatch") {
-      // DP Completed -> Check if Event Setup task exists for this work order
-      const { data: evTask } = await supabase
+      // DP Completed -> Check if Styling/Travels tasks exist for this work order
+      const { data: postDispatchTasks } = await supabase
         .from("work_order_tasks")
-        .select("id")
+        .select("id, department")
         .eq("work_order_id", workOrderId)
-        .eq("department", "event_team")
-        .maybeSingle()
+        .in("department", ["styling", "travels"])
 
-      if (evTask) {
-        // EV Setup task exists -> Set EV task to Active
+      if (postDispatchTasks && postDispatchTasks.length > 0) {
+        // Rental -> activate Styling and Travels tasks in parallel
         await supabase
           .from("work_order_tasks")
           .update({ status: "active", updated_at: new Date().toISOString() })
-          .eq("id", evTask.id)
-        
+          .in("id", postDispatchTasks.map(t => t.id))
+
         // Update booking status to delivered
         await updateBookingStatus(supabase, workOrder.booking_id, workOrder.booking_source, "delivered")
-        transitionLog.push("Activated Event Setup task and updated Booking status to delivered")
+        transitionLog.push("Activated Styling and Travels tasks and updated Booking status to delivered")
+
+        await Promise.all([
+          notifyDepartment(supabase, {
+            franchiseId: workOrder.franchise_id,
+            department: "styling",
+            title: "New styling job",
+            message: `${workOrder.work_order_number} is out for delivery — event setup needed.`,
+            entityType: "work_orders",
+            entityId: workOrderId,
+            actionUrl: "/portal/styling",
+            actionLabel: "Open Styling",
+          }),
+          notifyDepartment(supabase, {
+            franchiseId: workOrder.franchise_id,
+            department: "travels",
+            title: "New travel job",
+            message: `${workOrder.work_order_number} needs travel coordination.`,
+            entityType: "work_orders",
+            entityId: workOrderId,
+            actionUrl: "/portal/travels",
+            actionLabel: "Open Travels",
+          }),
+        ])
       } else {
-        // No EV Setup task (Direct Sale/Product Sale) -> Complete Work Order and Booking
+        // No Styling/Travels tasks (Direct Sale/Product Sale) -> Complete Work Order and Booking
         await supabase
           .from("work_orders")
           .update({ status: "completed", updated_at: new Date().toISOString() })
@@ -178,8 +311,13 @@ export async function POST(
       }
     }
 
-    else if (status === "completed" && department === "event_team") {
-      // EV Setup Completed -> Set Return Collection task to Active
+    else if (status === "completed" && department === "travels") {
+      // Travel coordination is informational only — no downstream cascade.
+      transitionLog.push("Travel coordination marked complete")
+    }
+
+    else if (status === "completed" && department === "styling") {
+      // Styling Setup Completed -> Set Return Collection task to Active
       const { data: rtTask } = await supabase
         .from("work_order_tasks")
         .select("id")
@@ -193,6 +331,17 @@ export async function POST(
           .update({ status: "active", updated_at: new Date().toISOString() })
           .eq("id", rtTask.id)
         transitionLog.push("Activated Return Collection task")
+
+        await notifyDepartment(supabase, {
+          franchiseId: workOrder.franchise_id,
+          department: "styling",
+          title: "Return collection ready",
+          message: `${workOrder.work_order_number} is ready for return collection.`,
+          entityType: "work_orders",
+          entityId: workOrderId,
+          actionUrl: "/portal/styling",
+          actionLabel: "Open Styling",
+        })
       }
     }
 

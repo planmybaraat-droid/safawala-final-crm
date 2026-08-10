@@ -5,6 +5,8 @@ import { PortalBottomNav } from "./portal-bottom-nav"
 import { PortalSidebar } from "./portal-sidebar"
 import { TeamChat } from "@/components/team-chat"
 import { PortalTopNav } from "./portal-top-nav"
+import { PortalNotificationBell } from "./portal-notification-bell"
+import { LiveBookingTicker } from "./live-booking-ticker"
 
 interface PortalMobileLayoutProps {
   config: PortalConfig
@@ -43,12 +45,29 @@ export function PortalMobileLayout({ config, children }: PortalMobileLayoutProps
           {children}
         </div>
         <PortalBottomNav tabs={config.tabs} color={config.color} />
+
+        {/* Floating notification bell — fixed to the phone-width column, not the viewport,
+            so it stays correctly placed even when the browser is wider than 480px. */}
+        <div
+          className="fixed inset-x-0 top-0 z-50"
+          style={{ maxWidth: 480, margin: "0 auto", pointerEvents: "none" }}
+        >
+          <div
+            className="absolute"
+            style={{ top: "calc(16px + env(safe-area-inset-top, 0px))", right: 16 }}
+          >
+            <PortalNotificationBell />
+          </div>
+        </div>
       </div>
 
       {/* Team Chat - desktop only (mobile has bottom nav so space is tight) */}
       <div className="hidden md:block">
         <TeamChat />
       </div>
+
+      {/* Live "someone just booked X" ticker — every portal, mobile + desktop */}
+      <LiveBookingTicker />
     </>
   )
 }

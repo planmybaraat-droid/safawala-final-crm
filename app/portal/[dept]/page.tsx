@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { getPortalConfig } from "@/lib/portal-config"
 import { PortalDeptHeader } from "@/components/portal/portal-dept-header"
 import { PortalHomeCard } from "@/components/portal/portal-home-card"
-import { PortalIcon } from "@/components/portal/portal-icons"
+import { PortalListCard } from "@/components/portal/portal-shared"
 import type { PortalConfig } from "@/lib/portal-config"
 import type { User } from "@/lib/types"
 
@@ -40,6 +40,15 @@ export default function PortalHomePage() {
   })
   const [loading, setLoading] = useState(true)
 
+  const JOB_DEPTS: Record<string, { taskDept: string; jobsUrl: string }> = {
+    warehouse: { taskDept: "warehouse", jobsUrl: "/portal/warehouse/tasks" },
+    qc: { taskDept: "packing", jobsUrl: "/portal/qc/packing" },
+    delivery: { taskDept: "dispatch", jobsUrl: "/portal/delivery/jobs" },
+    accounts: { taskDept: "accounts", jobsUrl: "/portal/accounts/jobs" },
+  }
+  const [jobStats, setJobStats] = useState<{ open: number; recent: any[] }>({ open: 0, recent: [] })
+  const [jobsLoading, setJobsLoading] = useState(true)
+
   useEffect(() => {
     const raw = localStorage.getItem("safawala_user")
     if (!raw) return
@@ -54,7 +63,32 @@ export default function PortalHomePage() {
   useEffect(() => {
     if (!user) return
     fetchStats()
-  }, [user])
+    if (JOB_DEPTS[dept]) fetchJobStats()
+  }, [user, dept])
+
+  async function fetchJobStats() {
+    setJobsLoading(true)
+    try {
+      const taskDept = JOB_DEPTS[dept].taskDept
+      const res = await fetch("/api/work-orders")
+      const data = await res.json()
+      const workOrders = Array.isArray(data.data) ? data.data : []
+      const tasks = workOrders.flatMap((wo: any) =>
+        (wo.work_order_tasks || [])
+          .filter((t: any) => t.department === taskDept)
+          .map((t: any) => ({ workOrder: wo, task: t }))
+      )
+      const open = tasks.filter(({ task }: any) => task.status === "active" || task.status === "pending").length
+      const recent = [...tasks]
+        .sort((a: any, b: any) => new Date(b.task.created_at || 0).getTime() - new Date(a.task.created_at || 0).getTime())
+        .slice(0, 5)
+      setJobStats({ open, recent })
+    } catch {
+      // non-blocking — home cards fall back to "—"
+    } finally {
+      setJobsLoading(false)
+    }
+  }
 
   async function fetchStats() {
     try {
@@ -87,6 +121,40 @@ export default function PortalHomePage() {
   const greeting = getGreeting()
   const firstName = user.name?.split(" ")[0] || "there"
 
+  const recentJobsSection = JOB_DEPTS[dept] && (
+    <div className="pt-1">
+      <div className="flex items-center justify-between mb-1.5 px-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#71717a" }}>Recent Jobs</p>
+        <button
+          onClick={() => router.push(JOB_DEPTS[dept].jobsUrl)}
+          className="text-[11px] font-bold"
+          style={{ color: config.color }}
+        >
+          View all
+        </button>
+      </div>
+      <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
+        {jobsLoading ? (
+          <div className="p-6 text-center text-[12px] text-slate-400">Loading…</div>
+        ) : jobStats.recent.length === 0 ? (
+          <div className="p-6 text-center text-[12px] text-slate-400">No recent jobs yet</div>
+        ) : (
+          jobStats.recent.map(({ workOrder, task }: any) => (
+            <PortalListCard
+              key={task.id}
+              title={`${workOrder.customer_name} (${workOrder.booking_number})`}
+              subtitle={task.title}
+              badge={task.status}
+              color={config.color}
+              icon="clipboard"
+              onClick={() => router.push(JOB_DEPTS[dept].jobsUrl)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div>
       {/* Header */}
@@ -96,20 +164,12 @@ export default function PortalHomePage() {
           background: `linear-gradient(135deg, ${config.color}, ${adjustColor(config.color, -25)})`,
         }}
       >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[11px] font-semibold opacity-70 mb-0.5 uppercase tracking-wider">
-              {greeting}
-            </p>
-            <h1 className="text-xl font-black leading-tight">{firstName}</h1>
-            <p className="text-[11px] opacity-70 mt-1">{config.portalName}</p>
-          </div>
-          <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center"
-            style={{ background: "rgba(255,255,255,0.2)", color: "white" }}
-          >
-            <PortalIcon name={config.icon} size={24} />
-          </div>
+        <div>
+          <p className="text-[11px] font-semibold opacity-70 mb-0.5 uppercase tracking-wider">
+            {greeting}
+          </p>
+          <h1 className="text-xl font-black leading-tight">{firstName}</h1>
+          <p className="text-[11px] opacity-70 mt-1">{config.portalName}</p>
         </div>
 
         {/* Date pill */}
@@ -179,14 +239,16 @@ export default function PortalHomePage() {
         {dept === "warehouse" && (
           <>
             <PortalHomeCard
-              title="Picking & Packing"
+              title="Picking"
               value="Open Jobs"
-              subtitle="Process picking and packing workflows"
+              subtitle="Process warehouse picking workflow"
               icon="clipboard"
               color={config.color}
               variant="action"
+              badge={jobsLoading ? undefined : jobStats.open}
               onClick={() => router.push("/portal/warehouse/tasks")}
             />
+            {recentJobsSection}
             <div className="grid grid-cols-2 gap-3">
               <PortalHomeCard
                 title="Low Stock"
@@ -219,73 +281,41 @@ export default function PortalHomePage() {
 
         {dept === "qc" && (
           <>
-            <div className="col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <PortalHomeCard
-                title="Pending QC"
-                value={loading ? "—" : "8"}
-                subtitle="Packed orders awaiting audit"
-                icon="search"
-                color={config.color}
-                onClick={() => router.push("/portal/qc/inspect")}
-              />
-              <PortalHomeCard
-                title="In Inspection"
-                value={loading ? "—" : "3"}
-                subtitle="Currently being audited"
-                icon="clock"
-                color="#3b82f6"
-                onClick={() => router.push("/portal/qc/inspect")}
-              />
-              <PortalHomeCard
-                title="Passed Today"
-                value={loading ? "—" : "24"}
-                subtitle="Approved for delivery"
-                icon="check-circle"
-                color="#10b981"
-                onClick={() => router.push("/portal/qc/work-orders")}
-              />
-              <PortalHomeCard
-                title="Failed / Rework"
-                value={loading ? "—" : "2"}
-                subtitle="Returned to warehouse"
-                icon="alert-triangle"
-                color="#f59e0b"
-                onClick={() => router.push("/portal/qc/work-orders")}
-              />
-              <PortalHomeCard
-                title="Damage Reported"
-                value={loading ? "—" : "5"}
-                subtitle="Flagged damaged items"
-                icon="alert-triangle"
-                color="#ef4444"
-                onClick={() => router.push("/portal/qc/damage")}
-              />
-              <PortalHomeCard
-                title="Avg Inspection Time"
-                value="4.2 min"
-                subtitle="Per order audit velocity"
-                icon="clock"
-                color="#8b5cf6"
-                onClick={() => router.push("/portal/qc/inspect")}
-              />
-            </div>
-
-            <div className="col-span-2 mt-2">
-              <PortalHomeCard
-                title="Start QC Audit & Barcode Scanner"
-                value="Inspect Queue Now"
-                subtitle="Inspect packed orders with product checklist & photo evidence"
-                icon="check-circle"
-                color={config.color}
-                variant="action"
-                onClick={() => router.push("/portal/qc/inspect")}
-              />
-            </div>
+            <PortalHomeCard
+              title="Packing Queue"
+              value="Open Jobs"
+              subtitle="Quality check, then pack orders picked from the warehouse"
+              icon="laundry"
+              color={config.color}
+              variant="action"
+              badge={jobsLoading ? undefined : jobStats.open}
+              onClick={() => router.push("/portal/qc/packing")}
+            />
+            {recentJobsSection}
+            <PortalHomeCard
+              title="Damage Reports"
+              value="View"
+              subtitle="Items flagged damaged during QC"
+              icon="alert-triangle"
+              color={config.color}
+              onClick={() => router.push("/portal/qc/damage")}
+            />
           </>
         )}
 
         {dept === "delivery" && (
           <>
+            <PortalHomeCard
+              title="Dispatch Jobs"
+              value="Open Jobs"
+              subtitle="Confirmed orders ready to ship"
+              icon="clipboard"
+              color={config.color}
+              variant="action"
+              badge={jobsLoading ? undefined : jobStats.open}
+              onClick={() => router.push("/portal/delivery/jobs")}
+            />
+            {recentJobsSection}
             <PortalHomeCard
               title="Pending Shipments"
               value={loading ? "—" : stats.pendingDispatch}
@@ -348,6 +378,17 @@ export default function PortalHomePage() {
 
         {dept === "accounts" && (
           <>
+            <PortalHomeCard
+              title="Billing Jobs"
+              value="Open Jobs"
+              subtitle="Verify advances, invoice & collect balances"
+              icon="clipboard"
+              color={config.color}
+              variant="action"
+              badge={jobsLoading ? undefined : jobStats.open}
+              onClick={() => router.push("/portal/accounts/jobs")}
+            />
+            {recentJobsSection}
             <PortalHomeCard
               title="Unpaid Invoices"
               value={loading ? "—" : stats.unpaidInvoices}

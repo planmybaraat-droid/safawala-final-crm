@@ -100,6 +100,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
           if (user?.department === "warehouse" && (user?.role === "warehouse_staff" || user?.role === "staff")) return ["warehouse.view", "warehouse.update"].includes(tab.permission)
           if (user?.department === "qc" && (user?.role === "qc_staff" || user?.role === "staff")) return ["qc.view", "qc.update"].includes(tab.permission)
           if (user?.department === "delivery" && (user?.role === "delivery_staff" || user?.role === "staff")) return ["delivery.view", "delivery.update"].includes(tab.permission)
+          if (user?.department === "accounts" && (user?.role === "accounts_staff" || user?.role === "staff")) return ["accounts.view", "accounts.update"].includes(tab.permission)
           return false
         }).map((tab) => {
           const isActive =

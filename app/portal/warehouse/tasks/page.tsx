@@ -1,392 +1,312 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { PortalPageHeader, PortalSectionLabel, PortalListCard, PortalEmptyState, PortalSkeleton } from "@/components/portal/portal-shared"
+import { PortalIcon } from "@/components/portal/portal-icons"
+import { JobTrackerModal } from "@/components/portal/job-tracker-modal"
+
+// ─── pdf.js loaded from CDN (no bundler/npm dependency) ─────────────────────
+// We render the pick slip onto a <canvas> instead of relying on the browser's
+// native PDF plugin in an <iframe> — some browsers are set to auto-download
+// PDFs instead of displaying them, which makes an iframe preview render blank.
+// Canvas rendering works the same everywhere regardless of that setting.
+const PDFJS_VERSION = "3.11.174"
+let pdfjsLoadPromise: Promise<any> | null = null
+function loadPdfJs(): Promise<any> {
+  if (typeof window === "undefined") return Promise.reject(new Error("no window"))
+  if ((window as any).pdfjsLib) return Promise.resolve((window as any).pdfjsLib)
+  if (pdfjsLoadPromise) return pdfjsLoadPromise
+  pdfjsLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script")
+    script.src = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`
+    script.onload = () => {
+      const lib = (window as any).pdfjsLib
+      lib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`
+      resolve(lib)
+    }
+    script.onerror = () => reject(new Error("Failed to load PDF renderer"))
+    document.head.appendChild(script)
+  })
+  return pdfjsLoadPromise
+}
 
 const COLOR = "#a855f7"
 
-// ─── PRINT STYLE CSS ────────────────────────────────────────
-const A4_CSS = `
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Segoe UI',Arial,sans-serif; width:210mm; background:#fff; color:#111; }
-  .half {
-    width:210mm; height:148.5mm; padding:10mm 12mm; overflow:hidden;
-    page-break-inside:avoid;
-  }
-  .half.office { background:#fff; }
-  .half.customer { background:#fffde7; }
-  .cut-line {
-    width:100%; height:10mm; display:flex; align-items:center; justify-content:center;
-    gap:8px; border-top:2px dashed #555; border-bottom:2px dashed #555;
-    font-size:10px; font-weight:700; letter-spacing:0.1em; color:#555;
-    background:repeating-linear-gradient(90deg,#f5f5f5 0,#f5f5f5 6mm,#e0e0e0 6mm,#e0e0e0 12mm);
-    page-break-after:avoid;
-  }
-  .copy-label {
-    font-size:9px; font-weight:800; letter-spacing:0.12em;
-    text-transform:uppercase; color:#888; text-align:right;
-  }
-  .brand { display:flex; align-items:center; gap:10px; }
-  .logo-box { width:34px; height:34px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:#fff; }
-  .brand-name { font-size:20px; font-weight:900; line-height:1; }
-  .brand-sub { font-size:11px; color:#666; margin-top:1px; }
-  .header-row { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:7px; border-bottom:1px solid #e5e7eb; margin-bottom:8px; }
-  .doc-num { font-size:13px; font-weight:900; text-align:right; margin-top:3px; }
-  .badge-pill { display:inline-block; font-size:8.5px; font-weight:800; padding:2px 7px; border-radius:20px; margin-top:4px; }
-  table { width:100%; border-collapse:collapse; margin-bottom:7px; }
-  th { font-size:9px; text-transform:uppercase; font-weight:800; padding:4px 5px; background:#f3f4f6; border:1px solid #d1d5db; letter-spacing:0.05em; }
-  td { font-size:10px; padding:3.5px 5px; border:1px solid #d1d5db; vertical-align:top; }
-  td.label { font-weight:700; color:#374151; background:#f9fafb; width:27%; }
-  .section-title { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.09em; color:#374151; margin:7px 0 4px; }
-  .sig-row { display:flex; gap:12px; margin-top:7px; }
-  .sig-box { flex:1; border-top:1px solid #374151; padding-top:3px; font-size:8.5px; color:#555; font-weight:600; }
-  .legal { font-size:7.5px; color:#9ca3af; font-style:italic; margin-top:5px; }
-  .total-row td { font-weight:800; background:#f9fafb; }
-  .pay-row td { font-size:10px; }
-  @media print { body{width:210mm;} @page{size:A4;margin:0;} }
-`
+// ─── Date grouping for job lists (grouped by Job Created Date, newest first) ─
+function dayKey(iso?: string) {
+  if (!iso) return "unknown"
+  return new Date(iso).toDateString()
+}
 
-function printPickingSlip(wo: any) {
+function dayHeaderLabel(iso?: string) {
+  if (!iso) return "Date unknown"
+  const d = new Date(iso)
+  const today = new Date()
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+  const dateStr = d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined })
+  if (d.toDateString() === today.toDateString()) return `Today · ${dateStr}`
+  if (d.toDateString() === yesterday.toDateString()) return `Yesterday · ${dateStr}`
+  return dateStr
+}
+
+function rowDateLabel(iso?: string) {
+  if (!iso) return "—"
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+}
+
+function groupTasksByDay<T extends { task: { created_at?: string } }>(items: T[]) {
+  const map = new Map<string, T[]>()
+  for (const item of items) {
+    const key = dayKey(item.task.created_at)
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(item)
+  }
+  return Array.from(map.entries())
+    .sort(([, a], [, b]) => {
+      const aTime = a[0]?.task.created_at ? new Date(a[0].task.created_at).getTime() : 0
+      const bTime = b[0]?.task.created_at ? new Date(b[0].task.created_at).getTime() : 0
+      return bTime - aTime
+    })
+    .map(([key, tasks]) => ({ key, label: dayHeaderLabel(tasks[0]?.task.created_at), tasks }))
+}
+
+interface CompanyInfo {
+  company_name?: string
+  phone?: string
+  email?: string
+  address?: string
+  city?: string
+  state?: string
+  gst_number?: string
+  logo_url?: string | null
+  website?: string | null
+}
+
+// Fetch a remote image and convert to a base64 data URL so jsPDF can embed it
+// (jsPDF can't load cross-origin URLs directly at render time).
+async function toDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
+// ─── PICK SLIP PDF (real PDF, generated client-side, shown in-app) ──────────
+// Renders 2 half-page copies (office + warehouse) on one A4 sheet with a
+// dashed cut line — company-branded with the logo/contact info from Settings
+// and full customer & booking details, as an actual PDF (no print popup).
+async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; checked: boolean }> | undefined, company: CompanyInfo | null): Promise<Blob> {
+  const { default: jsPDF } = await import("jspdf")
+  const { default: autoTable } = await import("jspdf-autotable")
+
   const whTask = wo?.work_order_tasks?.find((t: any) => t.department === "warehouse")
   const instructions = whTask?.instructions || wo?.instructions || "No picking instructions."
   const isRental = wo?.booking_source !== "direct_sales_orders"
-  const accentColor = isRental ? "#4f46e5" : "#059669"
-  const type = isRental ? "🔄 Rental — Return Required" : "📦 Direct Sale — One Way"
-  const docTitle = `Picking Slip — ${wo?.work_order_number}`
+  const accent: [number, number, number] = isRental ? [79, 70, 229] : [5, 150, 105]
+  const typeLabel = isRental ? "Rental — Return Required" : "Direct Sale — One Way"
 
-  const itemRows = instructions.split("\n")
-    .filter((l: string) => l.trim())
-    .map((line: string, i: number) => `
-      <tr>
-        <td style="text-align:center;width:22px">${i + 1}</td>
-        <td>☐ &nbsp;${line.replace(/^[•·-]\s*/, "").trim()}</td>
-      </tr>`)
-    .join("")
+  const lines: Array<{ text: string; checked: boolean }> = (checklist && checklist.length > 0)
+    ? checklist.map(c => ({ text: c.text, checked: c.checked }))
+    : instructions.split("\n").filter((l: string) => l.trim()).map((line: string) => ({ text: line.replace(/^[•·-]\s*/, "").trim(), checked: false }))
 
-  const half = (copyLabel: string, bg: string) => `
-    <div class="half ${bg}">
-      <div class="header-row">
-        <div class="brand">
-          <div class="logo-box" style="background:${accentColor}">S</div>
-          <div>
-            <div class="brand-name" style="color:${accentColor}">SAFAWALA</div>
-            <div class="brand-sub">Warehouse Picking Slip</div>
-            <span class="badge-pill" style="background:${accentColor}10;border:1px solid ${accentColor}40;color:${accentColor}">${type}</span>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div class="copy-label">${copyLabel}</div>
-          <div class="doc-num" style="color:${accentColor}">${wo?.work_order_number}</div>
-        </div>
-      </div>
+  const pickedCount = lines.filter(l => l.checked).length
+  const progressLabel = lines.length > 0 ? `${pickedCount} of ${lines.length} picked` : ""
 
-      <table>
-        <tr>
-          <td class="label">Work Order No</td><td>${wo?.work_order_number || "—"}</td>
-          <td class="label">Booking Ref</td><td>${wo?.booking_number || "—"}</td>
-        </tr>
-        <tr>
-          <td class="label">Customer</td><td>${wo?.customer_name || "—"}</td>
-          <td class="label">Event Date</td><td>${wo?.event_date ? new Date(wo.event_date).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "—"}</td>
-        </tr>
-        <tr>
-          <td class="label">Phone</td><td>${wo?.customer_phone || "—"}</td>
-          <td class="label">Printed</td><td>${new Date().toLocaleString("en-IN")}</td>
-        </tr>
-      </table>
+  const logoDataUrl = company?.logo_url ? await toDataUrl(company.logo_url) : null
+  const companyName = company?.company_name || "SAFAWALA"
+  const contactLine = [company?.phone && `Ph: ${company.phone}`, company?.email, company?.gst_number && `GST: ${company.gst_number}`]
+    .filter(Boolean).join("   •   ")
+  const addressLine = [company?.address, company?.city, company?.state].filter(Boolean).join(", ")
 
-      <div class="section-title">Items to Pick</div>
-      <table>
-        <thead><tr><th style="width:22px">#</th><th style="text-align:left">Item Description</th></tr></thead>
-        <tbody>${itemRows || "<tr><td colspan='2'>No items found</td></tr>"}</tbody>
-      </table>
+  const booking = wo?.booking || {}
+  const customer = wo?.customer || {}
+  const eventDate = wo?.event_date ? new Date(wo.event_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"
 
-      <div class="sig-row" style="margin-top:auto">
-        <div class="sig-box">Picked by</div>
-        <div class="sig-box">Verified by</div>
-        <div class="sig-box">Date &amp; Time</div>
-      </div>
-    </div>`
+  const doc = new jsPDF({ unit: "mm", format: "a4" })
+  const pageWidth = 210
 
-  const win = window.open("", "_blank", "width=900,height=700")
-  if (!win) { alert("Allow popups to print"); return }
-  win.document.write(`<!DOCTYPE html><html><head><title>${docTitle}</title><style>${A4_CSS}</style></head><body>
-    ${half("OFFICE COPY", "office")}
-    <div class="cut-line">✂ &nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp; ✂</div>
-    ${half("WAREHOUSE COPY", "customer")}
-    <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500)}</script>
-  </body></html>`)
-  win.document.close()
-}
+  const drawHalf = (yTop: number, copyLabel: string) => {
+    const left = 12
+    const right = pageWidth - 12
 
-function printPackingSlip(wo: any) {
-  const items = wo?.items || []
-  const isRental = wo?.booking_source !== "direct_sales_orders"
-  const accentColor = "#a855f7" // Purple theme for packing
-  const type = isRental ? "🔄 Rental — Return Required" : "📦 Direct Sale — One Way"
-  const docTitle = `Packing Slip — ${wo?.work_order_number}`
+    // Header band
+    doc.setFillColor(accent[0], accent[1], accent[2])
+    doc.rect(0, yTop, pageWidth, 1.6, "F")
 
-  const itemRows = items.map((item: any, i: number) => `
-    <tr>
-      <td style="text-align:center;width:22px">${i + 1}</td>
-      <td>☐ &nbsp;${item.product?.name || "Item"} (${item.product?.color || ""}, ${item.product?.size || ""})</td>
-      <td style="text-align:center">${item.quantity}</td>
-      <td style="text-align:center">Packed</td>
-    </tr>`).join("")
+    let y = yTop + 10.5
 
-  const half = (copyLabel: string, bg: string) => `
-    <div class="half ${bg}">
-      <div class="header-row">
-        <div class="brand">
-          <div class="logo-box" style="background:${accentColor}">S</div>
-          <div>
-            <div class="brand-name" style="color:${accentColor}">SAFAWALA</div>
-            <div class="brand-sub">Warehouse Packing Slip</div>
-            <span class="badge-pill" style="background:${accentColor}10;border:1px solid ${accentColor}40;color:${accentColor}">${type}</span>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div class="copy-label">${copyLabel}</div>
-          <div class="doc-num" style="color:${accentColor}">${wo?.work_order_number}</div>
-        </div>
-      </div>
+    if (logoDataUrl) {
+      try {
+        const props = doc.getImageProperties(logoDataUrl)
+        const h = 9, w = (props.width / props.height) * h
+        doc.addImage(logoDataUrl, props.fileType, left, y - 7.5, w, h)
+        doc.setFontSize(13)
+        doc.setFont("helvetica", "bold")
+        doc.setTextColor(...accent)
+        doc.text(companyName.toUpperCase(), left + w + 4, y - 1.5)
+        doc.setFontSize(7.5)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(120, 120, 120)
+        doc.text("Warehouse Picking Slip", left + w + 4, y + 3)
+      } catch {
+        drawLogoChip()
+      }
+    } else {
+      drawLogoChip()
+    }
 
-      <table>
-        <tr>
-          <td class="label">Work Order No</td><td>${wo?.work_order_number || "—"}</td>
-          <td class="label">Booking Ref</td><td>${wo?.booking_number || "—"}</td>
-        </tr>
-        <tr>
-          <td class="label">Customer</td><td>${wo?.customer_name || "—"}</td>
-          <td class="label">Event Date</td><td>${wo?.event_date ? new Date(wo.event_date).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "—"}</td>
-        </tr>
-        <tr>
-          <td class="label">Phone</td><td>${wo?.customer_phone || "—"}</td>
-          <td class="label">Printed</td><td>${new Date().toLocaleString("en-IN")}</td>
-        </tr>
-      </table>
+    function drawLogoChip() {
+      doc.setFillColor(accent[0], accent[1], accent[2])
+      doc.roundedRect(left, y - 6, 9, 9, 1.5, 1.5, "F")
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(11)
+      doc.setFont("helvetica", "bold")
+      doc.text(companyName.charAt(0).toUpperCase(), left + 4.5, y, { align: "center" })
+      doc.setTextColor(...accent)
+      doc.setFontSize(13)
+      doc.setFont("helvetica", "bold")
+      doc.text(companyName.toUpperCase(), left + 13, y - 1.5)
+      doc.setTextColor(120, 120, 120)
+      doc.setFontSize(7.5)
+      doc.setFont("helvetica", "normal")
+      doc.text("Warehouse Picking Slip", left + 13, y + 3)
+    }
 
-      <div class="section-title">Items to Pack</div>
-      <table>
-        <thead><tr><th style="width:22px">#</th><th style="text-align:left">Item Description</th><th style="width:50px">Qty</th><th style="width:70px">Status</th></tr></thead>
-        <tbody>${itemRows || "<tr><td colspan='4'>No items found</td></tr>"}</tbody>
-      </table>
+    doc.setTextColor(...accent)
+    doc.setFontSize(6.5)
+    doc.setFont("helvetica", "bold")
+    doc.text(typeLabel.toUpperCase(), left, y + 7.5)
 
-      <div class="sig-row" style="margin-top:auto">
-        <div class="sig-box">Packed by</div>
-        <div class="sig-box">Verified by</div>
-        <div class="sig-box">Date &amp; Time</div>
-      </div>
-    </div>`
+    doc.setTextColor(140, 140, 140)
+    doc.setFontSize(7.5)
+    doc.setFont("helvetica", "bold")
+    doc.text(copyLabel, right, y - 4, { align: "right" })
+    doc.setTextColor(...accent)
+    doc.setFontSize(11)
+    doc.text(wo?.work_order_number || "—", right, y + 1.5, { align: "right" })
 
-  const win = window.open("", "_blank", "width=900,height=700")
-  if (!win) { alert("Allow popups to print"); return }
-  win.document.write(`<!DOCTYPE html><html><head><title>${docTitle}</title><style>${A4_CSS}</style></head><body>
-    ${half("OFFICE COPY", "office")}
-    <div class="cut-line">✂ &nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp; ✂</div>
-    ${half("CUSTOMER COPY", "customer")}
-    <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500)}</script>
-  </body></html>`)
-  win.document.close()
-}
+    y += 12
+    doc.setDrawColor(225, 225, 225)
+    doc.line(left, y, right, y)
+    y += 5.5
 
-function printRentalChallan(wo: any, meta: any) {
-  const accentColor = "#4f46e5"
-  const mode = meta?.transit_mode || "self_drive"
-  const modeLabel: Record<string, string> = { bus:"🚌 Bus", train:"🚂 Train", self_drive:"🚗 Self Drive", aeroplane:"✈️ Aeroplane" }
-  const items = wo?.items || []
+    doc.setFontSize(8.5)
+    const infoRow = (label1: string, val1: string, label2: string, val2: string) => {
+      doc.setFont("helvetica", "bold")
+      doc.setTextColor(120, 120, 120)
+      doc.text(label1, left, y)
+      doc.setFont("helvetica", "normal")
+      doc.setTextColor(30, 30, 30)
+      doc.text(val1 || "—", left + 22, y)
+      doc.setFont("helvetica", "bold")
+      doc.setTextColor(120, 120, 120)
+      doc.text(label2, left + 95, y)
+      doc.setFont("helvetica", "normal")
+      doc.setTextColor(30, 30, 30)
+      doc.text(val2 || "—", left + 117, y)
+      y += 4.4
+    }
+    infoRow("Booking Ref", wo?.booking_number, "Event Date", eventDate)
+    infoRow("Customer", customer?.name || wo?.customer_name, "Phone", customer?.phone || wo?.customer_phone)
+    if (booking?.groom_name || booking?.bride_name) {
+      infoRow("Groom", booking?.groom_name || "—", "Bride", booking?.bride_name || "—")
+    }
+    if (wo?.venue_address || customer?.address) {
+      infoRow("Venue", wo?.venue_address || "—", "Delivery", booking?.delivery_date ? new Date(booking.delivery_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—")
+    }
 
-  const modeRow = (["bus","train","self_drive","aeroplane"]).map(m =>
-    `<div class="mode-btn ${m===mode?"active-indigo":""}" style="flex:1; padding:4px 0; border:1px solid ${m===mode?accentColor:"#d1d5db"}; border-radius:5px; text-align:center; font-size:9px; font-weight:700; color:${m===mode?accentColor:"#555"}; background:${m===mode?"#eef2ff":"#fff"};">${modeLabel[m]}</div>`).join("")
+    doc.setTextColor(170, 170, 170)
+    doc.setFontSize(6.8)
+    doc.setFont("helvetica", "normal")
+    doc.text(`Printed ${new Date().toLocaleString("en-IN")}`, left, y)
+    y += 4
 
-  const transitFields: Record<string, [string,string][]> = {
-    bus: [
-      ["Transport Co.", meta?.transport_company||""], ["Bus No/Route", meta?.route_number||""],
-      ["Departure Point", meta?.departure_point||""], ["Departure Date/Time", meta?.departure_datetime||""],
-      ["Arrival City", meta?.arrival_city||""], ["Ticket No.", meta?.ticket_pnr||""]
-    ],
-    train: [
-      ["Train Name/No.", meta?.train_name||""], ["PNR No.", meta?.ticket_pnr||""],
-      ["Departure Station", meta?.departure_point||""], ["Departure Date/Time", meta?.departure_datetime||""],
-      ["Arrival Station", meta?.arrival_city||""], ["Coach/Seat", meta?.seat_info||""]
-    ],
-    self_drive: [
-      ["Driver Name", meta?.driver_name||""], ["Vehicle No.", meta?.vehicle_number||""],
-      ["Driver Phone", meta?.driver_phone||""], ["Departure Time", meta?.departure_datetime||""],
-      ["From City", meta?.departure_point||""], ["To City", meta?.arrival_city||""]
-    ],
-    aeroplane: [
-      ["Airline", meta?.transport_company||""], ["Flight No.", meta?.route_number||""],
-      ["Departure Airport", meta?.departure_point||""], ["Departure Date/Time", meta?.departure_datetime||""],
-      ["Arrival Airport", meta?.arrival_city||""], ["Booking Ref", meta?.ticket_pnr||""]
-    ]
+    doc.setTextColor(60, 60, 60)
+    doc.setFontSize(8.5)
+    doc.setFont("helvetica", "bold")
+    doc.text(`ITEMS TO PICK${progressLabel ? `  —  ${progressLabel}` : ""}`, left, y + 2.5)
+    y += 4.5
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left, right: 12 },
+      head: [["#", "", "Item Description"]],
+      body: lines.map((l, i) => [String(i + 1), "", l.text]),
+      theme: "grid",
+      styles: { fontSize: 8.5, cellPadding: 1.5, valign: "middle" },
+      headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: "bold", fontSize: 7.5 },
+      columnStyles: { 0: { cellWidth: 8, halign: "center" }, 1: { cellWidth: 8, halign: "center" } },
+      didDrawCell: (data) => {
+        // Draw a real checkbox glyph in column 1 (skip header row)
+        if (data.column.index === 1 && data.row.section === "body") {
+          const item = lines[data.row.index]
+          const cx = data.cell.x + data.cell.width / 2 - 1.5
+          const cy = data.cell.y + data.cell.height / 2 - 1.5
+          doc.setDrawColor(120, 120, 120)
+          if (item?.checked) {
+            doc.setFillColor(...accent)
+            doc.rect(cx, cy, 3, 3, "FD")
+            doc.setDrawColor(255, 255, 255)
+            doc.setLineWidth(0.4)
+            doc.line(cx + 0.5, cy + 1.6, cx + 1.3, cy + 2.4)
+            doc.line(cx + 1.3, cy + 2.4, cx + 2.6, cy + 0.6)
+          } else {
+            doc.rect(cx, cy, 3, 3, "D")
+          }
+        }
+      },
+    })
+
+    const tableEndY = (doc as any).lastAutoTable?.finalY || y + 20
+    const sigY = Math.min(Math.max(tableEndY + 8, yTop + 118), yTop + 132)
+    doc.setDrawColor(80, 80, 80)
+    doc.setFontSize(7.5)
+    doc.setTextColor(90, 90, 90)
+    const sigWidth = (right - left - 10) / 3
+    ;[["Picked by", left], ["Verified by", left + sigWidth + 5], ["Date & Time", left + (sigWidth + 5) * 2]].forEach(([label, x]) => {
+      doc.line(x as number, sigY, (x as number) + sigWidth, sigY)
+      doc.text(label as string, x as number, sigY + 3.5)
+    })
+
+    // Compact contact footer
+    if (contactLine || addressLine) {
+      const footY = yTop + 141
+      doc.setDrawColor(235, 235, 235)
+      doc.line(left, footY - 3.5, right, footY - 3.5)
+      doc.setFontSize(6.3)
+      doc.setTextColor(150, 150, 150)
+      doc.setFont("helvetica", "normal")
+      if (addressLine) doc.text(addressLine, pageWidth / 2, footY, { align: "center" })
+      if (contactLine) doc.text(contactLine, pageWidth / 2, footY + 3, { align: "center" })
+    }
   }
 
-  const transitRows = (transitFields[mode] || []).map(([label, val]) =>
-    `<tr><td class="label">${label}</td><td>${val || "—"}</td></tr>`).join("")
+  drawHalf(0, "OFFICE COPY")
 
-  const itemRows = items.map((item: any, i: number) => `
-    <tr>
-      <td style="text-align:center">${i+1}</td>
-      <td>${item.product?.name || "Item"} (${item.product?.color||""}, ${item.product?.size||""})</td>
-      <td style="text-align:center">${item.quantity}</td>
-      <td>Good</td>
-    </tr>`).join("") || `<tr><td colspan="4" style="text-align:center;color:#888">No items listed</td></tr>`
+  // Cut line between the two halves
+  const cutY = 148.5
+  doc.setDrawColor(120, 120, 120)
+  doc.setLineDashPattern([1.5, 1.5], 0)
+  doc.line(0, cutY, pageWidth, cutY)
+  doc.setLineDashPattern([], 0)
+  doc.setFontSize(7)
+  doc.setTextColor(150, 150, 150)
+  doc.text("✂  CUT HERE  —  CUT HERE  —  CUT HERE  ✂", pageWidth / 2, cutY - 1.5, { align: "center" })
 
-  const half = (copyLabel: string, bg: string) => `
-    <div class="half ${bg}">
-      <div class="header-row">
-        <div class="brand">
-          <div class="logo-box" style="background:${accentColor}">S</div>
-          <div>
-            <div class="brand-name" style="color:${accentColor}">SAFAWALA</div>
-            <div class="brand-sub">Rental Delivery Challan</div>
-            <span class="badge-pill" style="background:#eef2ff;border:1px solid #a5b4fc;color:${accentColor}">🔄 Rental — Return Required</span>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div class="copy-label">${copyLabel}</div>
-          <div class="doc-num" style="color:${accentColor}">${wo?.work_order_number}</div>
-        </div>
-      </div>
+  drawHalf(cutY, "WAREHOUSE COPY")
 
-      <div class="section-title">Order Details</div>
-      <table>
-        <tr>
-          <td class="label">Work Order No</td><td>${wo?.work_order_number || "—"}</td>
-          <td class="label">Event Date</td><td>${wo?.event_date ? new Date(wo.event_date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—"}</td>
-        </tr>
-        <tr>
-          <td class="label">Customer</td><td>${wo?.customer_name || "—"}</td>
-          <td class="label">Phone</td><td>${wo?.customer_phone || "—"}</td>
-        </tr>
-      </table>
-
-      <div class="section-title">Transit Details</div>
-      <div style="display:flex; gap:6px; margin-bottom:6px;">${modeRow}</div>
-      <table><tbody>${transitRows}</tbody></table>
-
-      <div class="section-title">Items Dispatched</div>
-      <table>
-        <thead><tr><th>#</th><th style="text-align:left">Item Description</th><th>Qty</th><th>Condition</th></tr></thead>
-        <tbody>${itemRows}</tbody>
-      </table>
-
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:7px;">
-        <div class="sig-row" style="flex:1;">
-          <div class="sig-box">Transit Staff Signature</div>
-          <div class="sig-box">Receiver Signature</div>
-          <div class="sig-box">Gate Out Checked</div>
-        </div>
-        <div style="margin-left:20px; text-align:center;">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(wo?.work_order_number || "")}" style="width:60px;height:60px;" alt="Gatepass QR" />
-          <div style="font-size:6px; font-weight:700; color:#555; margin-top:2px;">SECURITY GATEPASS</div>
-        </div>
-      </div>
-    </div>`
-
-  const win = window.open("", "_blank", "width=900,height=700")
-  if (!win) { alert("Allow popups to print"); return }
-  win.document.write(`<!DOCTYPE html><html><head><title>Rental Challan — ${wo?.work_order_number}</title><style>${A4_CSS}</style></head><body>
-    ${half("OFFICE COPY", "office")}
-    <div class="cut-line">✂ &nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp; ✂</div>
-    ${half("TRANSIT STAFF COPY", "customer")}
-    <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500)}</script>
-  </body></html>`)
-  win.document.close()
+  return doc.output("blob")
 }
 
-function printSalesChallan(wo: any, meta: any) {
-  const accentColor = "#059669"
-  const items = wo?.items || []
-  const grandTotal = items.reduce((sum: number, i: any) => sum + (i.total_price || 0), 0)
-
-  const itemRows = items.map((item: any, i: number) => `
-    <tr>
-      <td style="text-align:center">${i+1}</td>
-      <td>${item.product?.name || "Item"} (${item.product?.color||""}, ${item.product?.size||""})</td>
-      <td style="text-align:center">${item.quantity}</td>
-      <td style="text-align:right">₹${(item.unit_price||0).toLocaleString("en-IN")}</td>
-      <td style="text-align:right">₹${(item.total_price||0).toLocaleString("en-IN")}</td>
-    </tr>`).join("") || `<tr><td colspan="5" style="text-align:center;color:#888">No items listed</td></tr>`
-
-  const half = (copyLabel: string, bg: string) => `
-    <div class="half ${bg}">
-      <div class="header-row">
-        <div class="brand">
-          <div class="logo-box" style="background:${accentColor}">S</div>
-          <div>
-            <div class="brand-name" style="color:${accentColor}">SAFAWALA</div>
-            <div class="brand-sub">Sales Delivery Note</div>
-            <span class="badge-pill" style="background:#ecfdf5;border:1px solid #6ee7b7;color:${accentColor}">📦 Direct Sale — No Return Required</span>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div class="copy-label">${copyLabel}</div>
-          <div class="doc-num" style="color:${accentColor}">${wo?.work_order_number}</div>
-        </div>
-      </div>
-
-      <div class="section-title">Sale &amp; Customer Details</div>
-      <table>
-        <tr>
-          <td class="label">Invoice No</td><td>${wo?.booking_number||"—"}</td>
-          <td class="label">Sale Date</td><td>${wo?.event_date ? new Date(wo.event_date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : new Date().toLocaleDateString("en-IN")}</td>
-        </tr>
-        <tr>
-          <td class="label">Customer</td><td>${wo?.customer_name || "—"}</td>
-          <td class="label">Phone</td><td>${wo?.customer_phone||"—"}</td>
-        </tr>
-      </table>
-
-      <div class="section-title">Items Sold</div>
-      <table>
-        <thead><tr><th>#</th><th style="text-align:left">Item Description</th><th>Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead>
-        <tbody>
-          ${itemRows}
-          <tr class="total-row">
-            <td colspan="4" style="text-align:right;font-weight:800">GRAND TOTAL</td>
-            <td style="text-align:right;font-weight:900;color:${accentColor}">₹${grandTotal.toLocaleString("en-IN")}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:7px;">
-        <div class="sig-row" style="flex:1;">
-          <div class="sig-box">Customer Signature</div>
-          <div class="sig-box">Delivery Checked By</div>
-          <div class="sig-box">Gate Out Checked</div>
-        </div>
-        <div style="margin-left:20px; text-align:center;">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(wo?.work_order_number || "")}" style="width:60px;height:60px;" alt="Gatepass QR" />
-          <div style="font-size:6px; font-weight:700; color:#555; margin-top:2px;">SECURITY GATEPASS</div>
-        </div>
-      </div>
-    </div>`
-
-  const win = window.open("", "_blank", "width=900,height=700")
-  if (!win) { alert("Allow popups to print"); return }
-  win.document.write(`<!DOCTYPE html><html><head><title>Sales Delivery Note — ${wo?.work_order_number}</title><style>${A4_CSS}</style></head><body>
-    ${half("OFFICE COPY", "office")}
-    <div class="cut-line">✂ &nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp;—&nbsp; CUT HERE &nbsp; ✂</div>
-    ${half("CUSTOMER COPY", "customer")}
-    <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500)}</script>
-  </body></html>`)
-  win.document.close()
-}
-
-function printDeliveryChallan(wo: any) {
-  if (!wo) return
-  const isRental = wo.booking_source !== "direct_sales_orders"
-  const dispatchTask = wo.work_order_tasks?.find((t: any) => t.department === "dispatch")
-  const meta = dispatchTask?.metadata || {}
-  if (isRental) {
-    printRentalChallan(wo, meta)
-  } else {
-    printSalesChallan(wo, meta)
-  }
-}
 
 interface Task {
   id: string
@@ -397,6 +317,8 @@ interface Task {
   instructions: string
   checklist: Array<{ text: string; checked: boolean }>
   photos?: string[]
+  created_at?: string
+  metadata?: { rework_reason?: string; rework_items?: Array<{ name: string; note: string }>; rework_at?: string } | null
 }
 
 interface WorkOrder {
@@ -406,26 +328,152 @@ interface WorkOrder {
   event_date: string | null
   customer_name: string
   customer_phone: string
+  venue_address?: string | null
   status: 'new' | 'in_progress' | 'completed' | 'cancelled'
   work_order_tasks: Task[]
+  items?: Array<{ quantity: number; product?: { name?: string; color?: string; size?: string; category?: string } }>
+  customer?: { name?: string; phone?: string }
 }
 
 export default function TasksPage() {
   const router = useRouter()
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeSubTab, setActiveSubTab] = useState<'picking' | 'packing'>('picking')
+  const [jobsView, setJobsView] = useState<'open' | 'closed'>('open')
+  const [showTracker, setShowTracker] = useState(false)
 
   // Selected task detail view modal
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [selectedWO, setSelectedWO] = useState<WorkOrder | null>(null)
   const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([])
-  const [photos, setPhotos] = useState<string[]>([])
   const [updating, setUpdating] = useState(false)
 
   const [errorState, setErrorState] = useState<string | null>(null)
 
+  // In-app toast — replaces the browser's native alert() popups
+  const [toast, setToast] = useState<{ message: string; kind: "success" | "error" } | null>(null)
+  function showToast(message: string, kind: "success" | "error" = "success") {
+    setToast({ message, kind })
+    setTimeout(() => setToast(null), 2800)
+  }
+
+  // Company branding/contact info for the pick slip PDF header + footer
+  const [company, setCompany] = useState<CompanyInfo | null>(null)
+
+  // In-app Pick Slip PDF preview — rendered onto a canvas via pdf.js so it
+  // always shows regardless of the browser's native-PDF-viewer settings.
+  const [slipUrl, setSlipUrl] = useState<string | null>(null)
+  const [slipBlob, setSlipBlob] = useState<Blob | null>(null)
+  const [generatingSlip, setGeneratingSlip] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const previewContainerRef = useRef<HTMLDivElement>(null)
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+
   useEffect(() => { fetchWorkOrders() }, [])
+
+  useEffect(() => {
+    if (!slipBlob) return
+    let cancelled = false
+    setPreviewError(null)
+    ;(async () => {
+      try {
+        const pdfjsLib = await loadPdfJs()
+        const buf = await slipBlob.arrayBuffer()
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise
+        const page = await pdf.getPage(1)
+        const canvas = previewCanvasRef.current
+        const container = previewContainerRef.current
+        if (cancelled || !canvas || !container) return
+
+        const containerWidth = Math.min(container.clientWidth - 24, 900)
+        const baseViewport = page.getViewport({ scale: 1 })
+        const scale = (containerWidth / baseViewport.width) * (window.devicePixelRatio || 1)
+        const viewport = page.getViewport({ scale })
+
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        canvas.style.width = `${containerWidth}px`
+        canvas.style.height = `${(containerWidth * viewport.height) / viewport.width}px`
+
+        const ctx = canvas.getContext("2d")
+        if (!ctx) return
+        await page.render({ canvasContext: ctx, viewport }).promise
+      } catch (err) {
+        console.error("Failed to render PDF preview:", err)
+        if (!cancelled) setPreviewError("Couldn't render the preview — use Download or Open in Tab below.")
+      }
+    })()
+    return () => { cancelled = true }
+  }, [slipBlob])
+
+  useEffect(() => {
+    fetch("/api/company-settings-simple")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCompany(d.data || d) })
+      .catch(() => {})
+  }, [])
+
+  async function openPickSlip() {
+    if (!selectedWO || generatingSlip) return
+    setGeneratingSlip(true)
+    try {
+      const blob = await buildPickingSlipPDF(selectedWO, checklist, company)
+      const url = URL.createObjectURL(blob)
+      setSlipBlob(blob)
+      setSlipUrl(url)
+    } catch (err) {
+      console.error("Failed to generate pick slip PDF:", err)
+      showToast("Failed to generate the pick slip. Please try again.", "error")
+    } finally {
+      setGeneratingSlip(false)
+    }
+  }
+
+  function closeSlipPreview() {
+    if (slipUrl) URL.revokeObjectURL(slipUrl)
+    setSlipUrl(null)
+    setSlipBlob(null)
+  }
+
+  function downloadSlip() {
+    if (!slipBlob || !selectedWO) return
+    const url = URL.createObjectURL(slipBlob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `Picking-Slip-${selectedWO.work_order_number || "slip"}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  function printSlip() {
+    if (!slipUrl) return
+    const win = window.open(slipUrl, "_blank")
+    win?.addEventListener("load", () => win.print())
+  }
+
+  async function shareSlipOnWhatsApp() {
+    if (!slipBlob || !selectedWO) return
+    const filename = `Picking-Slip-${selectedWO.work_order_number || "slip"}.pdf`
+    const file = new File([slipBlob], filename, { type: "application/pdf" })
+    try {
+      if ((navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
+        await (navigator as any).share({
+          files: [file],
+          title: filename,
+          text: `Picking Slip — ${selectedWO.work_order_number}`,
+        })
+        return
+      }
+    } catch {
+      // fall through to the download + WhatsApp Web fallback below
+    }
+    // Desktop / unsupported browsers can't attach a file via a URL scheme —
+    // download it and open WhatsApp Web so the user can attach it manually.
+    downloadSlip()
+    window.open("https://web.whatsapp.com/", "_blank")
+  }
 
   async function fetchWorkOrders() {
     setLoading(true)
@@ -447,28 +495,48 @@ export default function TasksPage() {
     }
   }
 
-  // Filter tasks based on department mapping to sub-tabs
-  const activeTasks = workOrders.flatMap(wo => {
+  // Warehouse now only handles picking — packing moved to the QC portal
+  const pickingTasks = workOrders.flatMap(wo => {
     return (wo.work_order_tasks ?? [])
-      .filter(t => {
-        const matchesDept = activeSubTab === 'picking' ? t.department === 'warehouse' : t.department === 'packing'
-        // Show pending or active tasks
-        return matchesDept && (t.status === 'active' || t.status === 'pending')
-      })
+      .filter(t => t.department === 'warehouse')
       .map(t => ({ workOrder: wo, task: t }))
   })
+  const openTasks = pickingTasks.filter(({ task }) => task.status === 'active' || task.status === 'pending')
+  const closedTasks = pickingTasks.filter(({ task }) => task.status === 'picked' || task.status === 'completed' || task.status === 'cancelled')
+  const visibleTasks = jobsView === 'open' ? openTasks : closedTasks
+
+  // Group by the day the job was created, newest day first.
+  const groupedTasks = groupTasksByDay(visibleTasks)
 
   async function handleOpenTask(wo: WorkOrder, t: Task) {
     setSelectedWO(wo)
     setSelectedTask(t)
     setChecklist(t.checklist ? [...t.checklist] : [])
-    setPhotos(t.photos ? [...t.photos] : [])
 
     try {
       const res = await fetch(`/api/work-orders/${wo.id}`)
       const data = await res.json()
       if (data.success && data.data) {
         setSelectedWO(data.data)
+        // Warehouse tasks start with an empty checklist — build one tick per
+        // item so staff can mark each product as picked individually. Prefer
+        // the actual line items; fall back to the auto-generated instructions
+        // text (older/edge-case orders where the items join comes back empty).
+        if (!t.checklist || t.checklist.length === 0) {
+          if (data.data.items?.length > 0) {
+            setChecklist(data.data.items.map((item: any) => ({
+              text: `${item.quantity}x ${item.product?.name || "Item"}${[item.product?.color, item.product?.size].filter(Boolean).length ? ` (${[item.product?.color, item.product?.size].filter(Boolean).join(", ")})` : ""}`,
+              checked: false,
+            })))
+          } else if (t.instructions) {
+            setChecklist(
+              t.instructions
+                .split("\n")
+                .filter((line: string) => line.trim())
+                .map((line: string) => ({ text: line.replace(/^[•·-]\s*/, "").trim(), checked: false }))
+            )
+          }
+        }
       }
     } catch (err) {
       console.error("Failed to load detailed work order for printing:", err)
@@ -479,26 +547,16 @@ export default function TasksPage() {
     setSelectedTask(null)
     setSelectedWO(null)
     setChecklist([])
-    setPhotos([])
+    closeSlipPreview()
   }
 
   function toggleChecklistItem(index: number) {
+    if (selectedTask && selectedTask.status !== 'active') return
     setChecklist(prev => prev.map((item, i) => i === index ? { ...item, checked: !item.checked } : item))
   }
 
-  function handleAddMockPhoto() {
-    const mockPhoto = `https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&q=80&mock=${Math.random()}`
-    setPhotos(prev => [...prev, mockPhoto])
-  }
-
-  async function updateTaskStatus(targetStatus: 'picked' | 'completed') {
+  async function updateTaskStatus(targetStatus: 'picked') {
     if (!selectedTask || !selectedWO || updating) return
-
-    // Packing requires at least 1 photo check
-    if (targetStatus === 'completed' && selectedTask.department === 'packing' && photos.length === 0) {
-      alert("Packing requires at least 1 proof photo to be uploaded.")
-      return
-    }
 
     setUpdating(true)
     try {
@@ -508,19 +566,18 @@ export default function TasksPage() {
         body: JSON.stringify({
           status: targetStatus,
           checklist: checklist,
-          photos: photos
         })
       })
       const data = await res.json()
       if (res.ok) {
-        alert(targetStatus === 'picked' ? "Task marked as Picked successfully!" : "Packing completed successfully!")
+        showToast("Task marked as Picked successfully!")
         handleCloseTask()
         fetchWorkOrders()
       } else {
-        alert(data.error || "Failed to update task status.")
+        showToast(data.error || "Failed to update task status.", "error")
       }
     } catch {
-      alert("Error updating task.")
+      showToast("Error updating task.", "error")
     } finally {
       setUpdating(false)
     }
@@ -528,12 +585,22 @@ export default function TasksPage() {
 
   return (
     <div className="pb-6">
-      <PortalPageHeader title="Pick & Pack" subtitle="Process order tasks" color={COLOR} backHref="/portal/warehouse" />
+      {/* In-app toast — replaces the browser's native alert() popups */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl text-white text-[12px] font-bold max-w-[92vw]"
+          style={{ background: toast.kind === "success" ? "#16a34a" : "#dc2626" }}
+        >
+          <PortalIcon name={toast.kind === "success" ? "check-circle" : "alert-triangle"} size={16} />
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      <PortalPageHeader title="Picking" subtitle="Process warehouse picking jobs" color={COLOR} backHref="/portal/warehouse" />
 
       {errorState && (
         <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-1.5 shadow-sm">
           <p className="text-[12px] font-extrabold text-red-800 flex items-center gap-1.5">
-            ⚠️ Error
+            <PortalIcon name="alert-triangle" size={13} /> Error
           </p>
           <p className="text-[11px] font-medium text-red-700 leading-relaxed">
             {errorState}
@@ -541,46 +608,63 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Sub-tabs */}
-      <div className="flex gap-2 px-4 py-3 bg-slate-50 border-b">
-        {(['picking', 'packing'] as const).map(tab => (
+      <div className="flex gap-2 px-4 pt-4">
+        {(['open', 'closed'] as const).map(v => (
           <button
-            key={tab}
-            onClick={() => setActiveSubTab(tab)}
-            className="flex-1 py-2.5 rounded-xl text-[12px] font-bold text-center capitalize transition-colors"
+            key={v}
+            onClick={() => setJobsView(v)}
+            className="flex-1 py-2.5 rounded-xl text-[12px] font-bold text-center transition-colors"
             style={{
-              background: activeSubTab === tab ? COLOR : "#fff",
-              color: activeSubTab === tab ? "#fff" : "rgba(80,55,30,0.6)",
-              border: `1px solid ${activeSubTab === tab ? COLOR : "rgba(0,0,0,0.08)"}`
+              background: jobsView === v ? COLOR : "#fff",
+              color: jobsView === v ? "#fff" : "rgba(80,55,30,0.6)",
+              border: `1px solid ${jobsView === v ? COLOR : "rgba(0,0,0,0.08)"}`,
             }}
           >
-            {tab === 'picking' ? "📦 Picking (Warehouse)" : "🏷 Packing Queue"}
+            {v === 'open' ? `Open Jobs (${openTasks.length})` : `Closed Jobs (${closedTasks.length})`}
           </button>
         ))}
       </div>
 
-      <PortalSectionLabel label={`${activeSubTab === 'picking' ? 'Picking' : 'Packing'} Jobs (${activeTasks.length})`} />
+      <PortalSectionLabel label={jobsView === 'open' ? "Picking Jobs" : "Picking History"} />
 
-      <div className="mx-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
-        {loading ? (
+      {loading ? (
+        <div className="mx-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
           <PortalSkeleton rows={6} />
-        ) : activeTasks.length === 0 ? (
-          <PortalEmptyState icon="clipboard" title="No jobs found" subtitle="No active jobs in this queue." color={COLOR} />
-        ) : (
-          activeTasks.map(({ workOrder, task }) => (
-            <PortalListCard
-              key={task.id}
-              title={`${workOrder.customer_name} (${workOrder.booking_number})`}
-              subtitle={task.title}
-              meta={task.status === 'active' ? "🟢 Active" : "🟡 Waiting"}
-              badge={task.status}
-              color={COLOR}
-              icon={activeSubTab === 'picking' ? "package" : "laundry"}
-              onClick={() => handleOpenTask(workOrder, task)}
-            />
-          ))
-        )}
-      </div>
+        </div>
+      ) : visibleTasks.length === 0 ? (
+        <div className="mx-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
+          <PortalEmptyState
+            icon="clipboard"
+            title="No jobs found"
+            subtitle={jobsView === 'open' ? "No active picking jobs right now." : "No completed picking jobs yet."}
+            color={COLOR}
+          />
+        </div>
+      ) : (
+        groupedTasks.map(group => (
+          <div key={group.key} className="mb-3">
+            <div className="flex items-baseline gap-2 px-4 pb-1.5">
+              <span className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: "#7c3aed" }}>{group.label}</span>
+              <span className="text-[10px]" style={{ color: "rgba(80,55,30,0.35)" }}>{group.tasks.length} job{group.tasks.length !== 1 ? "s" : ""}</span>
+              <span className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.06)" }} />
+            </div>
+            <div className="mx-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
+              {group.tasks.map(({ workOrder, task }) => (
+                <PortalListCard
+                  key={task.id}
+                  title={`${workOrder.customer_name}${workOrder.event_date ? ` · Event ${rowDateLabel(workOrder.event_date)}` : ""} (${workOrder.booking_number})`}
+                  subtitle={task.title}
+                  meta={rowDateLabel(task.created_at)}
+                  badge={task.status}
+                  color={COLOR}
+                  icon="package"
+                  onClick={() => handleOpenTask(workOrder, task)}
+                />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
 
       {/* TASK DETAIL MODAL */}
       {selectedTask && selectedWO && (
@@ -596,40 +680,79 @@ export default function TasksPage() {
                   {selectedWO.customer_name}
                 </h3>
               </div>
-              <button onClick={handleCloseTask} className="text-slate-400 hover:text-slate-600 text-lg font-black p-2">✕</button>
+              <button onClick={handleCloseTask} className="text-slate-400 hover:text-slate-600 p-2"><PortalIcon name="x" size={18} /></button>
             </div>
 
             {/* Content */}
             <div className="p-6 space-y-5">
-              {/* Instructions */}
-              {selectedTask.instructions && (
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Instructions</p>
-                  <p className="text-[13px] text-slate-700 font-semibold leading-relaxed whitespace-pre-line">
-                    {selectedTask.instructions}
+              {/* Customer & Delivery */}
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Customer & Delivery</p>
+                <div className="flex justify-between text-[12px]">
+                  <span className="text-slate-500 font-semibold">Customer</span>
+                  <span className="text-slate-800 font-bold">{selectedWO.customer?.name || selectedWO.customer_name}</span>
+                </div>
+                <div className="flex justify-between text-[12px]">
+                  <span className="text-slate-500 font-semibold">Phone</span>
+                  <span className="text-slate-800 font-bold">{selectedWO.customer?.phone || selectedWO.customer_phone}</span>
+                </div>
+                {selectedWO.event_date && (
+                  <div className="flex justify-between text-[12px]">
+                    <span className="text-slate-500 font-semibold">Event Date</span>
+                    <span className="text-slate-800 font-bold">
+                      {new Date(selectedWO.event_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                )}
+                {selectedWO.venue_address && (
+                  <div className="flex justify-between gap-3 text-[12px]">
+                    <span className="text-slate-500 font-semibold flex-shrink-0">Venue</span>
+                    <span className="text-slate-800 font-bold text-right">{selectedWO.venue_address}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* QC sent this back — show exactly what needs fixing */}
+              {selectedTask.metadata?.rework_reason && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                  <p className="text-[12px] font-bold text-red-700 flex items-center gap-1.5 mb-2">
+                    <PortalIcon name="alert-triangle" size={14} /> Sent back by QC — needs rework
                   </p>
+                  {selectedTask.metadata.rework_items && selectedTask.metadata.rework_items.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {selectedTask.metadata.rework_items.map((item, i) => (
+                        <div key={i} className="text-[12px] text-red-600">
+                          <span className="font-bold">{item.name}</span> — {item.note}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[12px] text-red-600">{selectedTask.metadata.rework_reason}</p>
+                  )}
                 </div>
               )}
 
-              {/* Checklist */}
-              {checklist.length > 0 && (
+              {/* Items to Pick — tick each one off as it's picked */}
+              {checklist.length > 0 ? (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checklist Items</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Items to Pick ({checklist.filter(c => c.checked).length} of {checklist.length} picked)
+                  </p>
                   <div className="space-y-2">
                     {checklist.map((item, i) => (
-                      <div 
+                      <div
                         key={i}
                         onClick={() => toggleChecklistItem(i)}
                         className="flex items-center gap-3 p-3.5 rounded-xl border bg-slate-50/50 hover:bg-slate-50 border-slate-100 cursor-pointer transition-colors"
                       >
-                        <div className="w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors"
+                        <div className="w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0"
                           style={{
-                            background: item.checked ? COLOR : "#white",
+                            background: item.checked ? COLOR : "white",
                             borderColor: item.checked ? COLOR : "rgba(0,0,0,0.15)"
                           }}
                         >
                           {item.checked && (
-                            <span className="text-white text-[11px] font-bold">✓</span>
+                            <PortalIcon name="check" size={12} className="text-white" />
                           )}
                         </div>
                         <span className="text-[13px] font-bold text-slate-700" style={{ textDecoration: item.checked ? 'line-through' : 'none', opacity: item.checked ? 0.6 : 1 }}>
@@ -639,102 +762,127 @@ export default function TasksPage() {
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* Photos for Packing */}
-              {selectedTask.department === 'packing' && (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Proof Photos (Required)</p>
-                    <button 
-                      onClick={handleAddMockPhoto}
-                      className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg"
-                    >
-                      📷 Add Mock Photo
-                    </button>
-                  </div>
-
-                  {photos.length === 0 ? (
-                    <div className="border border-dashed border-slate-200 rounded-2xl p-6 text-center">
-                      <p className="text-[11px] text-slate-400">No proof photos uploaded yet. Required for packing completion.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {photos.map((src, i) => (
-                        <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-100 relative group">
-                          <img src={src} className="w-full h-full object-cover" alt="Proof" />
-                          <button 
-                            onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-md opacity-90 hover:opacity-100"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              ) : selectedTask.instructions && (
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Instructions</p>
+                  <p className="text-[13px] text-slate-700 font-semibold leading-relaxed whitespace-pre-line">
+                    {selectedTask.instructions}
+                  </p>
                 </div>
               )}
+
+              {/* Track this Job */}
+              <button
+                onClick={() => setShowTracker(true)}
+                className="w-full py-2.5 rounded-xl text-[12px] font-bold border flex items-center justify-center gap-2"
+                style={{ borderColor: `${COLOR}40`, color: COLOR, background: `${COLOR}0d` }}
+              >
+                <PortalIcon name="map-pin" size={14} /> Track this Job
+              </button>
 
               {/* Print Documents */}
               <div className="pt-3 pb-2 border-t border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Print Documents</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   <button
-                    onClick={() => printPickingSlip(selectedWO)}
-                    className="py-2.5 rounded-xl text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex flex-col items-center justify-center gap-1"
+                    onClick={openPickSlip}
+                    disabled={generatingSlip}
+                    className="py-2.5 rounded-xl text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex flex-col items-center justify-center gap-1 disabled:opacity-60"
                   >
-                    <span className="text-[14px]">📋</span>
-                    <span>Pick Slip</span>
-                  </button>
-                  <button
-                    onClick={() => printPackingSlip(selectedWO)}
-                    className="py-2.5 rounded-xl text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex flex-col items-center justify-center gap-1"
-                  >
-                    <span className="text-[14px]">📦</span>
-                    <span>Pack Slip</span>
-                  </button>
-                  <button
-                    onClick={() => printDeliveryChallan(selectedWO)}
-                    className="py-2.5 rounded-xl text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex flex-col items-center justify-center gap-1"
-                  >
-                    <span className="text-[14px]">🖨️</span>
-                    <span>Challan</span>
+                    <PortalIcon name="clipboard" size={16} />
+                    <span>{generatingSlip ? "Generating…" : "Pick Slip"}</span>
                   </button>
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="pt-2">
-                {selectedTask.status === 'pending' ? (
+                {selectedTask.status === 'picked' || selectedTask.status === 'completed' ? (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center flex items-center justify-center gap-2">
+                    <PortalIcon name="check-circle" size={16} className="text-emerald-600" />
+                    <p className="text-[12px] font-bold text-emerald-700">Picking already completed</p>
+                  </div>
+                ) : selectedTask.status === 'cancelled' ? (
+                  <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl text-center">
+                    <p className="text-[12px] font-semibold text-slate-500">This job was cancelled.</p>
+                  </div>
+                ) : selectedTask.status === 'pending' ? (
                   <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-2xl text-center">
                     <p className="text-[12px] font-semibold text-yellow-800">
                       Waiting for predecessor task to be picked/completed.
                     </p>
                   </div>
-                ) : activeSubTab === 'picking' ? (
+                ) : (
                   <button
                     onClick={() => updateTaskStatus('picked')}
                     disabled={updating}
-                    className="w-full py-3.5 rounded-xl text-[13px] font-bold text-white transition-opacity"
+                    className="w-full py-3.5 rounded-xl text-[13px] font-bold text-white transition-opacity flex items-center justify-center gap-2"
                     style={{ background: COLOR, opacity: updating ? 0.7 : 1 }}
                   >
-                    {updating ? "Updating..." : "✓ Complete Picking & Send to Packing"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => updateTaskStatus('completed')}
-                    disabled={updating}
-                    className="w-full py-3.5 rounded-xl text-[13px] font-bold text-white transition-opacity"
-                    style={{ background: "#22c55e", opacity: updating ? 0.7 : 1 }}
-                  >
-                    {updating ? "Completing..." : "✓ Verify & Complete Packing"}
+                    {updating ? "Updating..." : (<><PortalIcon name="check" size={16} /> Complete Picking & Send to QC/Packing</>)}
                   </button>
                 )}
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Pick Slip PDF preview — rendered onto a canvas via pdf.js, in-app */}
+      {slipUrl && (
+        <div className="fixed inset-0 z-[60] bg-black/70 flex flex-col">
+          <div className="bg-white border-b px-4 py-3 flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-[13px] font-bold text-slate-800 truncate">
+              Picking Slip — {selectedWO?.work_order_number}
+            </p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={shareSlipOnWhatsApp}
+                className="px-3 py-2 rounded-xl text-[11px] font-bold text-white flex items-center gap-1.5"
+                style={{ background: "#25D366" }}
+              >
+                <PortalIcon name="whatsapp" size={14} /> WhatsApp
+              </button>
+              <button
+                onClick={downloadSlip}
+                className="px-3 py-2 rounded-xl text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-1.5"
+              >
+                <PortalIcon name="arrow-down" size={14} /> Download
+              </button>
+              <button
+                onClick={printSlip}
+                className="px-3 py-2 rounded-xl text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-1.5"
+              >
+                <PortalIcon name="printer" size={14} /> Print
+              </button>
+              <button
+                onClick={closeSlipPreview}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-500"
+              >
+                <PortalIcon name="x" size={16} />
+              </button>
+            </div>
+          </div>
+          <div ref={previewContainerRef} className="flex-1 bg-slate-200 overflow-auto flex flex-col items-center py-4">
+            {previewError ? (
+              <div className="m-auto text-center px-6">
+                <p className="text-[12px] text-slate-500 font-semibold mb-3">{previewError}</p>
+                <button
+                  onClick={() => window.open(slipUrl, "_blank")}
+                  className="px-4 py-2 rounded-xl text-[11px] font-bold text-slate-700 bg-white border border-slate-200 flex items-center gap-1.5"
+                >
+                  <PortalIcon name="arrow-up" size={13} /> Open in Tab
+                </button>
+              </div>
+            ) : (
+              <canvas ref={previewCanvasRef} className="shadow-lg rounded-sm bg-white" />
+            )}
+          </div>
+        </div>
+      )}
+
+      {showTracker && selectedWO && (
+        <JobTrackerModal workOrderId={selectedWO.id} onClose={() => setShowTracker(false)} />
       )}
     </div>
   )
