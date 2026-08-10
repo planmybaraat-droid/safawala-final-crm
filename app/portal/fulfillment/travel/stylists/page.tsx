@@ -1,7 +1,6 @@
 "use client"
 import { useEffect, useState, useCallback } from "react"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
-import { TravelsBottomNav } from "@/components/portal/travels-bottom-nav"
 import { useAutoRefresh } from "@/lib/hooks/use-auto-refresh"
 
 const COLOR = "#0891b2"
@@ -64,16 +63,15 @@ export default function TravelsStylistsPage() {
   if (loading) {
     return (
       <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", minHeight: "100vh", background: "#f5ebe0" }}>
-        <PortalPageHeader title="Stylists" color={COLOR} backHref="/portal/travels" />
+        <PortalPageHeader title="Stylists" color={COLOR} backHref="/portal/fulfillment/travel" />
         <div style={{ padding: 60, textAlign: "center", color: "rgba(30,18,8,0.4)", fontSize: 14 }}>Loading...</div>
-        <TravelsBottomNav />
       </div>
     )
   }
 
   return (
     <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", minHeight: "100vh", background: "#f5ebe0" }}>
-      <PortalPageHeader title="Stylists" subtitle="Travel overview & upcoming events" color={COLOR} backHref="/portal/travels" />
+      <PortalPageHeader title="Stylists" subtitle="Travel overview & upcoming events" color={COLOR} backHref="/portal/fulfillment/travel" />
 
       <div style={{ padding: "16px 16px 100px" }}>
         {/* Unassigned warning */}
@@ -88,7 +86,7 @@ export default function TravelsStylistsPage() {
               </div>
             ))}
             {unassigned.length > 3 && <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>+ {unassigned.length - 3} more</div>}
-            <a href="/portal/travels/assignments" style={{ display: "inline-block", marginTop: 8, fontSize: 12, fontWeight: 700, color: COLOR, textDecoration: "none" }}>
+            <a href="/portal/fulfillment/travel/assignments" style={{ display: "inline-block", marginTop: 8, fontSize: 12, fontWeight: 700, color: COLOR, textDecoration: "none" }}>
               Assign now →
             </a>
           </div>
@@ -156,7 +154,6 @@ export default function TravelsStylistsPage() {
         })}
       </div>
 
-      <TravelsBottomNav />
     </div>
   )
 }

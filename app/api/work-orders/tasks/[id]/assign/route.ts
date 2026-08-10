@@ -28,10 +28,11 @@ export async function POST(
 
     const canAssign = user.is_super_admin
       || user.role === "franchise_admin"
-      || user.department === "delivery"
+      || user.department === "fulfillment"
       || user.role === "delivery_staff"
+      || user.role === "travels_staff"
     if (!canAssign) {
-      return NextResponse.json({ error: "Only delivery staff or an admin can assign a stylist" }, { status: 403 })
+      return NextResponse.json({ error: "Only fulfillment staff or an admin can assign a stylist" }, { status: 403 })
     }
 
     const body = await request.json()

@@ -7,8 +7,8 @@ const STAGES: Array<{ key: string; label: string; dept: string | null }> = [
   { key: "booking", label: "Booking Confirmed", dept: null },
   { key: "warehouse", label: "Warehouse Picking", dept: "warehouse" },
   { key: "packing", label: "QC Packing", dept: "packing" },
-  { key: "dispatch", label: "Delivery Dispatch", dept: "dispatch" },
-  { key: "event_team", label: "Event Team Setup", dept: "event_team" },
+  { key: "dispatch", label: "Fulfillment", dept: "dispatch" },
+  { key: "styling", label: "Team", dept: "styling" },
   { key: "returns", label: "Returns Collection", dept: "returns" },
   { key: "accounts", label: "Accounts & Billing", dept: "accounts" },
 ]

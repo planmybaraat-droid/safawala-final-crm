@@ -32,6 +32,14 @@ function isAuthDisabled() {
   return false
 }
 
+// Normalizes department values from cookies issued before the delivery+travels
+// -> fulfillment merge, so stale sessions don't get stuck on a dead portal.
+const DEPT_ALIASES: Record<string, string> = { delivery: "fulfillment", travels: "fulfillment" }
+function normalizeDept(dept: string | undefined): string | undefined {
+  if (!dept) return dept
+  return DEPT_ALIASES[dept] || dept
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -63,7 +71,7 @@ export function middleware(request: NextRequest) {
             // "manager" and "franchise" departments have no corresponding portal route.
             redirectUrl = "/dashboard"
           } else if (parsed?.department) {
-            redirectUrl = `/portal/${parsed.department}`
+            redirectUrl = `/portal/${normalizeDept(parsed.department)}`
           }
         }
       } catch (e) {
@@ -96,7 +104,7 @@ export function middleware(request: NextRequest) {
     try {
       const rawUser = request.cookies.get("safawala_user")?.value
       const parsed = rawUser ? JSON.parse(rawUser) : null
-      const dept: string | undefined = parsed?.department
+      const dept: string | undefined = normalizeDept(parsed?.department)
       const isDeptScopedRole = parsed?.role === "staff" || (typeof parsed?.role === "string" && parsed.role.endsWith("_staff"))
       if (dept && isDeptScopedRole && !parsed?.is_super_admin) {
         const allowed = pathname === `/portal/${dept}` || pathname.startsWith(`/portal/${dept}/`) || pathname === `/${dept}` || pathname.startsWith("/api/")

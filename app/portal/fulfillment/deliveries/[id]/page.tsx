@@ -17,8 +17,8 @@ function hasDeliveryUpdatePermission(): boolean {
   try {
     const user = JSON.parse(localStorage.getItem("safawala_user") || "null")
     if (!user) return false
-    if (user.is_super_admin || user.role === "franchise_admin" || user.role === "delivery_staff") return true
-    return user.department === "delivery" && user.permissions?.["delivery.update"] === true
+    if (user.is_super_admin || user.role === "franchise_admin" || user.role === "delivery_staff" || user.role === "travels_staff") return true
+    return user.department === "fulfillment" && user.permissions?.["delivery.update"] === true
   } catch { return false }
 }
 
@@ -83,14 +83,14 @@ export default function DeliveryDetailPage() {
 
   if (loading) return (
     <div>
-      <PortalPageHeader title="Delivery" color={COLOR} backHref="/portal/delivery/deliveries" />
+      <PortalPageHeader title="Delivery" color={COLOR} backHref="/portal/fulfillment/deliveries" />
       <div className="mx-4 mt-4"><PortalSkeleton rows={7} /></div>
     </div>
   )
 
   if (!delivery) return (
     <div>
-      <PortalPageHeader title="Not Found" color={COLOR} backHref="/portal/delivery/deliveries" />
+      <PortalPageHeader title="Not Found" color={COLOR} backHref="/portal/fulfillment/deliveries" />
       <div className="mx-4 mt-8 text-center"><p className="text-[14px]" style={{ color: "rgba(80,55,30,0.5)" }}>Delivery not found</p></div>
     </div>
   )
@@ -101,7 +101,7 @@ export default function DeliveryDetailPage() {
         title={delivery.awb_number ? `AWB: ${delivery.awb_number}` : `Delivery #${delivery.id?.slice(0, 6).toUpperCase()}`}
         subtitle={customer?.name ?? delivery.booking?.booking_number ?? ""}
         color={COLOR}
-        backHref="/portal/delivery/deliveries"
+        backHref="/portal/fulfillment/deliveries"
       />
 
       {toast && (

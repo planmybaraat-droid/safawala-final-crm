@@ -15,7 +15,6 @@ interface DashboardStats {
   newLeads: number
   lowStock: number
   pendingQC: number
-  pendingDispatch: number
   unpaidInvoices: number
   stylistJobs: number
   activeStaff: number
@@ -33,7 +32,6 @@ export default function PortalHomePage() {
     newLeads: 0,
     lowStock: 0,
     pendingQC: 0,
-    pendingDispatch: 0,
     unpaidInvoices: 0,
     stylistJobs: 0,
     activeStaff: 0,
@@ -43,7 +41,7 @@ export default function PortalHomePage() {
   const JOB_DEPTS: Record<string, { taskDept: string; jobsUrl: string }> = {
     warehouse: { taskDept: "warehouse", jobsUrl: "/portal/warehouse/tasks" },
     qc: { taskDept: "packing", jobsUrl: "/portal/qc/packing" },
-    delivery: { taskDept: "dispatch", jobsUrl: "/portal/delivery/jobs" },
+    fulfillment: { taskDept: "dispatch", jobsUrl: "/portal/fulfillment/jobs" },
     accounts: { taskDept: "accounts", jobsUrl: "/portal/accounts/jobs" },
   }
   const [jobStats, setJobStats] = useState<{ open: number; recent: any[] }>({ open: 0, recent: [] })
@@ -303,26 +301,26 @@ export default function PortalHomePage() {
           </>
         )}
 
-        {dept === "delivery" && (
+        {dept === "fulfillment" && (
           <>
             <PortalHomeCard
-              title="Dispatch Jobs"
+              title="Fulfillment Jobs"
               value="Open Jobs"
               subtitle="Confirmed orders ready to ship"
               icon="clipboard"
               color={config.color}
               variant="action"
               badge={jobsLoading ? undefined : jobStats.open}
-              onClick={() => router.push("/portal/delivery/jobs")}
+              onClick={() => router.push("/portal/fulfillment/jobs")}
             />
             {recentJobsSection}
             <PortalHomeCard
               title="Pending Shipments"
-              value={loading ? "—" : stats.pendingDispatch}
+              value={jobsLoading ? "—" : jobStats.open}
               subtitle="Orders ready to ship"
               icon="package"
               color={config.color}
-              onClick={() => router.push("/portal/delivery/deliveries")}
+              onClick={() => router.push("/portal/fulfillment/deliveries")}
             />
             <PortalHomeCard
               title="Create Shipment"
@@ -331,7 +329,16 @@ export default function PortalHomePage() {
               icon="truck"
               color={config.color}
               variant="action"
-              onClick={() => router.push("/portal/delivery/deliveries")}
+              onClick={() => router.push("/portal/fulfillment/deliveries")}
+            />
+            <PortalHomeCard
+              title="Team & Travel"
+              value="Open"
+              subtitle="Assign a stylist and book tickets/hotel — independent of pick/pack/QC"
+              icon="team"
+              color={config.color}
+              variant="action"
+              onClick={() => router.push("/portal/fulfillment/team")}
             />
           </>
         )}

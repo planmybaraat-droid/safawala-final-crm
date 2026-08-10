@@ -72,18 +72,18 @@ export async function POST(
       }
     }
 
-    if (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") {
+    if (rbacContext?.user.department === "fulfillment" || rbacContext?.user.role === "delivery_staff" || rbacContext?.user.role === "travels_staff") {
       const denied = await requireRbacPermission(request, "delivery.update")
       if ("response" in denied) return denied.response
-      if (department !== "dispatch") {
-        return NextResponse.json({ error: "Delivery users can only update dispatch tasks" }, { status: 403 })
+      if (department !== "dispatch" && department !== "travels") {
+        return NextResponse.json({ error: "Fulfillment users can only update dispatch or travels tasks" }, { status: 403 })
       }
       if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }
-      const isDeliveryStaff = !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
-      if (task.assigned_to && task.assigned_to !== rbacContext.user.id && isDeliveryStaff) {
-        return NextResponse.json({ error: "This task is assigned to another delivery user" }, { status: 403 })
+      const isFulfillmentStaff = !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+      if (task.assigned_to && task.assigned_to !== rbacContext.user.id && isFulfillmentStaff) {
+        return NextResponse.json({ error: "This task is assigned to another fulfillment user" }, { status: 403 })
       }
     }
 
@@ -214,13 +214,13 @@ export async function POST(
 
       await notifyDepartment(supabase, {
         franchiseId: workOrder.franchise_id,
-        department: "delivery",
-        title: "New dispatch job",
+        department: "fulfillment",
+        title: "New fulfillment job",
         message: `${workOrder.work_order_number} is packed and ready to ship.`,
         entityType: "work_orders",
         entityId: workOrderId,
-        actionUrl: "/portal/delivery/jobs",
-        actionLabel: "Open Dispatch Jobs",
+        actionUrl: "/portal/fulfillment/jobs",
+        actionLabel: "Open Fulfillment Jobs",
       })
     }
 
@@ -290,13 +290,13 @@ export async function POST(
           }),
           notifyDepartment(supabase, {
             franchiseId: workOrder.franchise_id,
-            department: "travels",
+            department: "fulfillment",
             title: "New travel job",
             message: `${workOrder.work_order_number} needs travel coordination.`,
             entityType: "work_orders",
             entityId: workOrderId,
-            actionUrl: "/portal/travels",
-            actionLabel: "Open Travels",
+            actionUrl: "/portal/fulfillment/travel",
+            actionLabel: "Open Travel Coordination",
           }),
         ])
       } else {

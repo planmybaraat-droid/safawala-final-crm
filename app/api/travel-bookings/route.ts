@@ -183,6 +183,21 @@ export async function POST(request: NextRequest) {
           metadata: { status, stylist_id, travel_mode },
         })
 
+        if (stylist_id) {
+          await supabaseServer.from("notifications").insert([{
+            user_id: stylist_id,
+            franchise_id: existing.franchise_id,
+            type: "job_update",
+            title: "Travel details confirmed",
+            message: `${order_number || "Your event"} — travel/hotel details are confirmed. Check your tickets.`,
+            priority: "medium",
+            entity_type: "travel_bookings",
+            entity_id: existing.id,
+            action_url: "/portal/styling/assignments",
+            action_label: "View Job",
+          }])
+        }
+
         return NextResponse.json({ success: true, data })
       }
     }
@@ -208,6 +223,21 @@ export async function POST(request: NextRequest) {
       module: "travels", action: "booking.create", resourceType: "travel_booking", resourceId: data.id,
       metadata: { status: status || "pending", stylist_id, travel_mode },
     })
+
+    if (stylist_id) {
+      await supabaseServer.from("notifications").insert([{
+        user_id: stylist_id,
+        franchise_id: franchiseId,
+        type: "job_update",
+        title: "Travel details confirmed",
+        message: `${order_number || "Your event"} — travel/hotel details are confirmed. Check your tickets.`,
+        priority: "medium",
+        entity_type: "travel_bookings",
+        entity_id: data.id,
+        action_url: "/portal/styling/assignments",
+        action_label: "View Job",
+      }])
+    }
 
     return NextResponse.json({ success: true, data }, { status: 201 })
   } catch (err: any) {

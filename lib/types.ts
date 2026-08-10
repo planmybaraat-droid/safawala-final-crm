@@ -4,7 +4,7 @@ export interface User {
   email: string
   name: string
   role: "super_admin" | "franchise_admin" | "staff" | "readonly" | "warehouse_staff" | "qc_staff" | "delivery_staff"
-  department?: "admin" | "manager" | "booking" | "warehouse" | "qc" | "delivery" | "styling" | "accounts" | "franchise"
+  department?: "admin" | "manager" | "booking" | "warehouse" | "qc" | "fulfillment" | "styling" | "accounts" | "franchise"
   franchise_id?: string
   franchise_name?: string
   franchise_code?: string
@@ -25,6 +25,8 @@ export interface UserPermissions {
   "qc.update"?: boolean
   "delivery.view"?: boolean
   "delivery.update"?: boolean
+  "travels.view"?: boolean
+  "travels.update"?: boolean
   "users.manage"?: boolean
   "roles.manage"?: boolean
   "permissions.manage"?: boolean

@@ -252,6 +252,8 @@ export async function POST(request: NextRequest) {
         bookings: 'booking',
         franchise: 'manager',
         admin: 'admin',
+        delivery: 'fulfillment',
+        travels: 'fulfillment',
       };
       const portalSlug = deptToPortalSlug[deptPrefix] || deptPrefix;
       const deptDisplayNames: Record<string, string> = {
@@ -545,8 +547,8 @@ export async function POST(request: NextRequest) {
     // Infer department from email if not set in DB (e.g. hr@safawala.com → "hr")
     const KNOWN_DEPT_EMAILS: Record<string, string> = {
       accounts: "accounts", admin: "admin", booking: "booking", bookings: "booking",
-      delivery: "delivery", franchise: "franchise", hr: "hr", manager: "manager",
-      qc: "qc", styling: "styling", travels: "travels", warehouse: "warehouse",
+      delivery: "fulfillment", franchise: "franchise", hr: "hr", manager: "manager",
+      qc: "qc", styling: "styling", travels: "fulfillment", warehouse: "warehouse",
     }
     const emailDeptMatch = email.match(/^([a-z]+)@safawala\.com$/i)
     const emailDeptPrefix = emailDeptMatch ? emailDeptMatch[1].toLowerCase() : null

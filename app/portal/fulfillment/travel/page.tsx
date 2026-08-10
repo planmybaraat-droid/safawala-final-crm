@@ -78,6 +78,9 @@ export default function TravelsHomePage() {
     <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", minHeight: "100vh", background: "#f5ebe0" }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, #0c4a6e, ${COLOR})`, padding: "24px 20px 20px", color: "white" }}>
+        <Link href="/portal/fulfillment" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "white", opacity: 0.85, textDecoration: "none", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
+          <PortalIcon name="chevron-right" size={14} className="rotate-180" /> Fulfillment
+        </Link>
         <p style={{ margin: "0 0 4px", fontSize: 12, opacity: 0.75 }}>{greeting}</p>
         <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 900 }}>
           {user?.name?.split(" ")[0] ?? "Travel Coordinator"}
@@ -106,10 +109,10 @@ export default function TravelsHomePage() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
           {[
-            { href: "/portal/travels/assignments", icon: "calendar", label: "Assignments",   sub: "Assign stylists to events",    color: "#0891b2" },
-            { href: "/portal/travels/tickets",     icon: "map-pin",  label: "Tickets",       sub: "Train & hotel booking",        color: "#0284c7" },
-            { href: "/portal/travels/stylists",    icon: "team",     label: "Stylists",      sub: "Stylist travel overview",      color: "#06b6d4" },
-            { href: "/portal/travels/profile",     icon: "user",     label: "My Profile",    sub: "Account settings",             color: "#0e7490" },
+            { href: "/portal/fulfillment/travel/assignments", icon: "calendar", label: "Assignments",   sub: "Assign stylists to events",    color: "#0891b2" },
+            { href: "/portal/fulfillment/travel/tickets",     icon: "map-pin",  label: "Tickets",       sub: "Train & hotel booking",        color: "#0284c7" },
+            { href: "/portal/fulfillment/travel/stylists",    icon: "team",     label: "Stylists",      sub: "Stylist travel overview",      color: "#06b6d4" },
+            { href: "/portal/fulfillment/profile",            icon: "user",     label: "My Profile",    sub: "Account settings",             color: "#0e7490" },
           ].map(m => (
             <Link key={m.href} href={m.href} style={{ textDecoration: "none" }}>
               <div style={{
@@ -154,7 +157,7 @@ export default function TravelsHomePage() {
             fully_booked: "Fully Ready", departed: "Departed", returned: "Returned", cancelled: "Cancelled",
           }
           return (
-            <Link key={ev.id} href={`/portal/travels/assignments`} style={{ textDecoration: "none" }}>
+            <Link key={ev.id} href={`/portal/fulfillment/travel/assignments`} style={{ textDecoration: "none" }}>
               <div style={{
                 background: "white", borderRadius: 14, padding: "14px 16px", marginBottom: 10,
                 boxShadow: "0 1px 6px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.06)",
@@ -179,35 +182,6 @@ export default function TravelsHomePage() {
                   {statusLabel[status] ?? status}
                 </div>
               </div>
-            </Link>
-          )
-        })}
-      </div>
-
-      {/* Bottom nav */}
-      <div style={{
-        position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-        width: "100%", maxWidth: 480,
-        background: "white", borderTop: "1px solid rgba(0,0,0,0.08)",
-        display: "flex", paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        zIndex: 40,
-      }}>
-        {[
-          { href: "/portal/travels",             icon: "home",    label: "Home" },
-          { href: "/portal/travels/assignments", icon: "calendar",label: "Events" },
-          { href: "/portal/travels/tickets",     icon: "map-pin", label: "Tickets" },
-          { href: "/portal/travels/stylists",    icon: "team",    label: "Stylists" },
-          { href: "/portal/travels/profile",     icon: "user",    label: "Me" },
-        ].map(tab => {
-          const isActive = typeof window !== "undefined" && window.location.pathname === tab.href
-          return (
-            <Link key={tab.href} href={tab.href} style={{
-              flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-              padding: "10px 4px 8px", textDecoration: "none", gap: 3,
-              color: isActive ? COLOR : "rgba(30,18,8,0.35)",
-            }}>
-              <PortalIcon name={tab.icon} size={22} />
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.3 }}>{tab.label.toUpperCase()}</span>
             </Link>
           )
         })}

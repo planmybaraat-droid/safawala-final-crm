@@ -439,6 +439,7 @@ function getDefaultPermissions(role: AppRole): UserPermissions {
         "qc.update": true,
       };
     case 'delivery_staff':
+    case 'travels_staff':
       return {
         dashboard: false, bookings: false, customers: false, inventory: false,
         packages: false, vendors: false, quotes: false, invoices: false,
@@ -448,6 +449,8 @@ function getDefaultPermissions(role: AppRole): UserPermissions {
         invoice_payment_access: false,
         "delivery.view": true,
         "delivery.update": true,
+        "travels.view": true,
+        "travels.update": true,
       };
     case 'super_admin':
       return {
@@ -476,8 +479,10 @@ function getDefaultPermissions(role: AppRole): UserPermissions {
         "qc.update": true,
         "delivery.view": true,
         "delivery.update": true,
+        "travels.view": true,
+        "travels.update": true,
       };
-    
+
     case 'franchise_admin':
       return {
         dashboard: true,
@@ -505,8 +510,10 @@ function getDefaultPermissions(role: AppRole): UserPermissions {
         "qc.update": true,
         "delivery.view": true,
         "delivery.update": true,
+        "travels.view": true,
+        "travels.update": true,
       };
-    
+
     case 'staff':
       return {
         dashboard: true,

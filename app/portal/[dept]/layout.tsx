@@ -3,7 +3,7 @@ import { getPortalConfig } from "@/lib/portal-config"
 import { authenticateRequest } from "@/lib/auth-middleware"
 import { PortalMobileLayout } from "@/components/portal/portal-mobile-layout"
 
-const DEPT_ALIASES: Record<string, string> = { bookings: "booking" }
+const DEPT_ALIASES: Record<string, string> = { bookings: "booking", delivery: "fulfillment", travels: "fulfillment" }
 
 /**
  * Server-side portal boundary. Client-side localStorage checks remain useful for

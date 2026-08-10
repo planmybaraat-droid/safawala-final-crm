@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       const rbacDenied = await requireRbacPermission(request, "qc.view")
       if ("response" in rbacDenied) return rbacDenied.response
     }
-    if (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") {
+    if (rbacContext?.user.department === "fulfillment" || rbacContext?.user.role === "delivery_staff" || rbacContext?.user.role === "travels_staff") {
       const rbacDenied = await requireRbacPermission(request, "delivery.view")
       if ("response" in rbacDenied) return rbacDenied.response
     }
@@ -197,11 +197,17 @@ export async function GET(request: NextRequest) {
             ...wo,
             work_order_tasks: (wo.work_order_tasks || []).filter((t: any) => t.department === "styling"),
           }))
-      : (rbacContext?.user.department === "delivery" || rbacContext?.user.role === "delivery_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
+      : (rbacContext?.user.department === "fulfillment" || rbacContext?.user.role === "delivery_staff" || rbacContext?.user.role === "travels_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
           ? enrichedWorkOrders.map((wo: any) => ({
               ...wo,
+              // Fulfillment owns dispatch (shipping) and travels (team
+              // coordination). Styling is also surfaced here (any status,
+              // unfiltered by assignee — assigned_to on a styling task is
+              // the stylist, not the fulfillment user) so team/stylist
+              // assignment works independently of dispatch/packing/QC.
               work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>
-                t.department === "dispatch" && (!t.assigned_to || t.assigned_to === rbacContext.user.id)
+                t.department === "styling" ||
+                ((t.department === "dispatch" || t.department === "travels") && (!t.assigned_to || t.assigned_to === rbacContext.user.id))
               ),
             })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
           : (rbacContext?.user.department === "accounts" || rbacContext?.user.role === "accounts_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"

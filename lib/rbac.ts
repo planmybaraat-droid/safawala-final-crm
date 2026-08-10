@@ -12,6 +12,8 @@ export type RbacPermission =
   | "qc.update"
   | "delivery.view"
   | "delivery.update"
+  | "travels.view"
+  | "travels.update"
   | "accounts.view"
   | "accounts.update"
   | "users.manage"
@@ -76,6 +78,8 @@ export async function getRbacContext(request: NextRequest): Promise<RbacContext 
     permissions.add("qc.update")
     permissions.add("delivery.view")
     permissions.add("delivery.update")
+    permissions.add("travels.view")
+    permissions.add("travels.update")
     permissions.add("accounts.view")
     permissions.add("accounts.update")
   }
@@ -86,6 +90,8 @@ export async function getRbacContext(request: NextRequest): Promise<RbacContext 
     permissions.add("qc.update")
     permissions.add("delivery.view")
     permissions.add("delivery.update")
+    permissions.add("travels.view")
+    permissions.add("travels.update")
     permissions.add("accounts.view")
     permissions.add("accounts.update")
   }
@@ -97,9 +103,11 @@ export async function getRbacContext(request: NextRequest): Promise<RbacContext 
     permissions.add("qc.view")
     permissions.add("qc.update")
   }
-  if (auth.user.role === "delivery_staff" || auth.user.department === "delivery") {
+  if (auth.user.role === "delivery_staff" || auth.user.role === "travels_staff" || auth.user.department === "fulfillment") {
     permissions.add("delivery.view")
     permissions.add("delivery.update")
+    permissions.add("travels.view")
+    permissions.add("travels.update")
   }
   if (auth.user.role === "accounts_staff" || auth.user.department === "accounts") {
     permissions.add("accounts.view")

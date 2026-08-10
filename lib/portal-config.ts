@@ -3,11 +3,10 @@ export type DepartmentSlug =
   | "booking"
   | "warehouse"
   | "qc"
-  | "delivery"
+  | "fulfillment"
   | "styling"
   | "accounts"
   | "hr"
-  | "travels"
 
 export interface PortalTab {
   icon: string
@@ -96,19 +95,19 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
     ],
   },
 
-  delivery: {
-    slug: "delivery",
-    label: "Dispatch & Shipping",
-    portalName: "Dispatch Portal",
+  fulfillment: {
+    slug: "fulfillment",
+    label: "Fulfillment & Travel",
+    portalName: "Fulfillment Portal",
     icon: "truck",
     color: "#14b8a6",
     gradient: "from-teal-500 to-teal-600",
-    allowedRoles: ["super_admin", "franchise_admin", "delivery_staff"],
+    allowedRoles: ["super_admin", "franchise_admin", "delivery_staff", "travels_staff"],
     tabs: [
-      { icon: "home", label: "Home", href: "/portal/delivery", permission: "delivery.view" },
-      { icon: "truck", label: "Dispatch", href: "/portal/delivery/deliveries", permission: "delivery.view" },
-      { icon: "map-pin", label: "Track", href: "/portal/delivery/routes", permission: "delivery.view" },
-      { icon: "user", label: "Me", href: "/portal/delivery/profile" },
+      { icon: "home", label: "Home", href: "/portal/fulfillment", permission: "delivery.view" },
+      { icon: "truck", label: "Fulfillment", href: "/portal/fulfillment/jobs", permission: "delivery.view" },
+      { icon: "team", label: "Team", href: "/portal/fulfillment/team", permission: "travels.view" },
+      { icon: "user", label: "Me", href: "/portal/fulfillment/profile" },
     ],
   },
 
@@ -164,23 +163,6 @@ export const PORTAL_CONFIG: Record<DepartmentSlug, PortalConfig> = {
       { icon: "search",    label: "KYC",        href: "/portal/hr/kyc" },
       { icon: "rupee",     label: "Ledger",     href: "/portal/hr/ledger" },
       { icon: "user",      label: "Me",         href: "/portal/hr/profile" },
-    ],
-  },
-
-  travels: {
-    slug: "travels",
-    label: "Travels & Tickets",
-    portalName: "Travel Portal",
-    icon: "map-pin",
-    color: "#0891b2",
-    gradient: "from-cyan-600 to-cyan-700",
-    allowedRoles: ["super_admin", "franchise_admin", "staff", "travels_staff"],
-    tabs: [
-      { icon: "home",      label: "Home",       href: "/portal/travels" },
-      { icon: "calendar",  label: "Events",     href: "/portal/travels/assignments" },
-      { icon: "map-pin",   label: "Tickets",    href: "/portal/travels/tickets" },
-      { icon: "team",      label: "Stylists",   href: "/portal/travels/stylists" },
-      { icon: "user",      label: "Me",         href: "/portal/travels/profile" },
     ],
   },
 }

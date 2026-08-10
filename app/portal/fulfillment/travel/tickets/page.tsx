@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
-import { TravelsBottomNav } from "@/components/portal/travels-bottom-nav"
 import { uploadWithProgress, type UploadResult } from "@/lib/upload-with-progress"
 
 const COLOR = "#0891b2"
@@ -146,7 +145,7 @@ function TicketsPageInner() {
 
   return (
     <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", minHeight: "100vh", background: "#f5ebe0" }}>
-      <PortalPageHeader title="Ticket & Hotel Booking" subtitle="Enter travel details per event" color={COLOR} backHref="/portal/travels" />
+      <PortalPageHeader title="Ticket & Hotel Booking" subtitle="Enter travel details per event" color={COLOR} backHref="/portal/fulfillment/travel" />
 
       <div style={{ padding: "16px 16px 100px" }}>
         {/* Event picker */}
@@ -307,7 +306,6 @@ function TicketsPageInner() {
         </div>
       )}
 
-      <TravelsBottomNav />
     </div>
   )
 }

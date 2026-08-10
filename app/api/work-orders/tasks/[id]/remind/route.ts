@@ -9,7 +9,9 @@ export const runtime = 'nodejs'
 const DEPARTMENT_LABELS: Record<string, string> = {
   warehouse: "Warehouse",
   packing: "Packing",
-  dispatch: "Dispatch",
+  dispatch: "Fulfillment",
+  styling: "Team",
+  travels: "Travel",
   event_team: "Event Team",
   returns: "Returns",
   accounts: "Accounts",
