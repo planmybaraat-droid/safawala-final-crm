@@ -5794,7 +5794,7 @@ body.vadodara-crm-theme[data-crm-visual-scope="main"] :where(
   .leads-module-ui,
   .hr-module-ui,
   .travels-module-ui
-) :where(.bg-white, .bg-white\\/90, .bg-white\\/95, .bg-gray-50, .bg-slate-50, .bg-[#F8F7FA]) :where(.text-white) {
+) :where(.bg-white, [class~="bg-white/90"], [class~="bg-white/95"], .bg-gray-50, .bg-slate-50, [class~="bg-[#F8F7FA]"]) :where(.text-white) {
   color: #17122f !important;
 }
 
@@ -5821,7 +5821,7 @@ body.vadodara-crm-theme[data-crm-visual-scope="main"] :where(
   .leads-module-ui,
   .hr-module-ui,
   .travels-module-ui
-) :where(.text-gray-900, .text-slate-900, .text-[#1F1B24], .text-[#120d29]) {
+) :where(.text-gray-900, .text-slate-900, [class~="text-[#1F1B24]"], [class~="text-[#120d29]"]) {
   color: #17122f !important;
 }
 
@@ -6084,7 +6084,7 @@ body.vadodara-crm-theme[data-crm-visual-scope="main"] .crm-ops-module :where(.ro
   border-color: var(--ops-line) !important;
 }
 
-body.vadodara-crm-theme[data-crm-visual-scope="main"] .crm-ops-module :where(.bg-white, .bg-gray-50, .bg-slate-50, .bg-stone-50, .bg-[#F7F6FF], .bg-[#F8F7FA], .bg-[#F7F6F9]) {
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .crm-ops-module :where(.bg-white, .bg-gray-50, .bg-slate-50, .bg-stone-50, [class~="bg-[#F7F6FF]"], [class~="bg-[#F8F7FA]"], [class~="bg-[#F7F6F9]"]) {
   background: rgba(255, 255, 255, 0.96) !important;
 }
 
@@ -6888,3 +6888,4 @@ body.vadodara-crm-theme[data-crm-visual-scope="main"] .crm-settings-ui .animate-
     min-width: 7.5rem !important;
   }
 }
+
