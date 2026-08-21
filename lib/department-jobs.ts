@@ -79,7 +79,7 @@ export async function ensureDepartmentJobsForOrder({
             return
           }
           // Use the existing row and continue to task creation
-          await createDepartmentTasks(supabase, raceWo.id, orderNumber, formattedJobNumber, customerName, items)
+          await createDepartmentTasks(supabase, raceWo.id, orderNumber, formattedJobNumber, customerName, items, isRental)
         } else {
           console.warn("[DepartmentJobs] Error creating fallback work_order:", woErr.message)
         }
@@ -87,13 +87,13 @@ export async function ensureDepartmentJobsForOrder({
       }
 
       if (newWo?.id) {
-        await createDepartmentTasks(supabase, newWo.id, orderNumber, formattedJobNumber, customerName, items)
+        await createDepartmentTasks(supabase, newWo.id, orderNumber, formattedJobNumber, customerName, items, isRental)
       }
       return
     }
 
     // ── Step 2: Work_order exists — just ensure department tasks ────────────────
-    await createDepartmentTasks(supabase, existingWo.id, orderNumber, formattedJobNumber, customerName, items)
+    await createDepartmentTasks(supabase, existingWo.id, orderNumber, formattedJobNumber, customerName, items, isRental)
 
     console.log(`[DepartmentJobs] ✅ Department tasks ready for ${formattedJobNumber}`)
   } catch (err: any) {
@@ -102,18 +102,19 @@ export async function ensureDepartmentJobsForOrder({
 }
 
 async function createDepartmentTasks(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   woId: string,
   orderNumber: string,
   formattedJobNumber: string,
   customerName: string,
-  items: Array<{ product_name?: string; quantity?: number }>
+  items: Array<{ product_name?: string; quantity?: number }>,
+  isRental: boolean
 ) {
   const instructions = items.length > 0
     ? items.map(i => `${i.quantity || 1} x ${i.product_name || "Item"}`).join("\n")
     : `Booking #${orderNumber} for ${customerName || "Customer"}`
 
-  const departmentTasks = [
+  const departmentTasks: any[] = [
     {
       work_order_id: woId,
       department: "warehouse",
@@ -129,9 +130,9 @@ async function createDepartmentTasks(
     },
     {
       work_order_id: woId,
-      department: "qc",
-      task_number: `QC-${orderNumber}`,
-      title: `✅ Quality Check (QC) - ${formattedJobNumber}`,
+      department: "packing",
+      task_number: `PK-${orderNumber}`,
+      title: `✅ Quality Check & Packing - ${formattedJobNumber}`,
       status: "pending",
       instructions: "Perform stain inspection, iron check, and accessory verification.",
       checklist: [
@@ -140,7 +141,7 @@ async function createDepartmentTasks(
         { text: "Count & Accessories Verified", checked: false },
       ],
     },
-    {
+    ...(isRental ? [{
       work_order_id: woId,
       department: "styling",
       task_number: `ST-${orderNumber}`,
@@ -165,12 +166,12 @@ async function createDepartmentTasks(
         { text: "Ticket / Driver Assigned", checked: false },
         { text: "Boarding & Arrival Confirmed", checked: false },
       ],
-    },
+    }] : []),
     {
       work_order_id: woId,
-      department: "delivery",
-      task_number: `DL-${orderNumber}`,
-      title: `🚛 Delivery & Handover - ${formattedJobNumber}`,
+      department: "dispatch",
+      task_number: `DP-${orderNumber}`,
+      title: `🚛 Fulfillment & Dispatch - ${formattedJobNumber}`,
       status: "pending",
       instructions: "Dispatch order to venue and acquire client signature.",
       checklist: [
@@ -179,6 +180,20 @@ async function createDepartmentTasks(
         { text: "Challan Signed by Client", checked: false },
       ],
     },
+    ...(isRental ? [{
+      work_order_id: woId,
+      department: "returns",
+      task_number: `RT-${orderNumber}`,
+      title: `↩️ Return Collection - ${formattedJobNumber}`,
+      status: "pending",
+      instructions: "Collect all rental materials, verify quantities and record damage or laundry requirements.",
+      checklist: [
+        { text: "Material Returned", checked: false },
+        { text: "Count Verified", checked: false },
+        { text: "Damage Checked", checked: false },
+        { text: "Laundry Requirement Recorded", checked: false },
+      ],
+    }] : []),
     {
       work_order_id: woId,
       department: "accounts",
@@ -190,19 +205,6 @@ async function createDepartmentTasks(
         { text: "Advance Payment Verified", checked: false },
         { text: "Security Deposit Received", checked: false },
         { text: "Invoice Ledger Updated", checked: false },
-      ],
-    },
-    {
-      work_order_id: woId,
-      department: "manager",
-      task_number: `MG-${orderNumber}`,
-      title: `👑 Manager Monitoring - ${formattedJobNumber}`,
-      status: "monitoring",
-      instructions: "Monitor lifecycle across all 6 departments.",
-      checklist: [
-        { text: "Order Creation Audit", checked: false },
-        { text: "All Department Tasks Initialized", checked: false },
-        { text: "Final Completion Sign-off", checked: false },
       ],
     },
   ]

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { PortalTab } from "@/lib/portal-config"
 import { PortalIcon } from "./portal-icons"
-import { useEffect, useState } from "react"
+import { usePortalUser } from "./portal-user-context"
 
 interface PortalBottomNavProps {
   tabs: PortalTab[]
@@ -13,13 +13,7 @@ interface PortalBottomNavProps {
 
 export function PortalBottomNav({ tabs, color }: PortalBottomNavProps) {
   const pathname = usePathname()
-  const [user, setUser] = useState<any>(null)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("safawala_user")
-      if (raw) setUser(JSON.parse(raw))
-    } catch {}
-  }, [])
+  const user = usePortalUser()
   const visibleTabs = tabs.filter((tab) => {
     if (!tab.permission) return true
     if (user?.is_super_admin || user?.role === "franchise_admin") return true
@@ -32,7 +26,7 @@ export function PortalBottomNav({ tabs, color }: PortalBottomNavProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around"
+      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around portal-bottom-nav"
       style={{
         background: "rgba(24,24,27,0.97)",
         backdropFilter: "blur(20px)",
@@ -54,6 +48,7 @@ export function PortalBottomNav({ tabs, color }: PortalBottomNavProps) {
           <Link
             key={tab.href}
             href={tab.href}
+            aria-current={isActive ? "page" : undefined}
             className="flex flex-col items-center justify-center gap-1 flex-1 h-full relative transition-all duration-200"
           >
             {isActive && (

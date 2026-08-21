@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -76,6 +76,10 @@ export function BookingsTabs({
   mode,
 }: BookingsTabsProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const isBookingPortal = pathname.startsWith("/portal/booking")
+  const bookingsBasePath = isBookingPortal ? "/portal/booking/bookings" : "/bookings"
+  const bookingEditorPath = isBookingPortal ? `${bookingsBasePath}/new` : "/create-invoice"
   const [activeTab, setActiveTab] = useState(mode ? (mode === "rental" ? "product-rental" : "direct-sale") : "all")
   const [showArchived, setShowArchived] = useState(false)
 
@@ -87,7 +91,7 @@ export function BookingsTabs({
   // Handler to open invoice for a booking - open create-invoice page in edit mode with auto-print
   const handleViewInvoice = (booking: Booking) => {
     // Open in a new tab with print=true query param
-    window.open(`/create-invoice?mode=edit&id=${booking.id}&print=true`, '_blank')
+    window.open(`${bookingEditorPath}?mode=edit&id=${booking.id}&print=true`, '_blank')
   }
 
   // Filter bookings by type
@@ -146,7 +150,7 @@ export function BookingsTabs({
           <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No bookings found</h3>
           <p className="text-muted-foreground mb-6">Create your first booking to get started</p>
-          <Link href="/create-invoice">
+          <Link href={`${bookingsBasePath}/new`}>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Create Booking
@@ -154,9 +158,9 @@ export function BookingsTabs({
           </Link>
         </div>
       ) : (
-        <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="booking-list-table w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           {/* Header Row */}
-          <div className="hidden lg:grid grid-cols-12 gap-4 px-5 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 tracking-wider uppercase">
+          <div className="booking-list-table-head hidden lg:grid grid-cols-12 gap-4 px-5 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 tracking-wider uppercase">
             <div className="col-span-2">Booking #</div>
             <div className={mode ? "col-span-3" : "col-span-2"}>Customer</div>
             {!mode && <div className="col-span-2">Type</div>}
@@ -168,11 +172,11 @@ export function BookingsTabs({
           </div>
 
           {/* Body Rows */}
-          <div className="divide-y divide-slate-100">
+          <div className="booking-list-table-body divide-y divide-slate-100">
             {bookingsList.map((booking) => (
               <div 
                 key={booking.id}
-                className="grid grid-cols-1 lg:grid-cols-12 gap-4 px-5 py-3 items-center hover:bg-slate-50 transition-colors relative group"
+                className="booking-list-row grid grid-cols-1 lg:grid-cols-12 gap-4 px-5 py-3 items-center hover:bg-slate-50 transition-colors relative group"
               >
                 {/* Mobile labels shown only on small screens */}
                 <div className="col-span-2 flex items-center justify-between lg:block">
@@ -433,8 +437,8 @@ export function BookingsTabs({
       {/* All Bookings Tab */}
       {!mode && (
         <TabsContent value="all" className="mt-4">
-          <Card className="border border-slate-200 bg-white rounded-xl shadow-sm">
-            <CardHeader className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+          <Card className="booking-list-section border border-slate-200 bg-white rounded-xl shadow-sm">
+            <CardHeader className="booking-list-section-header border-b border-slate-100 bg-slate-50 px-4 py-3">
               <CardTitle className="text-base font-semibold text-slate-800">All Bookings ({allBookings.length})</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -446,8 +450,8 @@ export function BookingsTabs({
 
       {/* Product Rentals Tab */}
       <TabsContent value="product-rental" className="mt-4">
-        <Card className="border border-slate-200 bg-white rounded-xl shadow-sm">
-          <CardHeader className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <Card className="booking-list-section border border-slate-200 bg-white rounded-xl shadow-sm">
+          <CardHeader className="booking-list-section-header border-b border-slate-100 bg-slate-50 px-4 py-3">
             <CardTitle className="text-base font-semibold text-slate-800">Product Rentals ({productRentals.length})</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">Shows Quote Status & Invoice</p>
           </CardHeader>
@@ -459,8 +463,8 @@ export function BookingsTabs({
 
       {/* Direct Sales Tab */}
       <TabsContent value="direct-sale" className="mt-4">
-        <Card className="border border-slate-200 bg-white rounded-xl shadow-sm">
-          <CardHeader className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <Card className="booking-list-section border border-slate-200 bg-white rounded-xl shadow-sm">
+          <CardHeader className="booking-list-section-header border-b border-slate-100 bg-slate-50 px-4 py-3">
             <CardTitle className="text-base font-semibold text-slate-800">Direct Sales ({directSales.length})</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">Shows Invoice only (no quotes)</p>
           </CardHeader>

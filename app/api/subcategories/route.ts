@@ -23,13 +23,11 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       // Table might not exist — return empty array gracefully
-      console.warn("[/api/subcategories] Query error:", error.message)
       return NextResponse.json({ data: [] })
     }
 
     return NextResponse.json({ data: data ?? [] })
   } catch (err: any) {
-    console.error("[/api/subcategories] Error:", err.message)
     return NextResponse.json({ data: [] })
   }
 }

@@ -12,6 +12,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/franchise-enquiry",
   "/_next",
   "/favicon",
+  "/manifest.json",
+  "/sw.js",
   "/public",
   "/assets",
   "/sizebar",

@@ -19,6 +19,7 @@ import { PhotoGallery } from "./photo-gallery"
 import { VariantManager, ProductVariant } from "./variant-manager"
 import { BarcodeGenerator } from "./barcode-generator-enhanced"
 import { doPrint, getCleanVariantName } from "./barcode-print-dialog"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 
 interface Product {
   id?: string
@@ -498,7 +499,7 @@ export function ProductEditorModal({
                     const mainImg = images.find((img) => img.is_main) || images[0]
                     return mainImg ? (
                       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-green-50 border border-green-200">
-                        <img src={mainImg.url} alt="product" className="w-7 h-7 rounded object-cover border border-green-300" />
+                        <OptimizedImage src={mainImg.url} alt="product" webpWidth={160} className="w-7 h-7 rounded object-cover border border-green-300" />
                         <span className="text-xs text-green-700 font-medium">✓ Using uploaded product photo</span>
                       </div>
                     ) : (
@@ -788,7 +789,7 @@ export function ProductEditorModal({
                         const mainImg = images.find(i => i.is_main) || images[0]
                         return mainImg ? (
                           <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
-                            <img src={mainImg.url} alt="source" className="w-10 h-10 rounded object-cover border border-green-300" />
+                            <OptimizedImage src={mainImg.url} alt="source" webpWidth={180} className="w-10 h-10 rounded object-cover border border-green-300" />
                             <div>
                               <p className="text-xs font-medium text-green-700">✓ Using your primary product photo</p>
                               <p className="text-xs text-green-500">AI will read this image and generate 6 studio versions</p>
@@ -852,7 +853,7 @@ export function ProductEditorModal({
                           <div className="grid grid-cols-3 gap-2">
                             {studioImages.map((img) => (
                               <div key={img.key} className="relative rounded-xl overflow-hidden border border-violet-100 group">
-                                <img src={img.image} alt={img.label} className="w-full h-28 object-cover" />
+                                <OptimizedImage src={img.image} alt={img.label} webpWidth={360} className="w-full h-28 object-cover" />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all" />
                                 <div className="absolute bottom-0 left-0 right-0 p-1.5 flex items-end justify-between">
                                   <span className="text-xs text-white drop-shadow font-medium">{img.icon} {img.label}</span>

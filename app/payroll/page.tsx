@@ -1142,7 +1142,7 @@ export default function PayrollPage() {
   return (
     <DashboardLayout>
       <TooltipProvider>
-        <div className="space-y-6 bg-[#F7F6FF] p-6 rounded-2xl border border-[#E7E2EA]">
+        <div className="crm-ops-module crm-payroll-ui space-y-6 bg-[#F7F6FF] p-6 rounded-2xl border border-[#E7E2EA]">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E7E2EA]">
             <div className="flex items-start gap-3">
@@ -1275,7 +1275,7 @@ export default function PayrollPage() {
                             <TableCell className="font-mono text-stone-600 text-xs">₹{totalDeductions.toLocaleString()}</TableCell>
                             <TableCell className="font-mono text-stone-900 text-xs font-semibold">₹{record.net_salary.toLocaleString()}</TableCell>
                             <TableCell>
-                              <Badge className={`${getStatusColor(record.status)} text-[10px] border border-transparent font-sans py-0.5 px-2 rounded-full font-medium shadow-none`}>
+                              <Badge className={`payroll-status-badge payroll-status-${record.status?.toLowerCase()} ${getStatusColor(record.status)} text-[11px] border font-sans py-1 px-3 rounded-full font-semibold shadow-none`}>
                                 {record.status}
                               </Badge>
                             </TableCell>
@@ -1384,7 +1384,7 @@ export default function PayrollPage() {
 
           {/* Extra Salary Dialog */}
           <Dialog open={extraSalaryDialog} onOpenChange={setExtraSalaryDialog}>
-            <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
+            <DialogContent className="crm-ops-dialog bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
                 <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Add Extra Salary</DialogTitle>
                 <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Add bonus or extra salary for {selectedEmployee?.employee_name}</DialogDescription>
@@ -1421,7 +1421,7 @@ export default function PayrollPage() {
 
           {/* Overtime Dialog */}
           <Dialog open={overtimeDialog} onOpenChange={setOvertimeDialog}>
-            <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
+            <DialogContent className="crm-ops-dialog bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
                 <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Add Overtime</DialogTitle>
                 <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Add overtime hours for {selectedEmployee?.employee_name}</DialogDescription>
@@ -1463,7 +1463,7 @@ export default function PayrollPage() {
 
           {/* Salary Cut Dialog */}
           <Dialog open={salaryCutDialog} onOpenChange={setSalaryCutDialog}>
-            <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
+            <DialogContent className="crm-ops-dialog bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
                 <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Apply Salary Cut</DialogTitle>
                 <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Apply salary deduction for {selectedEmployee?.employee_name}</DialogDescription>
@@ -1500,7 +1500,7 @@ export default function PayrollPage() {
 
           {/* Advance Salary Dialog */}
           <Dialog open={advanceSalaryDialog} onOpenChange={setAdvanceSalaryDialog}>
-            <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
+            <DialogContent className="crm-ops-dialog bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-sm">
               <DialogHeader className="border-b border-stone-100 pb-3">
                 <DialogTitle className="font-sans font-semibold text-xl text-[#4A1F5E]">Advance Salary</DialogTitle>
                 <DialogDescription className="text-xs text-stone-400 font-sans font-semibold mt-1">Provide advance salary to {selectedEmployee?.employee_name}</DialogDescription>
@@ -1540,7 +1540,7 @@ export default function PayrollPage() {
 
           {/* Payslip View Dialog */}
           <Dialog open={viewPayslipDialog} onOpenChange={setViewPayslipDialog}>
-            <DialogContent className="max-w-2xl bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl">
+            <DialogContent className="crm-ops-dialog max-w-2xl bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl">
               <DialogHeader className="border-b border-stone-100 pb-3">
                 <DialogTitle className="flex items-center justify-between font-sans font-semibold text-2xl text-[#4A1F5E]">
                   <span>Salary Slip</span>
@@ -1612,7 +1612,7 @@ export default function PayrollPage() {
                     </div>
                     <div>
                       <span className="text-[9px] font-semibold text-stone-400 uppercase tracking-widest block text-right">Payment Status</span>
-                      <Badge className={`${getStatusColor(selectedPayslip.status)} mt-1`}>
+                      <Badge className={`payroll-status-badge payroll-status-${selectedPayslip.status?.toLowerCase()} ${getStatusColor(selectedPayslip.status)} mt-1`}>
                         {selectedPayslip.status}
                       </Badge>
                     </div>
@@ -1624,7 +1624,7 @@ export default function PayrollPage() {
 
           {/* Edit Payroll Dialog */}
           <Dialog open={editPayrollDialog} onOpenChange={setEditPayrollDialog}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl">
+            <DialogContent className="crm-ops-dialog max-w-4xl max-h-[90vh] overflow-y-auto bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl">
               <DialogHeader className="border-b border-stone-100 pb-3">
                 <DialogTitle className="font-sans font-semibold text-2xl text-[#4A1F5E]">Edit Payroll Breakdown - {selectedEditRecord?.employee_name}</DialogTitle>
               </DialogHeader>

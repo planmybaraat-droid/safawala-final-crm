@@ -252,7 +252,7 @@ export default function ProductArchivePage() {
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="crm-ops-module crm-product-archive-ui flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
@@ -264,7 +264,7 @@ export default function ProductArchivePage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="crm-ops-module crm-product-archive-ui flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -495,7 +495,7 @@ export default function ProductArchivePage() {
 
       {/* Archive Product Dialog */}
       <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="crm-ops-dialog max-w-2xl">
           <DialogHeader>
             <DialogTitle>Archive Product</DialogTitle>
             <DialogDescription>Move a product to archive (lost, damaged, etc.)</DialogDescription>

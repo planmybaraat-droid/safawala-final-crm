@@ -39,3 +39,16 @@ next-env.d.ts
 .puppeteer-chrome-profile/
 # local package store
 .pnpm-store/
+
+# local runtime logs / pids
+*.log
+*.pid
+
+# local test/cache output
+/test-results/
+/test-reports/
+/tmp/
+/scratch/
+
+# editor/local temp files
+.vscode/

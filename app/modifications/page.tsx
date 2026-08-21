@@ -203,9 +203,9 @@ export default function ModificationsPage() {
     : displayedBookings
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
+    <div className="crm-ops-module crm-modifications-ui flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5 border-slate-100 dark:border-slate-800">
+      <div className="modifications-hero flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5 border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
             <ArrowLeft className="h-5 w-5" />
@@ -229,9 +229,9 @@ export default function ModificationsPage() {
       </div>
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-4">
-          <TabsList className="bg-slate-100/80 dark:bg-slate-800/80 p-1">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="modifications-workspace w-full">
+        <div className="modifications-toolbar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-4">
+          <TabsList className="modifications-tabs bg-slate-100/80 dark:bg-slate-800/80 p-1">
             <TabsTrigger value="pending" className="flex items-center gap-2 font-semibold">
               <Clock className="h-4 w-4" />
               Pending Alterations
@@ -246,7 +246,7 @@ export default function ModificationsPage() {
           </TabsList>
 
           {/* Quick Filters */}
-          <div className="flex items-center gap-2">
+          <div className="modifications-filter-pills flex items-center gap-2">
             <Button
               variant={timeFilter === "all" ? "default" : "outline"}
               size="sm"
@@ -275,7 +275,7 @@ export default function ModificationsPage() {
         </div>
 
         {/* Search */}
-        <div className="relative w-full max-w-md mb-6">
+        <div className="modifications-search relative w-full max-w-md mb-6">
           <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Search by order #, customer name or phone..."
@@ -288,7 +288,7 @@ export default function ModificationsPage() {
         {loading ? (
           <PageLoader />
         ) : finalBookings.length === 0 ? (
-          <Card className="border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+          <Card className="modifications-empty-state border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
             <CardContent className="flex flex-col items-center justify-center py-16 gap-3 text-center">
               <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400">
                 <Shirt className="h-8 w-8" />
@@ -310,7 +310,7 @@ export default function ModificationsPage() {
               return (
                 <Card 
                   key={booking.id} 
-                  className={`transition-all duration-300 shadow-sm border hover:shadow-md ${
+                  className={`modification-task-card transition-all duration-300 shadow-sm border hover:shadow-md ${
                     isUrgent 
                       ? "border-red-200 bg-red-50/5 dark:border-red-950 dark:bg-red-950/5" 
                       : "border-slate-200 dark:border-slate-800"

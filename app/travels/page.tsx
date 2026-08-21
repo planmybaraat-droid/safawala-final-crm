@@ -86,8 +86,8 @@ export default function TravelsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 bg-[#F8F7FA]">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+      <div className="crm-workspace-shell travels-module-ui space-y-6 bg-[#F8F7FA]">
+        <div className="crm-module-hero flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-6">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] bg-[#F1EAF5] text-[#4A1F5E]"><Plane className="h-9 w-9" /></div>
             <div>
@@ -99,12 +99,12 @@ export default function TravelsPage() {
             <Button variant="outline" className="border-[#E7E2EA] bg-white text-base text-[#4A1F5E] hover:bg-[#F1EAF5]" onClick={fetchTrips}>
               <RefreshCw className="mr-2 h-5 w-5" />Refresh
             </Button>
-            <Button className="bg-[#4A1F5E] text-base text-white hover:bg-[#5C2A72]" onClick={() => setShowCreate(true)}>
+            <Button className="crm-primary-action bg-[#4A1F5E] text-base text-white hover:bg-[#5C2A72]" onClick={() => setShowCreate(true)}>
               <Plus className="mr-2 h-5 w-5" />Create
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="crm-stats-grid grid grid-cols-1 gap-6 md:grid-cols-2">
           {[
             { label: "Total Bookings", value: trips.length, icon: Plane, color: "#0891b2" },
             { label: "Upcoming", value: upcoming.length, icon: Calendar, color: "#22c55e" },
@@ -114,7 +114,7 @@ export default function TravelsPage() {
             <Card key={stat.label} className="border-[#E5DFE8] bg-white shadow-sm"><CardContent className="flex items-center gap-4 p-5"><div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl" style={{ background: `${stat.color}15` }}><stat.icon className="h-10 w-10" style={{ color: stat.color }} /></div><div><div className="text-lg text-[#6F6878]">{stat.label}</div><div className="text-2xl font-semibold text-[#1F1B24]">{loading ? "…" : stat.value}</div><div className="text-base text-[#8C8492]">{stat.label === "Total Bookings" ? "All time" : stat.label === "Upcoming" ? "Next 7 days" : stat.label === "Documents Added" ? "Total documents" : "Action required"}</div></div></CardContent></Card>
           ))}
         </div>
-        <div className="relative max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" /><Input placeholder="Search by client, venue, order #..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
+        <div className="crm-filter-surface relative max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" /><Input placeholder="Search by client, venue, order #..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
         {loading ? (
           <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>
         ) : filtered.length === 0 ? (
@@ -184,7 +184,7 @@ function CreateTravelDialog({ trips, onClose, onCreated }: { trips: any[]; onClo
   }
 
   return <Dialog open onOpenChange={open => !open && onClose()}>
-    <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+    <DialogContent className="crm-dialog-panel max-h-[92vh] max-w-3xl overflow-y-auto">
       <DialogHeader><DialogTitle className="text-2xl text-[#1F1B24]">Create Travel & Hotel Booking</DialogTitle><DialogDescription>Arrange transport and accommodation for an event.</DialogDescription></DialogHeader>
       <div className="grid gap-4 pt-2 md:grid-cols-2">
         <div className="md:col-span-2"><Label className="mb-1.5 block text-sm font-medium text-[#1F1B24]">Link Existing Event *</Label><Select value={eventId} onValueChange={setEventId}><SelectTrigger><SelectValue placeholder={trips.length ? "Select an existing booking" : "No existing events available"} /></SelectTrigger><SelectContent>{trips.filter(t => t.booking_id !== null && t.booking_id !== undefined).map(t => <SelectItem key={t.id} value={t.id}>{t.event_date} · {t.customer_name} · {t.order_number}</SelectItem>)}</SelectContent></Select></div>
@@ -201,7 +201,7 @@ function BookingRow({ trip, onClick }: { trip: any; onClick: () => void }) {
   const status = trip.travel?.status ?? "pending"
   const docCount = trip.travel?.documents?.length ?? 0
   return (
-    <Card onClick={onClick} className="border border-gray-200 hover:border-cyan-300 hover:shadow-sm transition-all cursor-pointer">
+    <Card onClick={onClick} className="travel-booking-row border border-gray-200 hover:border-cyan-300 hover:shadow-sm transition-all cursor-pointer">
       <CardContent className="p-3.5 flex items-center gap-4">
         <div className="w-11 h-11 rounded-lg bg-cyan-50 flex flex-col items-center justify-center shrink-0 text-cyan-700">
           <Calendar className="w-4 h-4" />
@@ -289,7 +289,7 @@ function TravelPanel({ trip, onClose, onSaved }: { trip: any; onClose: () => voi
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="crm-dialog-panel max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Hotel className="w-5 h-5 text-[#0891b2]" />

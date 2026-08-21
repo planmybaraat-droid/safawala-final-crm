@@ -14,6 +14,7 @@ import { ItemsDisplayDialog, ItemsSelectionDialog, CompactItemsDisplayDialog } f
 import type { SelectedItem } from "@/components/shared/types/items"
 import { PincodeService } from "@/lib/pincode-service"
 import { useToast } from "@/hooks/use-toast"
+import { usePathname } from "next/navigation"
 
 interface BookingData {
   id: string
@@ -56,6 +57,10 @@ interface BookingCalendarProps {
 
 export function BookingCalendar({ franchiseId, compact = false, mini = false, onViewDetails }: BookingCalendarProps) {
   const { toast } = useToast()
+  const pathname = usePathname()
+  const isBookingPortal = pathname.startsWith("/portal/booking")
+  const bookingsBasePath = isBookingPortal ? "/portal/booking/bookings" : "/bookings"
+  const bookingEditorPath = isBookingPortal ? `${bookingsBasePath}/new` : "/create-invoice"
   const [selectedDate, setSelectedDate] = React.useState<Date>()
   const [showDateDetails, setShowDateDetails] = React.useState(false)
   const [bookings, setBookings] = React.useState<BookingData[]>([])
@@ -559,7 +564,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
   }
 
   return (
-    <Card className="shadow-md border-border/40 w-full">
+    <Card className="shadow-md border-border/40 w-full vadodara-booking-schedule-card">
       <CardHeader className="pb-4 px-6 border-b bg-gradient-to-br from-background to-muted/20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <CardTitle className="text-xl font-extrabold flex items-center gap-2">
@@ -743,7 +748,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                   <div className="text-slate-500 font-medium">No events scheduled for this date</div>
                   <div className="mt-4">
                     <Button size="sm" asChild>
-                      <a href="/create-invoice">+ Create Booking</a>
+                      <a href={`${bookingsBasePath}/new`}>+ Create Booking</a>
                     </Button>
                   </div>
                 </div>
@@ -890,12 +895,12 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                                     </Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-slate-100"
                                       title="Edit Booking"
-                                      onClick={() => window.open(`/create-invoice?mode=edit&id=${b.id}`, '_blank')}>
+                                      onClick={() => window.open(`${bookingEditorPath}?mode=edit&id=${b.id}`, '_blank')}>
                                       <span className="text-xs">✏️</span>
                                     </Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-green-50 hover:text-green-700"
                                       title="Print Invoice"
-                                      onClick={() => window.open(`/create-invoice?mode=edit&id=${b.id}&print=true`, '_blank')}>
+                                      onClick={() => window.open(`${bookingEditorPath}?mode=edit&id=${b.id}&print=true`, '_blank')}>
                                       <span className="text-xs">🖨️</span>
                                     </Button>
                                     <Button size="icon" variant="ghost"
@@ -1158,7 +1163,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                       customer_phone: b.customer_phone || '',
                       prefill: '1'
                     })
-                    window.open(`/create-invoice?${params.toString()}`, '_blank')
+                    window.open(`${bookingEditorPath}?${params.toString()}`, '_blank')
                     setConvertTypeBooking(null)
                   }}
                 >
@@ -1176,7 +1181,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                       customer_phone: b.customer_phone || '',
                       prefill: '1'
                     })
-                    window.open(`/create-invoice?${params.toString()}`, '_blank')
+                    window.open(`${bookingEditorPath}?${params.toString()}`, '_blank')
                     setConvertTypeBooking(null)
                   }}
                 >

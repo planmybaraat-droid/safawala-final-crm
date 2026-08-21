@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import type { PortalConfig } from "@/lib/portal-config"
 import { PortalIcon } from "./portal-icons"
 import { signOut } from "@/lib/auth"
-import { useEffect, useState } from "react"
+import { usePortalUser } from "./portal-user-context"
 
 interface PortalSidebarProps {
   config: PortalConfig
@@ -14,12 +14,7 @@ interface PortalSidebarProps {
 export function PortalSidebar({ config }: PortalSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-
-  useEffect(() => {
-    const raw = localStorage.getItem("safawala_user")
-    if (raw) { try { setUser(JSON.parse(raw)) } catch {} }
-  }, [])
+  const user = usePortalUser()
 
   async function handleLogout() {
     try { await signOut() } catch {}
@@ -33,6 +28,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
 
   return (
     <aside
+      className="portal-sidebar"
       style={{
         width: 240,
         minHeight: "100vh",
@@ -113,6 +109,7 @@ export function PortalSidebar({ config }: PortalSidebarProps) {
             <Link
               key={tab.href}
               href={tab.href}
+              aria-current={isActive ? "page" : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",

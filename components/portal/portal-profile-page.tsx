@@ -34,7 +34,7 @@ export function PortalProfilePage({ dept, color, backHref }: { dept: string; col
   const initials = user.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) ?? "?"
 
   return (
-    <div>
+    <div className={dept === "warehouse" ? "warehouse-profile-page" : undefined}>
       <PortalPageHeader title="My Profile" color={color} backHref={backHref} />
 
       {/* Avatar */}

@@ -31,7 +31,7 @@ function loadPdfJs(): Promise<any> {
   return pdfjsLoadPromise
 }
 
-const COLOR = "#a855f7"
+const COLOR = "#6f3f7b"
 
 // ─── Date grouping for job lists (grouped by Job Created Date, newest first) ─
 function dayKey(iso?: string) {
@@ -111,7 +111,13 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
   const whTask = wo?.work_order_tasks?.find((t: any) => t.department === "warehouse")
   const instructions = whTask?.instructions || wo?.instructions || "No picking instructions."
   const isRental = wo?.booking_source !== "direct_sales_orders"
-  const accent: [number, number, number] = isRental ? [79, 70, 229] : [5, 150, 105]
+  // Warehouse-only document palette. Keep this local to the warehouse pick
+  // slip generator so packing slips and documents from other portals retain
+  // their existing branding.
+  const accent: [number, number, number] = [111, 63, 123]
+  const accentStrong: [number, number, number] = [75, 36, 88]
+  const accentSoft: [number, number, number] = [243, 237, 245]
+  const accentGold: [number, number, number] = [200, 169, 107]
   const typeLabel = isRental ? "Rental — Return Required" : "Direct Sale — One Way"
 
   const lines: Array<{ text: string; checked: boolean }> = (checklist && checklist.length > 0)
@@ -134,13 +140,32 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
   const doc = new jsPDF({ unit: "mm", format: "a4" })
   const pageWidth = 210
 
+  const fitText = (value: unknown, maxWidth: number) => {
+    const source = String(value || "—")
+    if (doc.getTextWidth(source) <= maxWidth) return source
+    let fitted = source
+    while (fitted.length > 1 && doc.getTextWidth(`${fitted}…`) > maxWidth) fitted = fitted.slice(0, -1)
+    return `${fitted.trimEnd()}…`
+  }
+
+  const wrappedText = (value: unknown, maxWidth: number, maxLines = 2): string[] => {
+    const source = String(value || "—")
+    const split = doc.splitTextToSize(source, maxWidth) as string[]
+    if (split.length <= maxLines) return split
+    const visible = split.slice(0, maxLines)
+    visible[maxLines - 1] = fitText(`${visible[maxLines - 1]}…`, maxWidth)
+    return visible
+  }
+
   const drawHalf = (yTop: number, copyLabel: string) => {
     const left = 12
     const right = pageWidth - 12
 
     // Header band
-    doc.setFillColor(accent[0], accent[1], accent[2])
+    doc.setFillColor(...accentStrong)
     doc.rect(0, yTop, pageWidth, 1.6, "F")
+    doc.setFillColor(...accentGold)
+    doc.rect(0, yTop + 1.6, pageWidth, 0.45, "F")
 
     let y = yTop + 10.5
 
@@ -151,8 +176,8 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
         doc.addImage(logoDataUrl, props.fileType, left, y - 7.5, w, h)
         doc.setFontSize(13)
         doc.setFont("helvetica", "bold")
-        doc.setTextColor(...accent)
-        doc.text(companyName.toUpperCase(), left + w + 4, y - 1.5)
+        doc.setTextColor(...accentStrong)
+        doc.text(fitText(companyName.toUpperCase(), right - (left + w + 4) - 35), left + w + 4, y - 1.5)
         doc.setFontSize(7.5)
         doc.setFont("helvetica", "normal")
         doc.setTextColor(120, 120, 120)
@@ -165,23 +190,23 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
     }
 
     function drawLogoChip() {
-      doc.setFillColor(accent[0], accent[1], accent[2])
+      doc.setFillColor(...accentStrong)
       doc.roundedRect(left, y - 6, 9, 9, 1.5, 1.5, "F")
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(11)
       doc.setFont("helvetica", "bold")
       doc.text(companyName.charAt(0).toUpperCase(), left + 4.5, y, { align: "center" })
-      doc.setTextColor(...accent)
+      doc.setTextColor(...accentStrong)
       doc.setFontSize(13)
       doc.setFont("helvetica", "bold")
-      doc.text(companyName.toUpperCase(), left + 13, y - 1.5)
+      doc.text(fitText(companyName.toUpperCase(), right - (left + 13) - 35), left + 13, y - 1.5)
       doc.setTextColor(120, 120, 120)
       doc.setFontSize(7.5)
       doc.setFont("helvetica", "normal")
       doc.text("Warehouse Picking Slip", left + 13, y + 3)
     }
 
-    doc.setTextColor(...accent)
+    doc.setTextColor(...accentStrong)
     doc.setFontSize(6.5)
     doc.setFont("helvetica", "bold")
     doc.text(typeLabel.toUpperCase(), left, y + 7.5)
@@ -190,30 +215,37 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
     doc.setFontSize(7.5)
     doc.setFont("helvetica", "bold")
     doc.text(copyLabel, right, y - 4, { align: "right" })
-    doc.setTextColor(...accent)
+    doc.setTextColor(...accentStrong)
     doc.setFontSize(11)
     doc.text(wo?.work_order_number || "—", right, y + 1.5, { align: "right" })
 
     y += 12
-    doc.setDrawColor(225, 225, 225)
+    doc.setDrawColor(221, 225, 230)
     doc.line(left, y, right, y)
     y += 5.5
 
     doc.setFontSize(8.5)
     const infoRow = (label1: string, val1: string, label2: string, val2: string) => {
+      const leftValueX = left + 22
+      const rightLabelX = left + 98
+      const rightValueX = left + 120
+      const leftLines = wrappedText(val1, rightLabelX - leftValueX - 4)
+      const rightLines = wrappedText(val2, right - rightValueX)
+      const rowLines = Math.max(leftLines.length, rightLines.length)
+
       doc.setFont("helvetica", "bold")
       doc.setTextColor(120, 120, 120)
       doc.text(label1, left, y)
       doc.setFont("helvetica", "normal")
       doc.setTextColor(30, 30, 30)
-      doc.text(val1 || "—", left + 22, y)
+      doc.text(leftLines, leftValueX, y, { lineHeightFactor: 1.05 })
       doc.setFont("helvetica", "bold")
       doc.setTextColor(120, 120, 120)
-      doc.text(label2, left + 95, y)
+      doc.text(label2, rightLabelX, y)
       doc.setFont("helvetica", "normal")
       doc.setTextColor(30, 30, 30)
-      doc.text(val2 || "—", left + 117, y)
-      y += 4.4
+      doc.text(rightLines, rightValueX, y, { lineHeightFactor: 1.05 })
+      y += Math.max(4.4, rowLines * 3.35 + 1.05)
     }
     infoRow("Booking Ref", wo?.booking_number, "Event Date", eventDate)
     infoRow("Customer", customer?.name || wo?.customer_name, "Phone", customer?.phone || wo?.customer_phone)
@@ -243,7 +275,9 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
       body: lines.map((l, i) => [String(i + 1), "", l.text]),
       theme: "grid",
       styles: { fontSize: 8.5, cellPadding: 1.5, valign: "middle" },
-      headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: "bold", fontSize: 7.5 },
+      headStyles: { fillColor: accentSoft, textColor: accentStrong, fontStyle: "bold", fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [250, 249, 251] },
+      tableLineColor: [221, 225, 230],
       columnStyles: { 0: { cellWidth: 8, halign: "center" }, 1: { cellWidth: 8, halign: "center" } },
       didDrawCell: (data) => {
         // Draw a real checkbox glyph in column 1 (skip header row)
@@ -253,7 +287,7 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
           const cy = data.cell.y + data.cell.height / 2 - 1.5
           doc.setDrawColor(120, 120, 120)
           if (item?.checked) {
-            doc.setFillColor(...accent)
+            doc.setFillColor(...accentStrong)
             doc.rect(cx, cy, 3, 3, "FD")
             doc.setDrawColor(255, 255, 255)
             doc.setLineWidth(0.4)
@@ -285,8 +319,8 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
       doc.setFontSize(6.3)
       doc.setTextColor(150, 150, 150)
       doc.setFont("helvetica", "normal")
-      if (addressLine) doc.text(addressLine, pageWidth / 2, footY, { align: "center" })
-      if (contactLine) doc.text(contactLine, pageWidth / 2, footY + 3, { align: "center" })
+      if (addressLine) doc.text(fitText(addressLine, right - left), pageWidth / 2, footY, { align: "center" })
+      if (contactLine) doc.text(fitText(contactLine, right - left), pageWidth / 2, footY + 3, { align: "center" })
     }
   }
 
@@ -310,7 +344,7 @@ async function buildPickingSlipPDF(wo: any, checklist: Array<{ text: string; che
 
 interface Task {
   id: string
-  department: 'warehouse' | 'packing' | 'dispatch' | 'event_team' | 'returns' | 'accounts'
+  department: 'warehouse' | 'packing' | 'dispatch' | 'event_team' | 'returns' | 'return_receiving' | 'accounts'
   task_number: string
   title: string
   status: 'pending' | 'active' | 'picked' | 'shortage' | 'completed' | 'cancelled'
@@ -495,14 +529,15 @@ export default function TasksPage() {
     }
   }
 
-  // Warehouse now only handles picking — packing moved to the QC portal
-  const pickingTasks = workOrders.flatMap(wo => {
+  // Warehouse handles picking before dispatch and receiving/storage after a
+  // rental return. Both use the same existing job-card and modal design.
+  const warehouseTasks = workOrders.flatMap(wo => {
     return (wo.work_order_tasks ?? [])
-      .filter(t => t.department === 'warehouse')
+      .filter(t => t.department === 'warehouse' || t.department === 'return_receiving')
       .map(t => ({ workOrder: wo, task: t }))
   })
-  const openTasks = pickingTasks.filter(({ task }) => task.status === 'active' || task.status === 'pending')
-  const closedTasks = pickingTasks.filter(({ task }) => task.status === 'picked' || task.status === 'completed' || task.status === 'cancelled')
+  const openTasks = warehouseTasks.filter(({ task }) => task.status === 'active' || task.status === 'pending')
+  const closedTasks = warehouseTasks.filter(({ task }) => task.status === 'picked' || task.status === 'completed' || task.status === 'cancelled')
   const visibleTasks = jobsView === 'open' ? openTasks : closedTasks
 
   // Group by the day the job was created, newest day first.
@@ -555,7 +590,7 @@ export default function TasksPage() {
     setChecklist(prev => prev.map((item, i) => i === index ? { ...item, checked: !item.checked } : item))
   }
 
-  async function updateTaskStatus(targetStatus: 'picked') {
+  async function updateTaskStatus(targetStatus: 'picked' | 'completed') {
     if (!selectedTask || !selectedWO || updating) return
 
     setUpdating(true)
@@ -570,7 +605,9 @@ export default function TasksPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        showToast("Task marked as Picked successfully!")
+        showToast(selectedTask.department === 'return_receiving'
+          ? "Returned items stored. Job completed successfully!"
+          : "Task marked as Picked successfully!")
         handleCloseTask()
         fetchWorkOrders()
       } else {
@@ -584,7 +621,7 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 warehouse-tasks-page">
       {/* In-app toast — replaces the browser's native alert() popups */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl text-white text-[12px] font-bold max-w-[92vw]"
@@ -595,7 +632,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      <PortalPageHeader title="Picking" subtitle="Process warehouse picking jobs" color={COLOR} backHref="/portal/warehouse" />
+      <PortalPageHeader title="Picking & Returns" subtitle="Process warehouse picking and returned-item receiving jobs" color={COLOR} backHref="/portal/warehouse" />
 
       {errorState && (
         <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-1.5 shadow-sm">
@@ -625,7 +662,7 @@ export default function TasksPage() {
         ))}
       </div>
 
-      <PortalSectionLabel label={jobsView === 'open' ? "Picking Jobs" : "Picking History"} />
+      <PortalSectionLabel label={jobsView === 'open' ? "Warehouse Jobs" : "Warehouse History"} />
 
       {loading ? (
         <div className="mx-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
@@ -636,7 +673,7 @@ export default function TasksPage() {
           <PortalEmptyState
             icon="clipboard"
             title="No jobs found"
-            subtitle={jobsView === 'open' ? "No active picking jobs right now." : "No completed picking jobs yet."}
+            subtitle={jobsView === 'open' ? "No active warehouse jobs right now." : "No completed warehouse jobs yet."}
             color={COLOR}
           />
         </div>
@@ -669,7 +706,7 @@ export default function TasksPage() {
       {/* TASK DETAIL MODAL */}
       {selectedTask && selectedWO && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+          <div className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 warehouse-task-modal">
             {/* Header */}
             <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50 sticky top-0 z-10">
               <div>
@@ -736,7 +773,7 @@ export default function TasksPage() {
               {checklist.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Items to Pick ({checklist.filter(c => c.checked).length} of {checklist.length} picked)
+                    {selectedTask.department === 'return_receiving' ? "Return Receiving Checklist" : "Items to Pick"} ({checklist.filter(c => c.checked).length} of {checklist.length} checked)
                   </p>
                   <div className="space-y-2">
                     {checklist.map((item, i) => (
@@ -781,7 +818,7 @@ export default function TasksPage() {
               </button>
 
               {/* Print Documents */}
-              <div className="pt-3 pb-2 border-t border-slate-100">
+              {selectedTask.department === 'warehouse' && <div className="pt-3 pb-2 border-t border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Print Documents</p>
                 <div className="grid grid-cols-1 gap-2">
                   <button
@@ -793,14 +830,16 @@ export default function TasksPage() {
                     <span>{generatingSlip ? "Generating…" : "Pick Slip"}</span>
                   </button>
                 </div>
-              </div>
+              </div>}
 
               {/* Action Buttons */}
               <div className="pt-2">
                 {selectedTask.status === 'picked' || selectedTask.status === 'completed' ? (
                   <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center flex items-center justify-center gap-2">
                     <PortalIcon name="check-circle" size={16} className="text-emerald-600" />
-                    <p className="text-[12px] font-bold text-emerald-700">Picking already completed</p>
+                    <p className="text-[12px] font-bold text-emerald-700">
+                      {selectedTask.department === 'return_receiving' ? "Return received and stored" : "Picking already completed"}
+                    </p>
                   </div>
                 ) : selectedTask.status === 'cancelled' ? (
                   <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl text-center">
@@ -814,12 +853,12 @@ export default function TasksPage() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => updateTaskStatus('picked')}
+                    onClick={() => updateTaskStatus(selectedTask.department === 'return_receiving' ? 'completed' : 'picked')}
                     disabled={updating}
                     className="w-full py-3.5 rounded-xl text-[13px] font-bold text-white transition-opacity flex items-center justify-center gap-2"
                     style={{ background: COLOR, opacity: updating ? 0.7 : 1 }}
                   >
-                    {updating ? "Updating..." : (<><PortalIcon name="check" size={16} /> Complete Picking & Send to QC/Packing</>)}
+                    {updating ? "Updating..." : (<><PortalIcon name="check" size={16} /> {selectedTask.department === 'return_receiving' ? "Confirm Stored & Complete Job" : "Complete Picking & Send to QC/Packing"}</>)}
                   </button>
                 )}
               </div>

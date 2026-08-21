@@ -2,8 +2,8 @@
 
 import { ProductEditorModal } from "@/components/inventory/product-editor-modal"
 
-const COLOR = "#a855f7" // warehouse portal accent, converted below to HSL for shadcn's CSS vars
-const PORTAL_PRIMARY_HSL = "271 91% 65%"
+const COLOR = "#6f3f7b" // warehouse portal accent, converted below to HSL for shadcn's CSS vars
+const PORTAL_PRIMARY_HSL = "289 32% 36%"
 
 interface Product {
   id?: string
@@ -62,7 +62,7 @@ export function ProductFormSheet({
         sm:left-[50%] sm:top-[50%] sm:bottom-auto sm:translate-x-[-50%] sm:translate-y-[-50%]
         rounded-t-[28px] sm:rounded-lg
         max-h-[92vh]
-        border-t-4 border-t-[#a855f7] sm:border-t
+        border-t-4 border-t-[#6f3f7b] sm:border-t warehouse-product-editor
         data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom
         sm:data-[state=open]:slide-in-from-top-[48%] sm:data-[state=closed]:slide-out-to-top-[48%]
       "

@@ -430,7 +430,7 @@ export default function ChallansPage() {
               Refresh
             </Button>
             {!dbError && (
-              <Button onClick={handleOpenAdd} size="sm" className="bg-[#102516] hover:bg-[#1a3a26] text-white">
+              <Button onClick={handleOpenAdd} size="sm" className="challan-primary-action bg-[#102516] hover:bg-[#1a3a26] text-white">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Challan
               </Button>
@@ -579,10 +579,10 @@ export default function ChallansPage() {
                             <TableCell>
                               <Badge 
                                 onClick={() => handleToggleStatus(challan)}
-                                className={`cursor-pointer capitalize hover:opacity-85 text-[10px] px-2 py-0.5 rounded-full ${
+                                className={`challan-status-badge cursor-pointer capitalize hover:opacity-85 text-[11px] px-3 py-1 rounded-full ${
                                   challan.status === 'active' 
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                    ? 'challan-status-active bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                    : 'challan-status-closed bg-gray-100 text-gray-600 border border-gray-200'
                                 }`}
                               >
                                 {challan.status === 'active' ? 'Active' : 'Closed'}
@@ -642,9 +642,9 @@ export default function ChallansPage() {
 
       {/* CREATE / EDIT CHALLAN DIALOG */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-[#102516]/10">
+        <DialogContent className="challan-dialog-panel max-w-3xl max-h-[90vh] overflow-y-auto border-[#102516]/10">
           <DialogHeader>
-            <DialogTitle className="text-xl font-serif font-semibold text-[#102516]">
+            <DialogTitle className="challan-dialog-title text-xl font-semibold text-[#102516]">
               {editingChallan ? "Edit Delivery Challan" : "Create Delivery Challan"}
             </DialogTitle>
             <DialogDescription>
@@ -652,7 +652,7 @@ export default function ChallansPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          <form onSubmit={handleSubmit} className="challan-dialog-form space-y-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="party-name" className="text-xs font-semibold text-gray-700">Party Name *</Label>
@@ -745,7 +745,7 @@ export default function ChallansPage() {
                   onClick={addItemRow} 
                   variant="outline" 
                   size="sm"
-                  className="h-8 border-[#102516]/20 text-[#102516] hover:bg-[#102516]/5"
+                  className="challan-secondary-action h-8 border-[#102516]/20 text-[#102516] hover:bg-[#102516]/5"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add Row
                 </Button>
@@ -803,7 +803,7 @@ export default function ChallansPage() {
               </div>
 
               <div className="flex justify-end pt-2">
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 flex items-center gap-3">
+                <div className="challan-total-box bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 flex items-center gap-3">
                   <span className="text-xs font-semibold text-gray-600">Grand Total:</span>
                   <span className="text-lg font-bold text-[#102516]">{formatCurrency(grandTotal)}</span>
                 </div>
@@ -811,10 +811,10 @@ export default function ChallansPage() {
             </div>
 
             <DialogFooter className="border-t pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
+              <Button type="button" variant="outline" className="challan-cancel-action" onClick={() => setShowAddDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#102516] hover:bg-[#1a3a26] text-white">
+              <Button type="submit" className="challan-primary-action bg-[#102516] hover:bg-[#1a3a26] text-white">
                 <Check className="h-4 w-4 mr-2" />
                 {editingChallan ? "Update Challan" : "Save Challan"}
               </Button>
@@ -837,7 +837,7 @@ export default function ChallansPage() {
                 <div className="flex gap-2">
                   <Button 
                     onClick={() => handlePrint(viewingChallan)} 
-                    className="bg-[#102516] hover:bg-[#1a3a26] text-white"
+                    className="challan-primary-action bg-[#102516] hover:bg-[#1a3a26] text-white"
                   >
                     <Printer className="h-4 w-4 mr-2" />
                     Print Challan

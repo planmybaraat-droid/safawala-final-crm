@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -66,7 +66,12 @@ import { BookingsTabs } from "@/components/bookings/bookings-tabs"
 
 export default function BookingsPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
+  const isBookingPortal = pathname.startsWith("/portal/booking")
+  const bookingsBasePath = isBookingPortal ? "/portal/booking/bookings" : "/bookings"
+  const bookingEditorPath = isBookingPortal ? `${bookingsBasePath}/new` : "/create-invoice"
+  const bookingsBackPath = isBookingPortal ? "/portal/booking" : "/dashboard"
   const { toast } = useToast()
   const { showConfirmation, ConfirmationDialog } = useConfirmationDialog()
   const [searchTerm, setSearchTerm] = useState("")
@@ -184,7 +189,7 @@ export default function BookingsPage() {
     if (refreshParam) {
       refresh()
       // Clean up the URL by removing the refresh parameter
-      router.replace('/bookings')
+      router.replace(bookingsBasePath)
     }
   }, [searchParams, refresh, router])
 
@@ -296,7 +301,15 @@ export default function BookingsPage() {
         return
       }
       
-      console.log(`[Bookings] Fetching items for ${bookings.length} bookings...`)
+      // Loading items for every booking on initial page load creates hundreds of
+      // API calls on larger accounts and makes the bookings module feel stuck.
+      // Load the visible page first; load all only when Safa quantity sorting
+      // actually needs item-level data.
+      const start = (currentPage - 1) * itemsPerPage
+      const visibleBookings = bookings.slice(start, start + itemsPerPage)
+      const bookingsToFetch = safaQuantitySort !== "all" ? bookings : visibleBookings
+
+      console.log(`[Bookings] Fetching items for ${bookingsToFetch.length} visible booking(s)...`)
       
       try {
         const items: Record<string, any[]> = {}
@@ -373,8 +386,8 @@ export default function BookingsPage() {
         
         // Fetch items in parallel with concurrency limit
         const BATCH_SIZE = 10
-        for (let i = 0; i < bookings.length; i += BATCH_SIZE) {
-          const batch = bookings.slice(i, i + BATCH_SIZE)
+        for (let i = 0; i < bookingsToFetch.length; i += BATCH_SIZE) {
+          const batch = bookingsToFetch.slice(i, i + BATCH_SIZE)
           await Promise.all(batch.map(booking => fetchWithRetry(booking)))
         }
         
@@ -405,7 +418,7 @@ export default function BookingsPage() {
     }
     
     fetchBookingItems()
-  }, [bookings, toast])
+  }, [bookings, toast, currentPage, itemsPerPage, safaQuantitySort])
 
   // Derive archived bookings from bookings data (client-side filter)
   // This is simpler and more reliable than a separate API call
@@ -868,12 +881,12 @@ export default function BookingsPage() {
   )
 
   const handleViewBooking = (bookingId: string) => {
-    router.push(`/bookings/${bookingId}`)
+    router.push(`${bookingsBasePath}/${bookingId}`)
   }
 
   const handleEditBooking = (bookingId: string, source?: string) => {
     // Route to the unified create-invoice page with edit parameter
-    router.push(`/create-invoice?mode=edit&id=${bookingId}`)
+    router.push(`${bookingEditorPath}?mode=edit&id=${bookingId}`)
   }
 
   // Helper function to load items for a booking into the compact display
@@ -1215,7 +1228,7 @@ export default function BookingsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 vadodara-bookings-page">
         <div className="flex items-center justify-center h-64">
           <div className="text-center space-y-4">
             <RefreshCw className="h-8 w-8 animate-spin mx-auto" />
@@ -1230,7 +1243,7 @@ export default function BookingsPage() {
     const isUnauthorized = typeof error === 'string' && (error.includes("Unauthorized") || error.includes("401"));
     
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 vadodara-bookings-page">
         <Card className="text-center p-8 border-destructive/30 bg-destructive/5">
           <CardHeader>
             <div className="mx-auto bg-destructive/10 rounded-full p-3 w-fit">
@@ -1261,10 +1274,10 @@ export default function BookingsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 vadodara-bookings-page">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")}>
+            <Button variant="ghost" size="sm" onClick={() => router.push(bookingsBackPath)}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
@@ -1290,13 +1303,13 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-3">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 vadodara-bookings-page">
+      <div className="booking-list-hero grid grid-cols-1 md:grid-cols-3 items-center gap-3">
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push(bookingsBackPath)}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -1311,7 +1324,7 @@ export default function BookingsPage() {
           <button
             type="button"
             onClick={() => setBookingMode(m => (m === "rental" ? "sale" : "rental"))}
-            className="flex items-center gap-2 bg-white border rounded-full pl-3.5 pr-1.5 py-1.5 shadow-sm hover:shadow transition-shadow"
+            className="booking-mode-toggle flex items-center gap-2 bg-white border rounded-full pl-3.5 pr-1.5 py-1.5 shadow-sm hover:shadow transition-shadow"
           >
             <span className={`text-xs font-bold tracking-wide ${bookingMode === "rental" ? "text-emerald-700" : "text-amber-700"}`}>
               {bookingMode === "rental" ? "Rental mode" : "Sale mode"}
@@ -1379,7 +1392,7 @@ export default function BookingsPage() {
             <Printer className="h-4 w-4 mr-1.5" />
             Print List
           </Button>
-          <Link href="/create-invoice">
+          <Link href={`${bookingsBasePath}/new`}>
             <Button size="sm" className="bg-[#C4B5FD] text-[#4A1F5E] hover:bg-[#A78BFA] hover:text-[#2B1738]">
               <Plus className="h-4 w-4 mr-1" />
               New Booking
@@ -1388,7 +1401,7 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="booking-stats-grid grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
         {loading ? (
           <>
             <StatCardSkeleton />
@@ -1401,7 +1414,7 @@ export default function BookingsPage() {
         ) : (
           <>
             {/* Card 1: Date Period Selector */}
-            <Card className="border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/10 dark:bg-indigo-950/10 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="booking-stat-card booking-date-card border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/10 dark:bg-indigo-950/10 shadow-sm hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 flex flex-col justify-between h-full min-h-[140px]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Date Period</span>
@@ -1432,7 +1445,7 @@ export default function BookingsPage() {
             </Card>
 
             {/* Card 2: Sales / Rentals Count */}
-            <Card className="border-blue-100 dark:border-blue-900/30 bg-blue-50/10 dark:bg-blue-950/10 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="booking-stat-card border-blue-100 dark:border-blue-900/30 bg-blue-50/10 dark:bg-blue-950/10 shadow-sm hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 flex flex-col justify-between h-full min-h-[140px]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
@@ -1456,7 +1469,7 @@ export default function BookingsPage() {
             </Card>
  
             {/* Card 3: Revenue */}
-            <Card className="border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/10 dark:bg-emerald-950/10 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="booking-stat-card border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/10 dark:bg-emerald-950/10 shadow-sm hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 flex flex-col justify-between h-full min-h-[140px]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
@@ -1476,7 +1489,7 @@ export default function BookingsPage() {
             </Card>
  
             {/* Card 4: Payment Pending */}
-            <Card className="border-rose-100 dark:border-rose-900/30 bg-rose-50/10 dark:bg-rose-950/10 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="booking-stat-card border-rose-100 dark:border-rose-900/30 bg-rose-50/10 dark:bg-rose-950/10 shadow-sm hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 flex flex-col justify-between h-full min-h-[140px]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Payment Pending</span>
@@ -1494,7 +1507,7 @@ export default function BookingsPage() {
             </Card>
  
             {/* Card 5: Ready for Delivery/Pickup */}
-            <Card className="border-amber-100 dark:border-amber-900/30 bg-amber-50/10 dark:bg-amber-950/10 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="booking-stat-card border-amber-100 dark:border-amber-900/30 bg-amber-50/10 dark:bg-amber-950/10 shadow-sm hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 flex flex-col justify-between h-full min-h-[140px]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
@@ -1514,7 +1527,7 @@ export default function BookingsPage() {
             </Card>
  
             {/* Card 6: Delivered / In Use */}
-            <Card className="border-teal-100 dark:border-teal-900/30 bg-teal-50/10 dark:bg-teal-950/10 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="booking-stat-card border-teal-100 dark:border-teal-900/30 bg-teal-50/10 dark:bg-teal-950/10 shadow-sm hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 flex flex-col justify-between h-full min-h-[140px]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
@@ -1537,7 +1550,7 @@ export default function BookingsPage() {
       </div>
 
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "table" | "calendar")}>
-        <div className="flex flex-col gap-4">
+        <div className="booking-filters-panel flex flex-col gap-4">
           {/* Top row: View tabs and search */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             {bookingMode === "rental" && (
@@ -2071,7 +2084,7 @@ export default function BookingsPage() {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
-                    window.open(`/create-invoice?mode=edit&id=${selectedBooking.id}&print=true`, "_blank")
+                    window.open(`${bookingEditorPath}?mode=edit&id=${selectedBooking.id}&print=true`, "_blank")
                   }}
                 >
                   <Download className="h-4 w-4 mr-2" />

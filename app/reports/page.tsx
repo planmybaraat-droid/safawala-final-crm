@@ -185,103 +185,19 @@ export default function ReportsPage() {
     })
   }
 
-  const loadInventoryStats = async (franchiseId: string | undefined) => {
+  const loadInventoryStats = async (_franchiseId: string | undefined) => {
     try {
-      // Use same approach as inventory page - direct Supabase query
-      let query = supabase
-        .from("products")
-        .select("id, name, stock_total, stock_available, stock_booked, stock_damaged, stock_in_laundry, reorder_level, usage_count, rental_price, sale_price, category_id, is_active")
-        .order("created_at", { ascending: false })
-      
-      if (franchiseId) {
-        query = query.eq("franchise_id", franchiseId)
-      }
-      
-      const { data: products, error } = await query
-      
-      if (error) {
-        return
-      }
-      
-      // Filter active products (is_active !== false) - same as inventory page
-      const activeProducts = (products || []).filter((p: any) => p.is_active !== false)
-      
-      // Get categories
-      let catQuery = supabase.from("product_categories").select("id, name")
-      if (franchiseId) catQuery = catQuery.eq("franchise_id", franchiseId)
-      const { data: categories } = await catQuery
-      const categoryMap: Record<string, string> = {}
-      ;(categories || []).forEach((c: any) => { categoryMap[c.id] = c.name })
-      
-      // Calculate stats
-      const totalValue = activeProducts.reduce((s: number, p: any) => {
-        const price = Number(p.rental_price) || Number(p.sale_price) || 0
-        return s + (price * (Number(p.stock_total) || 0))
-      }, 0)
-
-      setInventoryStats({
-        totalProducts: activeProducts.length,
-        totalStock: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_total) || 0), 0),
-        available: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_available) || 0), 0),
-        rented: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_booked) || 0), 0),
-        damaged: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_damaged) || 0), 0),
-        lowStock: activeProducts.filter((p: any) => (Number(p.stock_available) || 0) <= (Number(p.reorder_level) || 5)).length,
-        totalValue,
-        inLaundry: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_in_laundry) || 0), 0),
+      const response = await fetch("/api/reports/inventory", {
+        credentials: "include",
+        cache: "no-store",
       })
-      
-      // Top products by usage
-      const topProds = activeProducts
-        .filter((p: any) => (Number(p.usage_count) || 0) > 0)
-        .sort((a: any, b: any) => (Number(b.usage_count) || 0) - (Number(a.usage_count) || 0))
-        .slice(0, 10)
-        .map((p: any) => ({
-          name: p.name,
-          usage: Number(p.usage_count) || 0,
-          stock: Number(p.stock_available) || 0,
-          value: (Number(p.rental_price) || Number(p.sale_price) || 0) * (Number(p.stock_total) || 0),
-        }))
-      setTopProducts(topProds)
+      if (!response.ok) return
 
-      // Low stock products
-      const lowStockProds = activeProducts
-        .filter((p: any) => {
-          const available = Number(p.stock_available) || 0
-          const reorderLevel = Number(p.reorder_level) || 5
-          return available <= reorderLevel
-        })
-        .sort((a: any, b: any) => (Number(a.stock_available) || 0) - (Number(b.stock_available) || 0))
-        .slice(0, 15)
-        .map((p: any) => {
-          const available = Number(p.stock_available) || 0
-          const reorderLevel = Number(p.reorder_level) || 5
-          let status = "Low"
-          if (available === 0) status = "Out of Stock"
-          else if (available <= reorderLevel / 2) status = "Critical"
-          return {
-            name: p.name,
-            available,
-            reorderLevel,
-            status,
-          }
-        })
-      setLowStockProducts(lowStockProds)
-
-      // Category-wise stock distribution
-      const categoryData: Record<string, { products: number; stock: number; value: number }> = {}
-      activeProducts.forEach((p: any) => {
-        const catName = categoryMap[p.category_id || ""] || "Uncategorized"
-        if (!categoryData[catName]) categoryData[catName] = { products: 0, stock: 0, value: 0 }
-        categoryData[catName].products += 1
-        categoryData[catName].stock += Number(p.stock_total) || 0
-        categoryData[catName].value += (Number(p.rental_price) || Number(p.sale_price) || 0) * (Number(p.stock_total) || 0)
-      })
-      setCategoryStockData(
-        Object.entries(categoryData)
-          .map(([category, data]) => ({ category, ...data }))
-          .sort((a, b) => b.value - a.value)
-      )
-      
+      const report = await response.json()
+      setInventoryStats(report.stats)
+      setTopProducts(report.topProducts || [])
+      setLowStockProducts(report.lowStockProducts || [])
+      setCategoryStockData(report.categoryStockData || [])
     } catch {
       return
     }

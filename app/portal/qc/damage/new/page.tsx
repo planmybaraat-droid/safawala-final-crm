@@ -40,7 +40,7 @@ export default function LogDamagePage() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    fetch("/api/products?limit=500")
+    fetch("/api/products?limit=5000&active_only=true")
       .then(r => r.json())
       .then(d => setProducts(d.data ?? d ?? []))
       .catch(() => setProducts([]))

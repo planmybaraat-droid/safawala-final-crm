@@ -24,6 +24,7 @@ import { generateBarcode, generateBarcodeLabel } from "@/lib/barcode-generator"
 import { doPrint } from "./barcode-print-dialog"
 import { BarcodePrinter } from "@/components/inventory/barcode-printer"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 // Fixed import path for ProductItemService
 import { ProductItemService } from "@/lib/services/product-item-service"
 
@@ -383,9 +384,10 @@ export function ProductViewDialog({ product, open, onOpenChange }: ProductViewDi
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-center">
-                    <img
+                    <OptimizedImage
                       src={product.image_url || "/placeholder.svg"}
                       alt={product.name}
+                      webpWidth={900}
                       className="max-w-full h-auto max-h-64 rounded-lg border object-contain"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement

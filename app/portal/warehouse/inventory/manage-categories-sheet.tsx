@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { PortalIcon } from "@/components/portal/portal-icons"
 
-const COLOR = "#a855f7"
+const COLOR = "#6f3f7b"
 const supabase = createClient()
 
 interface Category { id: string; name: string; parent_id?: string | null }
@@ -105,7 +105,7 @@ export function ManageCategoriesSheet({
   return (
     <div className="fixed inset-0 z-[90] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t-4"
+        className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border-t-4 warehouse-categories-sheet"
         style={{ borderColor: COLOR }}
         onClick={(e) => e.stopPropagation()}
       >

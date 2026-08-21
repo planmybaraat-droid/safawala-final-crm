@@ -87,10 +87,12 @@ export default function ComprehensiveSettings({ franchiseId, userRole }: Compreh
     )
   }
 
+  const settingsFranchiseId = franchiseId as string
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="crm-settings-ui container mx-auto py-6 space-y-6">
       {/* Header with Back Button */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="settings-hero flex items-center gap-4 mb-6">
         <Button 
           variant="ghost" 
           size="sm" 
@@ -101,7 +103,7 @@ export default function ComprehensiveSettings({ franchiseId, userRole }: Compreh
           Back
         </Button>
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
+          <div className="settings-hero-icon p-2 bg-blue-100 rounded-lg">
             <Settings className="h-6 w-6 text-blue-600" />
           </div>
           <div>
@@ -112,7 +114,7 @@ export default function ComprehensiveSettings({ franchiseId, userRole }: Compreh
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className={cn("grid w-full bg-gray-100", isFranchiseAdmin ? "grid-cols-3 lg:grid-cols-6" : "grid-cols-2 max-w-md")}>
+        <TabsList className={cn("settings-tabs grid w-full bg-gray-100", isFranchiseAdmin ? "grid-cols-3 lg:grid-cols-6" : "grid-cols-2 max-w-md")}>
           {isFranchiseAdmin && (
             <>
               <TabsTrigger value="company" className="flex items-center gap-2 data-[state=active]:bg-white">
@@ -145,32 +147,35 @@ export default function ComprehensiveSettings({ franchiseId, userRole }: Compreh
 
         {isFranchiseAdmin && (
           <>
-            <TabsContent value="company" className="space-y-6">
-              <CompanyInfoSection franchiseId={franchiseId} />
+            <TabsContent value="company" className="settings-panel space-y-6">
+              <CompanyInfoSection franchiseId={settingsFranchiseId} />
             </TabsContent>
 
-            <TabsContent value="branding" className="space-y-6">
-              <BrandingSection franchiseId={franchiseId} />
+            <TabsContent value="branding" className="settings-panel space-y-6">
+              <BrandingSection franchiseId={settingsFranchiseId} />
             </TabsContent>
 
-            <TabsContent value="banking" className="space-y-6">
-              <BankingSection franchiseId={franchiseId} />
+            <TabsContent value="banking" className="settings-panel space-y-6">
+              <BankingSection franchiseId={settingsFranchiseId} />
             </TabsContent>
 
-            <TabsContent value="whatsapp" className="space-y-6">
-              <WhatsAppSection franchiseId={franchiseId} />
+            <TabsContent value="whatsapp" className="settings-panel space-y-6">
+              <WhatsAppSection franchiseId={settingsFranchiseId} />
             </TabsContent>
           </>
         )}
 
-        <TabsContent value="profile" className="space-y-6">
-          <ProfileSection franchiseId={franchiseId} />
+        <TabsContent value="profile" className="settings-panel space-y-6">
+          <ProfileSection franchiseId={settingsFranchiseId} />
         </TabsContent>
 
-        <TabsContent value="security" className="space-y-6">
+        <TabsContent value="security" className="settings-panel space-y-6">
           <ChangePasswordSection />
         </TabsContent>
       </Tabs>
     </div>
   )
 }
+
+
+

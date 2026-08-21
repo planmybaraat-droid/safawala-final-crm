@@ -8,7 +8,9 @@ import LettersWorkflow from "@/app/portal/hr/letters/page"
 export default function HRLettersPage() {
   return (
     <DashboardLayout>
-      <LettersWorkflow />
+      <div className="crm-workspace-shell hr-payroll-ui hr-module-ui hr-workflow-page">
+        <LettersWorkflow />
+      </div>
     </DashboardLayout>
   )
 }

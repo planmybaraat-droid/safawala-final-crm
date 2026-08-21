@@ -5,6 +5,17 @@ import { authenticateRequest } from '@/lib/auth-middleware'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+async function authenticateVariantWrite(request: NextRequest) {
+  const auth = await authenticateRequest(request, { minRole: 'staff' })
+  if (!auth.authorized) return auth
+  const user = auth.user!
+  const canManage = user.is_super_admin || user.permissions.packages || user.department === 'warehouse'
+  if (!canManage) {
+    return { authorized: false as const, error: { error: 'Forbidden', message: 'Package management permission is required' }, statusCode: 403 }
+  }
+  return auth
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request, { minRole: 'readonly' })
@@ -53,7 +64,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authenticateRequest(request, { minRole: 'staff', requirePermission: 'packages' })
+    const auth = await authenticateVariantWrite(request)
     if (!auth.authorized) return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
 
     const franchiseId = auth.user!.franchise_id
@@ -96,7 +107,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await authenticateRequest(request, { minRole: 'staff', requirePermission: 'packages' })
+    const auth = await authenticateVariantWrite(request)
     if (!auth.authorized) return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
 
     const franchiseId = auth.user!.franchise_id
@@ -143,7 +154,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = await authenticateRequest(request, { minRole: 'staff', requirePermission: 'packages' })
+    const auth = await authenticateVariantWrite(request)
     if (!auth.authorized) return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
 
     const franchiseId = auth.user!.franchise_id

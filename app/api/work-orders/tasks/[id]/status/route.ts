@@ -44,9 +44,10 @@ export async function POST(
     if (rbacContext?.user.department === "warehouse") {
       const denied = await requireRbacPermission(request, "warehouse.update")
       if ("response" in denied) return denied.response
-      // Warehouse only handles picking — packing moved to the QC portal.
-      if (department !== "warehouse") {
-        return NextResponse.json({ error: "Warehouse users can only update warehouse (picking) tasks" }, { status: 403 })
+      // Warehouse owns both physical handoffs: initial picking and final
+      // return receiving/storage. Packing remains with QC.
+      if (department !== "warehouse" && department !== "return_receiving") {
+        return NextResponse.json({ error: "Warehouse users can only update picking or return-receiving tasks" }, { status: 403 })
       }
       if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -60,8 +61,8 @@ export async function POST(
     if (rbacContext?.user.department === "qc" || rbacContext?.user.role === "qc_staff") {
       const denied = await requireRbacPermission(request, "qc.update")
       if ("response" in denied) return denied.response
-      if (department !== "packing") {
-        return NextResponse.json({ error: "QC users can only update packing tasks" }, { status: 403 })
+      if (department !== "packing" && department !== "return_qc") {
+        return NextResponse.json({ error: "QC users can only update packing or return-QC tasks" }, { status: 403 })
       }
       if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -75,8 +76,8 @@ export async function POST(
     if (rbacContext?.user.department === "fulfillment" || rbacContext?.user.role === "delivery_staff" || rbacContext?.user.role === "travels_staff") {
       const denied = await requireRbacPermission(request, "delivery.update")
       if ("response" in denied) return denied.response
-      if (department !== "dispatch" && department !== "travels") {
-        return NextResponse.json({ error: "Fulfillment users can only update dispatch or travels tasks" }, { status: 403 })
+      if (department !== "dispatch" && department !== "travels" && department !== "returns") {
+        return NextResponse.json({ error: "Fulfillment users can only update dispatch, travel, or return tasks" }, { status: 403 })
       }
       if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -84,6 +85,18 @@ export async function POST(
       const isFulfillmentStaff = !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
       if (task.assigned_to && task.assigned_to !== rbacContext.user.id && isFulfillmentStaff) {
         return NextResponse.json({ error: "This task is assigned to another fulfillment user" }, { status: 403 })
+      }
+    }
+
+    if (rbacContext?.user.department === "styling" || rbacContext?.user.role === "stylist") {
+      if (department !== "styling") {
+        return NextResponse.json({ error: "Styling users can only update styling tasks" }, { status: 403 })
+      }
+      if (!rbacContext.user.is_super_admin && workOrder?.franchise_id !== rbacContext.user.franchise_id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      if (task.assigned_to && task.assigned_to !== rbacContext.user.id) {
+        return NextResponse.json({ error: "This styling job is assigned to another stylist" }, { status: 403 })
       }
     }
 
@@ -346,15 +359,138 @@ export async function POST(
     }
 
     else if (status === "completed" && department === "returns") {
-      // RT Returns Completed -> Set Work Order to Completed
+      // Collection from the customer is not job completion. First activate a
+      // return QC inspection; Warehouse storage remains blocked until it passes.
+      const { data: existingReturnQcTask } = await supabase
+        .from("work_order_tasks")
+        .select("id")
+        .eq("work_order_id", workOrderId)
+        .eq("department", "return_qc")
+        .maybeSingle()
+
+      let returnQcTaskId = existingReturnQcTask?.id
+      if (!returnQcTaskId) {
+        const { data: returnQcTask, error: returnQcError } = await supabase
+          .from("work_order_tasks")
+          .insert({
+            work_order_id: workOrderId,
+            department: "return_qc",
+            task_number: `RQ-${Date.now().toString().slice(-10)}`,
+            title: `Return Quality Check - ${workOrder.work_order_number}`,
+            status: "active",
+            instructions: "Inspect every returned rental item, verify quantity and condition, and record any laundry, damage, or missing-item exception before warehouse storage.",
+            checklist: [],
+            metadata: {
+              collection_task_id: task.id,
+              collected_at: new Date().toISOString(),
+              collected_by: rbacContext?.user.id || null,
+              qc_status: "pending",
+            },
+          })
+          .select("id")
+          .single()
+
+        if (returnQcError || !returnQcTask) {
+          console.error("[Return transition] Failed to create return QC task:", returnQcError)
+          return NextResponse.json({ error: "Return was collected, but return QC could not be created. The job remains open." }, { status: 500 })
+        }
+        returnQcTaskId = returnQcTask.id
+      } else {
+        await supabase
+          .from("work_order_tasks")
+          .update({ status: "active", completed_at: null, updated_at: new Date().toISOString() })
+          .eq("id", returnQcTaskId)
+      }
+
+      await supabase
+        .from("work_orders")
+        .update({ status: "in_progress", updated_at: new Date().toISOString() })
+        .eq("id", workOrderId)
+      transitionLog.push("Activated Return QC; warehouse storage remains blocked")
+
+      await notifyDepartment(supabase, {
+        franchiseId: workOrder.franchise_id,
+        department: "qc",
+        title: "Returned items ready for QC",
+        message: `${workOrder.work_order_number} has been collected and requires return inspection.`,
+        entityType: "work_orders",
+        entityId: workOrderId,
+        actionUrl: "/portal/qc/packing",
+        actionLabel: "Open QC Queue",
+      })
+    }
+
+    else if (status === "completed" && department === "return_qc") {
+      // A passed return inspection activates the final physical Warehouse task.
+      const { data: existingReceivingTask } = await supabase
+        .from("work_order_tasks")
+        .select("id")
+        .eq("work_order_id", workOrderId)
+        .eq("department", "return_receiving")
+        .maybeSingle()
+
+      let receivingTaskId = existingReceivingTask?.id
+      if (!receivingTaskId) {
+        const { data: receivingTask, error: receivingError } = await supabase
+          .from("work_order_tasks")
+          .insert({
+            work_order_id: workOrderId,
+            department: "return_receiving",
+            task_number: `RR-${Date.now().toString().slice(-10)}`,
+            title: `Warehouse Return Receiving - ${workOrder.work_order_number}`,
+            status: "active",
+            instructions: "Receive the QC-approved rental items and confirm they are stored in warehouse inventory.",
+            checklist: [
+              { text: "QC-approved returned items physically received at warehouse", checked: false },
+              { text: "Returned quantities matched with the QC-approved record", checked: false },
+              { text: "Laundry, damaged, and missing item exceptions routed correctly", checked: false },
+              { text: "All serviceable items stored and warehouse inventory updated", checked: false },
+            ],
+            metadata: {
+              return_qc_task_id: task.id,
+              qc_passed_at: new Date().toISOString(),
+              qc_passed_by: rbacContext?.user.id || null,
+            },
+          })
+          .select("id")
+          .single()
+
+        if (receivingError || !receivingTask) {
+          console.error("[Return QC transition] Failed to create warehouse receiving task:", receivingError)
+          return NextResponse.json({ error: "Return QC passed, but warehouse receiving could not be created. The job remains open." }, { status: 500 })
+        }
+        receivingTaskId = receivingTask.id
+      } else {
+        await supabase
+          .from("work_order_tasks")
+          .update({ status: "active", completed_at: null, updated_at: new Date().toISOString() })
+          .eq("id", receivingTaskId)
+      }
+
+      transitionLog.push("Return QC passed; activated Warehouse Return Receiving")
+
+      await notifyDepartment(supabase, {
+        franchiseId: workOrder.franchise_id,
+        department: "warehouse",
+        title: "QC-approved return ready to store",
+        message: `${workOrder.work_order_number} passed return QC and is ready for warehouse storage.`,
+        entityType: "work_orders",
+        entityId: workOrderId,
+        actionUrl: "/portal/warehouse/tasks",
+        actionLabel: "Open Warehouse Jobs",
+      })
+    }
+
+    else if (status === "completed" && department === "return_receiving") {
+      // Only Warehouse can close the rental after confirming every checklist
+      // item, including storage and inventory reconciliation.
       await supabase
         .from("work_orders")
         .update({ status: "completed", updated_at: new Date().toISOString() })
         .eq("id", workOrderId)
 
-      // Set booking status to returned
       await updateBookingStatus(supabase, workOrder.booking_id, workOrder.booking_source, "returned")
-      transitionLog.push("Completed Work Order and updated Booking status to returned")
+      transitionLog.push("Warehouse confirmed items stored; completed Work Order and Booking")
     }
 
     return NextResponse.json({

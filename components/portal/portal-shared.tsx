@@ -20,7 +20,7 @@ export function PortalPageHeader({
   const router = useRouter()
   return (
     <div
-      className="px-4 pt-5 pb-4 flex items-center gap-3"
+      className="px-4 pt-5 pb-4 flex items-center gap-3 portal-page-header"
       style={{ background: `linear-gradient(135deg, ${color}, ${adjustColor(color, -25)})` }}
     >
       {backHref && (
@@ -60,7 +60,7 @@ export function PortalSearchBar({
   placeholder?: string
 }) {
   return (
-    <div className="px-4 py-3">
+    <div className="px-4 py-3 portal-search-bar">
       <div
         className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
         style={{ background: "#f4f4f5", border: "1px solid #e4e4e7" }}
@@ -119,7 +119,7 @@ export function PortalStatusBadge({ status }: { status: string }) {
   const label = status?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ?? "—"
   return (
     <span
-      className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
+      className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide portal-status-badge"
       style={{ background: s.bg, color: s.text }}
     >
       {label}
@@ -147,7 +147,7 @@ export function PortalListCard({
 }) {
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3.5 active:opacity-70 cursor-pointer"
+      className="flex items-center gap-3 px-4 py-3.5 active:opacity-70 cursor-pointer portal-list-card"
       style={{
         background: "#ffffff",
         borderBottom: "1px solid #f4f4f5",
@@ -182,7 +182,7 @@ export function PortalEmptyState({ icon, title, subtitle, color }: {
   icon: string; title: string; subtitle?: string; color: string
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+    <div className="flex flex-col items-center justify-center py-16 px-8 text-center portal-empty-state">
       <div
         className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
         style={{ background: `${color}12`, color }}
@@ -198,7 +198,7 @@ export function PortalEmptyState({ icon, title, subtitle, color }: {
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 export function PortalSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="space-y-0">
+    <div className="space-y-0 portal-skeleton">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-zinc-100">
           <div className="w-10 h-10 rounded-xl bg-zinc-100 animate-pulse flex-shrink-0" />
@@ -217,7 +217,7 @@ export function PortalSkeleton({ rows = 5 }: { rows?: number }) {
 export function PortalSectionLabel({ label }: { label: string }) {
   return (
     <p
-      className="px-4 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest"
+      className="px-4 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest portal-section-label"
       style={{ color: "#71717a" }}
     >
       {label}
@@ -229,7 +229,7 @@ export function PortalSectionLabel({ label }: { label: string }) {
 export function PortalInfoRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div className="flex justify-between items-start py-3 border-b" style={{ borderColor: "#f4f4f5" }}>
+    <div className="flex justify-between items-start py-3 border-b portal-info-row" style={{ borderColor: "#f4f4f5" }}>
       <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#a1a1aa" }}>{label}</span>
       <span className="text-[13px] font-semibold text-right ml-4" style={{ color: "#18181b", maxWidth: "60%" }}>{value}</span>
     </div>
@@ -250,7 +250,7 @@ export function PortalFAB({ label, color, onClick, icon = "plus-circle" }: {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-20 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg active:scale-95 transition-transform"
+      className="fixed bottom-20 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg active:scale-95 transition-transform portal-fab"
       style={{
         background: color,
         color: "white",

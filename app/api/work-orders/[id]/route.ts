@@ -98,7 +98,7 @@ export async function GET(
     }
 
     // Sort sub-tasks sequentially by department
-    const deptOrder = ['warehouse', 'packing', 'dispatch', 'event_team', 'returns', 'accounts']
+    const deptOrder = ['warehouse', 'packing', 'dispatch', 'event_team', 'styling', 'travels', 'returns', 'return_qc', 'return_receiving', 'accounts']
     if (workOrder.work_order_tasks) {
       workOrder.work_order_tasks.sort((a: any, b: any) => {
         return deptOrder.indexOf(a.department) - deptOrder.indexOf(b.department)

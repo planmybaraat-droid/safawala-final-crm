@@ -23,7 +23,6 @@ import {
   Clock,
   Store,
   Zap,
-  Info,
   Layers,
   FileCheck,
   Archive,
@@ -47,25 +46,13 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { signOut } from "@/lib/auth"
 import Link from "next/link"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { UserPermissions } from "@/lib/types"
 import { useI18n } from "@/lib/i18n-context"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   userRole?: string
-}
-
-// Helper function to get initials from name
-function getInitials(name: string): string {
-  if (!name) return "U"
-  const parts = name.trim().split(" ")
-  if (parts.length === 1) {
-    return parts[0].substring(0, 2).toUpperCase()
-  }
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 const navigationItems = {
@@ -152,7 +139,7 @@ const navigationItems = {
   business: [
     {
       title: "New Booking",
-      url: "/create-invoice",
+      url: "/bookings/new",
       icon: FileText,
       permission: "bookings",
       description: "Create new booking with invoice, print, save as quote, or confirm order",
@@ -277,12 +264,15 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
   const { t } = useI18n()
   const pathname = usePathname()
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [profilePhoto, setProfilePhoto] = useState<string>("")
 
   const getNavTitle = (title: string) => {
     const key = title.toLowerCase().replace(/[^a-z0-9]/g, "_")
     if (key === "new_booking") return t("create_invoice")
-    return t(key)
+    const translated = t(key)
+    const isVadodaraVisualAccount =
+      String(currentUser?.email || "").trim().toLowerCase() === "vadodara@safawala.com"
+
+    return isVadodaraVisualAccount && translated === key ? title : translated
   }
 
   // Load user data from localStorage
@@ -297,43 +287,6 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
       console.error("Failed to load user data:", error)
     }
   }, [])
-
-  // Fetch profile photo - SIMPLIFIED VERSION
-  useEffect(() => {
-    if (!currentUser?.franchise_id) {
-      console.log('[Sidebar] Waiting for franchise_id...')
-      return
-    }
-
-    console.log('[Sidebar] Fetching profile for franchise:', currentUser.franchise_id)
-
-    fetch(`/api/settings/profile?franchise_id=${currentUser.franchise_id}`)
-      .then(res => res.json())
-      .then(data => {
-        console.log('[Sidebar] Full API Response:', JSON.stringify(data, null, 2))
-
-        // Try to get profile_photo_url from different possible structures
-        let photoUrl = null
-
-        if (data.data) {
-          if (Array.isArray(data.data) && data.data.length > 0) {
-            photoUrl = data.data[0].profile_photo_url
-            console.log('[Sidebar] Found in array[0]:', photoUrl)
-          } else if (typeof data.data === 'object') {
-            photoUrl = data.data.profile_photo_url
-            console.log('[Sidebar] Found in object:', photoUrl)
-          }
-        }
-        
-        if (photoUrl) {
-          console.log('[Sidebar] ✅ Setting profile photo:', photoUrl)
-          setProfilePhoto(photoUrl)
-        } else {
-          console.log('[Sidebar] ❌ No profile_photo_url found in:', data)
-        }
-      })
-      .catch(err => console.error('[Sidebar] Fetch error:', err))
-  }, [currentUser?.franchise_id, pathname]) // Re-fetch when pathname changes
 
   const handleSignOut = async () => {
     await signOut()
@@ -371,14 +324,9 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
 
   // Get user display info
   const userName = currentUser?.name || "User"
-  const userInitials = getInitials(userName)
-  const userAvatar = profilePhoto || currentUser?.avatar_url || ""
-
-  console.log('[Sidebar] Render - profilePhoto:', profilePhoto)
-  console.log('[Sidebar] Render - userAvatar:', userAvatar)
 
   return (
-    <TooltipProvider>
+    <>
       <Sidebar variant="inset" collapsible="icon" className="heritage-sidebar" {...props}>
         <SidebarHeader>
           <SidebarMenu>
@@ -390,11 +338,11 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
                 className="heritage-sidebar-item"
               >
                 <Link href="/dashboard" className="w-full">
-                  <div className="flex w-full items-center justify-start py-4 pl-4">
+                  <div className="safawala-sidebar-brand flex w-full items-center justify-center px-3 py-2.5">
                     <img 
                       src="/safawalalogo.png" 
                       alt="Safawala Logo" 
-                      className="w-[80%] md:w-[85%] h-auto max-h-[45px] object-contain" 
+                      className="h-auto w-[158px] max-w-full object-contain" 
                       style={{ 
                         imageRendering: "-webkit-optimize-contrast",
                         WebkitFontSmoothing: "antialiased",
@@ -425,14 +373,6 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
                           <item.icon />
                           <span>{getNavTitle(item.title)}</span>
                         </div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-xs">
-                            <p className="text-sm">{item.description}</p>
-                          </TooltipContent>
-                        </Tooltip>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -458,14 +398,6 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
                           <item.icon />
                           <span>{getNavTitle(item.title)}</span>
                         </div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-xs">
-                            <p className="text-sm">{item.description}</p>
-                          </TooltipContent>
-                        </Tooltip>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -491,14 +423,6 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
                           <item.icon />
                           <span>{getNavTitle(item.title)}</span>
                         </div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-xs">
-                            <p className="text-sm">{item.description}</p>
-                          </TooltipContent>
-                        </Tooltip>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -525,14 +449,6 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
                             <item.icon />
                             <span>{item.title}</span>
                           </div>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <p className="text-sm">{item.description}</p>
-                            </TooltipContent>
-                          </Tooltip>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -552,13 +468,7 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
                     size="lg"
                     className="heritage-sidebar-item data-[state=open]:bg-purple-900/20 data-[state=open]:text-purple-300"
                   >
-                    <Avatar className="h-8 w-8 rounded-lg">
-                      {userAvatar && <AvatarImage src={userAvatar} alt={userName} />}
-                      <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
+                    <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold text-white">{userName}</span>
                       <span className="truncate text-xs capitalize text-zinc-400">{userRole.replace("_", " ")}</span>
                     </div>
@@ -596,6 +506,6 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-    </TooltipProvider>
+    </>
   )
 }

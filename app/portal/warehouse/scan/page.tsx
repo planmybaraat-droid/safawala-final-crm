@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
 
-const COLOR = "#a855f7"
+const COLOR = "#6f3f7b"
 
 export default function ScanPage() {
   const router = useRouter()
@@ -94,7 +94,7 @@ export default function ScanPage() {
   }
 
   return (
-    <div>
+    <div className="warehouse-scan-page">
       <PortalPageHeader title="Scan Barcode" subtitle="Scan with camera or enter manually" color={COLOR} backHref="/portal/warehouse" />
 
       <div className="px-4 py-6">

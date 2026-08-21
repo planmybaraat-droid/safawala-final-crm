@@ -9,21 +9,33 @@ export async function GET(request: NextRequest) {
   const permission = await requireRbacPermission(request, "warehouse.view")
   if ("response" in permission) return permission.response
   const context = permission.context
-  // Match Main CRM's /inventory view (app/inventory/dashboard.tsx fetches
-  // /api/products?limit=3000&active_only=true — Postgres/PostgREST caps
-  // real responses at 1000 rows regardless of the requested limit, so 1000
-  // is the true ceiling both surfaces can reach). The old limit(500) here
-  // silently truncated the list to half of what Main CRM shows.
-  let query = supabaseServer
-    .from("products")
-    .select("id, name, product_code, sku, barcode, category, category_id, description, color, size, material, price, regular_price, rental_price, cost_price, security_deposit, image_url, stock_available, stock_total, stock_booked, stock_damaged, stock_in_laundry, reorder_level, is_active, franchise_id")
-    .eq("is_active", true)
-    .order("name")
-    .limit(1000)
-  if (!context.user.is_super_admin && context.user.franchise_id) query = query.eq("franchise_id", context.user.franchise_id)
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true, data: data || [] })
+  // The warehouse portal shares the same products table as Main CRM. Retrieve
+  // every active product in stable 1,000-row pages so both surfaces agree.
+  const data: any[] = []
+  const pageSize = 1000
+  let offset = 0
+  let total = 0
+
+  while (true) {
+    let query = supabaseServer
+      .from("products")
+      .select("id, name, product_code, sku, barcode, category, category_id, description, color, size, material, price, regular_price, rental_price, cost_price, security_deposit, image_url, stock_available, stock_total, stock_booked, stock_damaged, stock_in_laundry, reorder_level, is_active, franchise_id", { count: "exact" })
+      .eq("is_active", true)
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1)
+    if (!context.user.is_super_admin && context.user.franchise_id) query = query.eq("franchise_id", context.user.franchise_id)
+
+    const { data: page, error, count } = await query
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const rows = page || []
+    data.push(...rows)
+    total = count ?? total
+    offset += rows.length
+    if (rows.length < pageSize || offset >= total) break
+  }
+
+  return NextResponse.json({ success: true, data, total: total || data.length })
 }
 
 export async function POST(request: NextRequest) {

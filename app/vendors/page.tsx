@@ -475,49 +475,51 @@ export default function VendorsPage() {
   }
 
   return (
-    <div className="space-y-5 p-4 md:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.10),transparent_32%),linear-gradient(135deg,#fbfaff_0%,#f8fafc_48%,#f4f0ff_100%)] p-4 text-[#120d29] md:p-6">
+      <div className="flex flex-col gap-4 rounded-[28px] border border-[#ded3f2] bg-white/95 p-5 shadow-[0_22px_55px_rgba(64,35,140,0.10)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="icon"
-            className="h-10 w-10 border-[#E7E2EA] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5]"
+            className="h-11 w-11 rounded-2xl border-[#ded3f2] bg-white text-[#4c1d95] shadow-sm hover:bg-[#f6f2ff]"
             title="Go back"
             onClick={() => router.push("/dashboard")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F1EAF5] text-[#4A1F5E]">
-            <UsersRound className="h-5 w-5" />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8b5cf6] via-[#6d28d9] to-[#2e1065] text-white shadow-[0_18px_36px_rgba(109,40,217,0.25)]">
+            <UsersRound className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[#1F1B24]">Vendor Management</h1>
-            <p className="text-sm text-[#6F6878]">Manage your business vendors and suppliers</p>
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-[#7c3aed]">Suppliers</p>
+            <h1 className="text-[30px] font-extrabold leading-tight tracking-[-0.035em] text-[#120d29]">Vendor Management</h1>
+            <p className="text-sm font-medium text-[#665b7d]">Manage your business vendors and suppliers</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" className="border-[#E7E2EA] bg-white text-[#4A1F5E] hover:bg-[#F1EAF5]" onClick={handleRefresh} disabled={refreshing}>
+          <Button type="button" variant="outline" className="rounded-2xl border-[#ded3f2] bg-white px-4 text-[#4c1d95] shadow-sm hover:bg-[#f6f2ff]" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
           <Dialog open={isVendorDialogOpen} onOpenChange={setIsVendorDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#4A1F5E] text-white hover:bg-[#5C2A72]">
+              <Button className="rounded-2xl bg-[#21143f] px-5 text-white shadow-[0_14px_30px_rgba(33,20,63,0.20)] hover:bg-[#3b1a78]">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Vendor
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Vendor</DialogTitle>
-                <DialogDescription>Create a new vendor profile for your business</DialogDescription>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[28px] border-[#ded3f2] bg-white p-0 shadow-[0_28px_80px_rgba(33,20,63,0.22)]">
+              <DialogHeader className="rounded-t-[28px] border-b border-[#eee7fb] bg-gradient-to-r from-[#fbf8ff] to-white px-6 py-5">
+                <DialogTitle className="text-2xl font-extrabold tracking-[-0.03em] text-[#120d29]">Add New Vendor</DialogTitle>
+                <DialogDescription className="text-sm font-medium text-[#665b7d]">Create a new vendor profile for your business</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-5 px-6 py-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label htmlFor="name">Vendor Name *</Label>
+                    <Label htmlFor="name" className="text-sm font-semibold text-[#21143f]">Vendor Name *</Label>
                     <Input
                       id="name"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={newVendor.name}
                       onChange={(e) => setNewVendor({ ...newVendor, name: e.target.value })}
                       placeholder="Enter vendor name"
@@ -525,9 +527,10 @@ export default function VendorsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="contact_person">Contact Person</Label>
+                    <Label htmlFor="contact_person" className="text-sm font-semibold text-[#21143f]">Contact Person</Label>
                     <Input
                       id="contact_person"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={newVendor.contact_person}
                       onChange={(e) => setNewVendor({ ...newVendor, contact_person: e.target.value })}
                       placeholder="Enter contact person name"
@@ -535,11 +538,12 @@ export default function VendorsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label htmlFor="phone">Phone *</Label>
+                    <Label htmlFor="phone" className="text-sm font-semibold text-[#21143f]">Phone *</Label>
                     <Input
                       id="phone"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={newVendor.phone}
                       onChange={(e) => setNewVendor({ ...newVendor, phone: e.target.value })}
                       placeholder="Enter phone number"
@@ -547,10 +551,11 @@ export default function VendorsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-sm font-semibold text-[#21143f]">Email</Label>
                     <Input
                       id="email"
                       type="email"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={newVendor.email}
                       onChange={(e) => setNewVendor({ ...newVendor, email: e.target.value })}
                       placeholder="Enter email address"
@@ -559,9 +564,10 @@ export default function VendorsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address" className="text-sm font-semibold text-[#21143f]">Address</Label>
                   <Textarea
                     id="address"
+                    className="mt-1.5 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                     value={newVendor.address}
                     onChange={(e) => setNewVendor({ ...newVendor, address: e.target.value })}
                     placeholder="Enter vendor address"
@@ -570,9 +576,10 @@ export default function VendorsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="notes">Notes</Label>
+                  <Label htmlFor="notes" className="text-sm font-semibold text-[#21143f]">Notes</Label>
                   <Textarea
                     id="notes"
+                    className="mt-1.5 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                     value={newVendor.notes}
                     onChange={(e) => setNewVendor({ ...newVendor, notes: e.target.value })}
                     placeholder="Additional notes about the vendor"
@@ -580,11 +587,11 @@ export default function VendorsPage() {
                   />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2 mt-4">
-                <Button variant="outline" onClick={() => setIsVendorDialogOpen(false)}>
+              <div className="flex justify-end gap-2 border-t border-[#eee7fb] bg-[#fbf8ff] px-6 py-4">
+                <Button variant="outline" className="rounded-2xl border-[#ded3f2] bg-white px-5 text-[#21143f] hover:bg-[#f6f2ff]" onClick={() => setIsVendorDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreateVendor}>Create Vendor</Button>
+                <Button className="rounded-2xl bg-[#21143f] px-5 text-white hover:bg-[#3b1a78]" onClick={handleCreateVendor}>Create Vendor</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -592,20 +599,20 @@ export default function VendorsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="vendor-stats-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Total Vendors", value: totalVendors, hint: "All registered vendors", icon: UsersRound, tone: "bg-[#F1EAF5] text-[#4A1F5E]" },
-          { label: "Active Vendors", value: activeVendors, hint: "Currently working", icon: BriefcaseBusiness, tone: "bg-[#E9F7EE] text-[#25864A]" },
-          { label: "Inactive Vendors", value: inactiveVendors, hint: "Not in use", icon: Ban, tone: "bg-[#FFF3E5] text-[#C47A20]" },
-          { label: "Total Spending (MTD)", value: `₹${totalSpending.toLocaleString("en-IN")}`, hint: "Across all vendors", icon: WalletCards, tone: "bg-[#EAF1FF] text-[#3B64B7]" },
-        ].map(({ label, value, hint, icon: Icon, tone }) => (
-          <Card key={label} className="border-[#E7E2EA] shadow-sm">
+          { label: "Total Vendors", value: totalVendors, hint: "All registered vendors", icon: UsersRound },
+          { label: "Active Vendors", value: activeVendors, hint: "Currently working", icon: BriefcaseBusiness },
+          { label: "Inactive Vendors", value: inactiveVendors, hint: "Not in use", icon: Ban },
+          { label: "Total Spending (MTD)", value: `₹${totalSpending.toLocaleString("en-IN")}`, hint: "Across all vendors", icon: WalletCards },
+        ].map(({ label, value, hint, icon: Icon }) => (
+          <Card key={label} className="vendor-stat-card overflow-hidden rounded-[24px] border-[#ded3f2] bg-white/95 shadow-[0_16px_36px_rgba(64,35,140,0.08)]">
             <CardContent className="flex items-center gap-4 p-4">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="h-5 w-5" /></div>
+              <div className="vendor-stat-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"><Icon className="h-5 w-5" /></div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-[#6F6878]">{label}</p>
-                <p className="mt-0.5 text-xl font-semibold text-[#1F1B24]">{value}</p>
-                <p className="text-xs text-[#8C8492]">{hint}</p>
+                <p className="vendor-stat-label text-[11px] font-bold uppercase tracking-[0.16em] text-[#7b7190]">{label}</p>
+                <p className="vendor-stat-value mt-0.5 text-2xl font-extrabold tracking-[-0.03em] text-[#120d29]">{value}</p>
+                <p className="vendor-stat-hint text-xs font-medium text-[#7b7190]">{hint}</p>
               </div>
             </CardContent>
           </Card>
@@ -613,18 +620,18 @@ export default function VendorsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 rounded-[24px] border border-[#ded3f2] bg-white/90 p-3 shadow-[0_14px_34px_rgba(64,35,140,0.07)] sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9A93A2]" />
           <Input
             placeholder="Search vendors by name, contact, email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-10 border-[#E7E2EA] bg-white pl-10 focus-visible:ring-[#4A1F5E]"
+            className="h-11 rounded-2xl border-[#ded3f2] bg-white pl-10 shadow-sm focus-visible:ring-[#7c3aed]"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-10 w-full border-[#E7E2EA] bg-white sm:w-36">
+          <SelectTrigger className="h-11 w-full rounded-2xl border-[#ded3f2] bg-white shadow-sm sm:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -636,36 +643,36 @@ export default function VendorsPage() {
       </div>
 
       {/* Vendors Table */}
-      <Card className="overflow-hidden border-[#E7E2EA] shadow-sm">
-        <CardHeader className="border-b border-[#E7E2EA] bg-white px-5 py-4">
-          <CardTitle className="text-base text-[#1F1B24]">
+      <Card className="overflow-hidden rounded-[28px] border-[#ded3f2] bg-white/95 shadow-[0_20px_50px_rgba(64,35,140,0.10)]">
+        <CardHeader className="border-b border-[#eee7fb] bg-gradient-to-r from-[#fbf8ff] to-white px-5 py-4">
+          <CardTitle className="text-lg font-extrabold tracking-[-0.02em] text-[#120d29]">
             {statusFilter === 'inactive' ? 'Inactive Vendors' : statusFilter === 'active' ? 'Active Vendors' : 'Vendors'} ({filteredVendors.length})
           </CardTitle>
-          <CardDescription className="text-xs text-[#6F6878]">Manage your vendor relationships and contact information</CardDescription>
+          <CardDescription className="text-xs font-medium text-[#665b7d]">Manage your vendor relationships and contact information</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="space-y-4">
             <Table>
-              <TableHeader className="bg-[#FAF9FC]">
+              <TableHeader className="bg-[#fbf8ff]">
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold text-[#6F6878]">Vendor</TableHead>
-                  <TableHead className="text-xs font-semibold text-[#6F6878]">Contact</TableHead>
-                  <TableHead className="text-xs font-semibold text-[#6F6878]">Pricing</TableHead>
-                  <TableHead className="text-xs font-semibold text-[#6F6878]">Status</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-[#6F6878]">Actions</TableHead>
+                  <TableHead className="px-5 text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#665b7d]">Vendor</TableHead>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#665b7d]">Contact</TableHead>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#665b7d]">Pricing</TableHead>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#665b7d]">Status</TableHead>
+                  <TableHead className="text-right text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#665b7d]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedVendors.map((vendor) => (
-                  <TableRow key={vendor.id} className="border-[#E7E2EA] hover:bg-[#FCFAFD]">
-                    <TableCell>
+                  <TableRow key={vendor.id} className="border-[#eee7fb] transition-colors hover:bg-[#fbf8ff]">
+                    <TableCell className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7C3AED] text-sm font-semibold text-white shadow-sm">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8b5cf6] to-[#4c1d95] text-sm font-bold text-white shadow-[0_10px_20px_rgba(124,58,237,0.20)]">
                           {(vendor.name || "V").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-medium text-[#1F1B24]">{vendor.name}</div>
-                          <div className="text-xs text-[#6F6878]">
+                          <div className="font-semibold text-[#120d29]">{vendor.name}</div>
+                          <div className="text-xs font-medium text-[#665b7d]">
                             {vendor.contact_person || "No contact person"}
                           </div>
                         </div>
@@ -673,33 +680,33 @@ export default function VendorsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="flex items-center text-xs text-[#6F6878]">
-                          <Phone className="mr-2 h-3.5 w-3.5 text-[#8C8492]" />
+                        <div className="flex items-center text-xs font-medium text-[#665b7d]">
+                          <Phone className="mr-2 h-3.5 w-3.5 text-[#7c3aed]" />
                           {vendor.phone}
                         </div>
-                        <div className="flex items-center text-xs text-[#6F6878]">
-                          <Mail className="mr-2 h-3.5 w-3.5 text-[#8C8492]" />
+                        <div className="flex items-center text-xs font-medium text-[#665b7d]">
+                          <Mail className="mr-2 h-3.5 w-3.5 text-[#7c3aed]" />
                           {vendor.email}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium text-[#1F1B24]">₹{Number(vendor.pricing_per_item || 0).toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="font-bold text-[#120d29]">₹{Number(vendor.pricing_per_item || 0).toLocaleString("en-IN")}</TableCell>
                     <TableCell>
                       <div className="ml-2">
-                        <Badge className={vendor.is_active ? "border-0 bg-[#E9F7EE] text-[#25864A] hover:bg-[#E9F7EE]" : "border-0 bg-[#F1F0F3] text-[#6F6878] hover:bg-[#F1F0F3]"}>
+                        <Badge className={vendor.is_active ? "rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700 hover:bg-emerald-50" : "rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 hover:bg-slate-50"}>
                           {vendor.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="outline" size="icon" className="h-8 w-8 border-[#E7E2EA] hover:bg-[#F1EAF5]" title="View vendor" onClick={() => handleViewVendor(vendor)}>
+                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-[#ded3f2] bg-white hover:bg-[#f6f2ff]" title="View vendor" onClick={() => handleViewVendor(vendor)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 border-[#E7E2EA] hover:bg-[#F1EAF5]" title="Edit vendor" onClick={() => setEditingVendor(vendor)}>
+                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-[#ded3f2] bg-white hover:bg-[#f6f2ff]" title="Edit vendor" onClick={() => setEditingVendor(vendor)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 border-[#F1DADA] text-[#C94A4A] hover:bg-[#FFF1F1]" title="Delete vendor" onClick={() => handleDeleteVendorWithConfirmation(vendor)}>
+                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-red-200 bg-white text-red-700 hover:bg-red-50" title="Delete vendor" onClick={() => handleDeleteVendorWithConfirmation(vendor)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -712,14 +719,14 @@ export default function VendorsPage() {
         </CardContent>
         {/* Pagination Controls */}
         {filteredVendors.length > 0 && (
-          <CardContent className="pt-6">
+          <CardContent className="border-t border-[#eee7fb] bg-[#fbf8ff] px-5 py-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm font-medium text-[#665b7d]">
                   Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredVendors.length)} of {filteredVendors.length} vendors
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Items per page:</span>
+                  <span className="text-sm font-medium text-[#665b7d]">Items per page:</span>
                   <Select
                     value={itemsPerPage.toString()}
                     onValueChange={(value) => {
@@ -727,7 +734,7 @@ export default function VendorsPage() {
                       setCurrentPage(1)
                     }}
                   >
-                    <SelectTrigger className="w-[70px]">
+                    <SelectTrigger className="h-9 w-[78px] rounded-xl border-[#ded3f2] bg-white">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -743,17 +750,19 @@ export default function VendorsPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="rounded-xl border-[#ded3f2] bg-white text-[#21143f] hover:bg-[#f6f2ff]"
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
                   Previous
                 </Button>
-                <div className="text-sm font-medium">
+                <div className="rounded-full border border-[#ded3f2] bg-white px-3 py-1 text-sm font-semibold text-[#21143f]">
                   Page {currentPage} of {totalPages}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="rounded-xl border-[#ded3f2] bg-white text-[#21143f] hover:bg-[#f6f2ff]"
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
                 >
@@ -766,22 +775,22 @@ export default function VendorsPage() {
       </Card>
 
       {statusFilter === 'all' && inactiveVendors > 0 && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>Inactive Vendors ({inactiveVendors})</CardTitle>
-            <CardDescription>These vendors are currently deactivated</CardDescription>
+        <Card className="mt-4 overflow-hidden rounded-[28px] border-[#ded3f2] bg-white/95 shadow-[0_16px_36px_rgba(64,35,140,0.08)]">
+          <CardHeader className="border-b border-[#eee7fb] bg-gradient-to-r from-[#fbf8ff] to-white">
+            <CardTitle className="text-lg font-extrabold tracking-[-0.02em] text-[#120d29]">Inactive Vendors ({inactiveVendors})</CardTitle>
+            <CardDescription className="text-sm font-medium text-[#665b7d]">These vendors are currently deactivated</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {vendors.filter(v => !v.is_active).map(vendor => (
-                <div key={vendor.id} className="flex items-center justify-between border rounded-md p-3">
+                <div key={vendor.id} className="flex items-center justify-between rounded-2xl border border-[#eee7fb] bg-white p-3 shadow-sm">
                   <div>
-                    <div className="font-medium">{vendor.name}</div>
-                    <div className="text-sm text-muted-foreground">{vendor.contact_person || 'No contact person'} • {vendor.phone}</div>
+                    <div className="font-semibold text-[#120d29]">{vendor.name}</div>
+                    <div className="text-sm font-medium text-[#665b7d]">{vendor.contact_person || 'No contact person'} • {vendor.phone}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="destructive">Inactive</Badge>
-                    <Button size="sm" variant="outline" onClick={() => handleReactivateVendor(vendor.id)}>
+                    <Badge className="rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-50">Inactive</Badge>
+                    <Button size="sm" variant="outline" className="rounded-xl border-[#ded3f2] bg-white text-[#4c1d95] hover:bg-[#f6f2ff]" onClick={() => handleReactivateVendor(vendor.id)}>
                       Reactivate
                     </Button>
                   </div>
@@ -794,19 +803,20 @@ export default function VendorsPage() {
 
       {/* Edit Vendor Dialog */}
       <Dialog open={!!editingVendor} onOpenChange={(open) => !open && setEditingVendor(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Vendor</DialogTitle>
-            <DialogDescription>Update vendor information</DialogDescription>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[28px] border-[#ded3f2] bg-white p-0 shadow-[0_28px_80px_rgba(33,20,63,0.22)]">
+          <DialogHeader className="rounded-t-[28px] border-b border-[#eee7fb] bg-gradient-to-r from-[#fbf8ff] to-white px-6 py-5">
+            <DialogTitle className="text-2xl font-extrabold tracking-[-0.03em] text-[#120d29]">Edit Vendor</DialogTitle>
+            <DialogDescription className="text-sm font-medium text-[#665b7d]">Update vendor information</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5 px-6 py-5">
             {editingVendor && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label htmlFor="edit-name">Vendor Name *</Label>
+                    <Label htmlFor="edit-name" className="text-sm font-semibold text-[#21143f]">Vendor Name *</Label>
                     <Input
                       id="edit-name"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={editingVendor.name}
                       onChange={(e) => setEditingVendor({ ...editingVendor, name: e.target.value })}
                       placeholder="Enter vendor name"
@@ -814,18 +824,20 @@ export default function VendorsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-contact_person">Contact Person</Label>
+                    <Label htmlFor="edit-contact_person" className="text-sm font-semibold text-[#21143f]">Contact Person</Label>
                     <Input
                       id="edit-contact_person"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={editingVendor.contact_person}
                       onChange={(e) => setEditingVendor({ ...editingVendor, contact_person: e.target.value })}
                       placeholder="Enter contact person name"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-phone">Phone *</Label>
+                    <Label htmlFor="edit-phone" className="text-sm font-semibold text-[#21143f]">Phone *</Label>
                     <Input
                       id="edit-phone"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={editingVendor.phone}
                       onChange={(e) => setEditingVendor({ ...editingVendor, phone: e.target.value })}
                       placeholder="Enter phone number"
@@ -833,19 +845,21 @@ export default function VendorsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-email">Email</Label>
+                    <Label htmlFor="edit-email" className="text-sm font-semibold text-[#21143f]">Email</Label>
                     <Input
                       id="edit-email"
                       type="email"
+                      className="mt-1.5 h-11 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={editingVendor.email}
                       onChange={(e) => setEditingVendor({ ...editingVendor, email: e.target.value })}
                       placeholder="Enter email address"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-address">Address</Label>
+                    <Label htmlFor="edit-address" className="text-sm font-semibold text-[#21143f]">Address</Label>
                     <Textarea
                       id="edit-address"
+                      className="mt-1.5 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={editingVendor.address}
                       onChange={(e) => setEditingVendor({ ...editingVendor, address: e.target.value })}
                       placeholder="Enter vendor address"
@@ -853,9 +867,10 @@ export default function VendorsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-notes">Notes</Label>
+                    <Label htmlFor="edit-notes" className="text-sm font-semibold text-[#21143f]">Notes</Label>
                     <Textarea
                       id="edit-notes"
+                      className="mt-1.5 rounded-2xl border-[#ded3f2] bg-white shadow-sm focus-visible:ring-[#7c3aed]"
                       value={editingVendor.notes}
                       onChange={(e) => setEditingVendor({ ...editingVendor, notes: e.target.value })}
                       placeholder="Additional notes about the vendor"
@@ -864,26 +879,26 @@ export default function VendorsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 rounded-2xl border border-[#eee7fb] bg-[#fbf8ff] p-4">
                   <Switch
                     id="edit-active"
                     checked={editingVendor.is_active}
                     onCheckedChange={(checked) => setEditingVendor({ ...editingVendor, is_active: checked })}
                   />
-                  <Label htmlFor="edit-active" className="text-sm font-medium">
+                  <Label htmlFor="edit-active" className="text-sm font-semibold text-[#21143f]">
                     Active Status
                   </Label>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm font-medium text-[#665b7d]">
                     ({editingVendor.is_active ? "Active" : "Inactive"})
                   </span>
                 </div>
               </>
             )}
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button variant="outline" onClick={() => setEditingVendor(null)}>
+            <div className="-mx-6 -mb-5 flex justify-end gap-2 border-t border-[#eee7fb] bg-[#fbf8ff] px-6 py-4">
+              <Button variant="outline" className="rounded-2xl border-[#ded3f2] bg-white px-5 text-[#21143f] hover:bg-[#f6f2ff]" onClick={() => setEditingVendor(null)}>
                 Cancel
               </Button>
-              <Button onClick={handleUpdateVendor}>Update Vendor</Button>
+              <Button className="rounded-2xl bg-[#21143f] px-5 text-white hover:bg-[#3b1a78]" onClick={handleUpdateVendor}>Update Vendor</Button>
             </div>
           </div>
         </DialogContent>
@@ -891,29 +906,29 @@ export default function VendorsPage() {
 
       {/* View Vendor Details Dialog */}
       <Dialog open={!!viewingVendor} onOpenChange={(open) => !open && setViewingVendor(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">{viewingVendor?.name} - Vendor Details</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-[28px] border-[#ded3f2] bg-white p-0 shadow-[0_28px_80px_rgba(33,20,63,0.22)]">
+          <DialogHeader className="rounded-t-[28px] border-b border-[#eee7fb] bg-gradient-to-r from-[#fbf8ff] to-white px-6 py-5">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-[-0.03em] text-[#120d29]">{viewingVendor?.name} - Vendor Details</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6">
+          <div className="space-y-6 px-6 py-5">
             {/* Vendor Info Cards */}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Contact Person</Label>
-                <div className="ml-2">{viewingVendor?.contact_person || "Not specified"}</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-[#eee7fb] bg-[#fbf8ff] p-4">
+                <Label className="text-xs font-bold uppercase tracking-[0.14em] text-[#7b7190]">Contact Person</Label>
+                <div className="mt-1 font-semibold text-[#120d29]">{viewingVendor?.contact_person || "Not specified"}</div>
               </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Phone</Label>
-                <div className="ml-2">{viewingVendor?.phone}</div>
+              <div className="rounded-2xl border border-[#eee7fb] bg-[#fbf8ff] p-4">
+                <Label className="text-xs font-bold uppercase tracking-[0.14em] text-[#7b7190]">Phone</Label>
+                <div className="mt-1 font-semibold text-[#120d29]">{viewingVendor?.phone}</div>
               </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Email</Label>
-                <div className="ml-2">{viewingVendor?.email || "Not provided"}</div>
+              <div className="rounded-2xl border border-[#eee7fb] bg-[#fbf8ff] p-4">
+                <Label className="text-xs font-bold uppercase tracking-[0.14em] text-[#7b7190]">Email</Label>
+                <div className="mt-1 font-semibold text-[#120d29]">{viewingVendor?.email || "Not provided"}</div>
               </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                <div className="ml-2">
-                  <Badge variant={viewingVendor?.is_active ? "default" : "secondary"}>
+              <div className="rounded-2xl border border-[#eee7fb] bg-[#fbf8ff] p-4">
+                <Label className="text-xs font-bold uppercase tracking-[0.14em] text-[#7b7190]">Status</Label>
+                <div className="mt-2">
+                  <Badge className={viewingVendor?.is_active ? "rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-50"}>
                     {viewingVendor?.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
@@ -938,7 +953,7 @@ export default function VendorsPage() {
                 ) : vendorTransactions.length > 0 ? (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {vendorTransactions.map((transaction) => (
-                      <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={transaction.id} className="flex items-center justify-between rounded-2xl border border-[#eee7fb] bg-white p-3 shadow-sm">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <div
@@ -994,8 +1009,8 @@ export default function VendorsPage() {
                 )}
               </div>
             </div>
-            <div className="flex justify-end mt-6">
-              <Button variant="outline" onClick={() => setViewingVendor(null)}>
+            <div className="-mx-6 -mb-5 flex justify-end border-t border-[#eee7fb] bg-[#fbf8ff] px-6 py-4">
+              <Button variant="outline" className="rounded-2xl border-[#ded3f2] bg-white px-5 text-[#21143f] hover:bg-[#f6f2ff]" onClick={() => setViewingVendor(null)}>
                 Close
               </Button>
             </div>

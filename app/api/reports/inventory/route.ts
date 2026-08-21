@@ -19,24 +19,35 @@ export async function GET(req: NextRequest) {
     const franchiseId = auth.user!.is_super_admin ? undefined : auth.user!.franchise_id
     const supabase = createClient()
 
-    // Build query
-    let query = supabase
-      .from("products")
-      .select("id, name, stock_total, stock_available, stock_rented, stock_damaged, stock_in_laundry, reorder_level, usage_count, rental_price, sale_price, category_id, is_active, franchise_id")
-    
-    if (franchiseId) {
-      query = query.eq("franchise_id", franchiseId)
+    const products: any[] = []
+    const pageSize = 1000
+    let offset = 0
+    let total = 0
+
+    while (true) {
+      let query = supabase
+        .from("products")
+        .select("id, name, stock_total, stock_available, stock_booked, stock_damaged, stock_in_laundry, reorder_level, usage_count, rental_price, sale_price, category_id, is_active, franchise_id", { count: "exact" })
+        .eq("is_active", true)
+        .order("name", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1)
+      if (franchiseId) query = query.eq("franchise_id", franchiseId)
+
+      const { data: page, error, count } = await query
+      if (error) {
+        console.error("[API] Error loading products:", error)
+        return NextResponse.json({ error: "Failed to load products" }, { status: 500 })
+      }
+
+      const rows = page || []
+      products.push(...rows)
+      total = count ?? total
+      offset += rows.length
+      if (rows.length < pageSize || offset >= total) break
     }
 
-    const { data: products, error } = await query
-
-    if (error) {
-      console.error("[API] Error loading products:", error)
-      return NextResponse.json({ error: "Failed to load products" }, { status: 500 })
-    }
-
-    // Filter active products (is_active !== false)
-    const activeProducts = (products || []).filter((p: any) => p.is_active !== false)
+    const activeProducts = products
 
     // Calculate stats
     const totalValue = activeProducts.reduce((s: number, p: any) => {
@@ -48,7 +59,7 @@ export async function GET(req: NextRequest) {
       totalProducts: activeProducts.length,
       totalStock: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_total) || 0), 0),
       available: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_available) || 0), 0),
-      rented: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_rented) || 0), 0),
+      rented: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_booked) || 0), 0),
       damaged: activeProducts.reduce((s: number, p: any) => s + (Number(p.stock_damaged) || 0), 0),
       lowStock: activeProducts.filter((p: any) => (Number(p.stock_available) || 0) <= (Number(p.reorder_level) || 5)).length,
       totalValue,

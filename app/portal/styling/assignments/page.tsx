@@ -10,6 +10,7 @@ interface StylingTask {
   id: string
   status: "pending" | "active" | "completed" | "cancelled"
   assigned_to: string | null
+  checklist?: Array<{ text: string; checked: boolean }>
   metadata?: {
     interested_stylists?: Array<{ user_id: string; name: string; note?: string; at: string }>
     assigned_stylist?: { id: string; name: string; assigned_at: string }
@@ -31,6 +32,7 @@ export default function AssignmentsPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [submittingId, setSubmittingId] = useState<string | null>(null)
+  const [completingId, setCompletingId] = useState<string | null>(null)
   const [successToast, setSuccessToast] = useState("")
   const [errorState, setErrorState] = useState<string | null>(null)
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
@@ -81,6 +83,30 @@ export default function AssignmentsPage() {
       alert(err.message || "Failed to update interest")
     } finally {
       setSubmittingId(null)
+    }
+  }
+
+  async function completeStylingJob(wo: WorkOrder, task: StylingTask) {
+    setCompletingId(task.id)
+    try {
+      const completedChecklist = (task.checklist || []).map(item => ({ ...item, checked: true }))
+      const res = await fetch(`/api/work-orders/tasks/${task.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed", checklist: completedChecklist }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to complete styling job")
+      setWorkOrders(prev => prev.map(w => w.id === wo.id
+        ? { ...w, work_order_tasks: w.work_order_tasks.map(t => t.id === task.id ? data.data : t) }
+        : w
+      ))
+      setSuccessToast("Styling completed — Return Collection is now active! ✓")
+      setTimeout(() => setSuccessToast(""), 4000)
+    } catch (err: any) {
+      alert(err.message || "Failed to complete styling job")
+    } finally {
+      setCompletingId(null)
     }
   }
 
@@ -210,6 +236,18 @@ export default function AssignmentsPage() {
                       >
                         Withdraw interest
                       </button>
+                    )}
+                    {isAssigned && task.status === "active" && (
+                      <button
+                        onClick={() => completeStylingJob(wo, task)}
+                        disabled={completingId === task.id}
+                        className="mt-2 w-full py-3 rounded-xl text-[12px] font-black text-white bg-emerald-600 disabled:opacity-60"
+                      >
+                        {completingId === task.id ? "Completing…" : "Complete Styling Job"}
+                      </button>
+                    )}
+                    {isAssigned && task.status === "pending" && (
+                      <p className="mt-2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 text-center">Assigned — waiting for dispatch.</p>
                     )}
                   </div>
                 )

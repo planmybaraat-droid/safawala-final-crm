@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { cookies, headers } from "next/headers"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -11,7 +12,15 @@ import { categoryService } from "@/lib/services/category-service"
 export const dynamic = "force-dynamic"
 
 async function NewQuotePage() {
-  const userRes = await fetch("/api/auth/user", { cache: "no-store" })
+  const requestHeaders = headers()
+  const host = requestHeaders.get("host") || "localhost:3013"
+  const protocol = requestHeaders.get("x-forwarded-proto") || "http"
+  const userRes = await fetch(`${protocol}://${host}/api/auth/user`, {
+    cache: "no-store",
+    headers: {
+      cookie: cookies().toString(),
+    },
+  })
   const currentUser = userRes.ok ? await userRes.json() : null
   const franchiseId = currentUser?.franchise_id
 
@@ -22,8 +31,8 @@ async function NewQuotePage() {
   ])
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center space-x-4 mb-6">
+    <div className="quote-new-page container mx-auto py-6">
+      <div className="quote-new-header flex items-center space-x-4 mb-6">
         <Button variant="outline" size="icon" asChild>
           <Link href="/quotes">
             <ArrowLeft className="h-4 w-4" />
@@ -35,7 +44,7 @@ async function NewQuotePage() {
         </div>
       </div>
 
-      <div className="mb-6 rounded-lg border bg-muted/30 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="quote-new-package-callout mb-6 rounded-lg border bg-muted/30 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-medium">Need a package-based quote?</p>
           <p className="text-sm text-muted-foreground">

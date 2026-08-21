@@ -70,18 +70,43 @@ export async function GET(request: NextRequest) {
     
     console.log(`[Dashboard Stats API] Fetched ${packageBookings.length} package bookings + ${productBookings.length} product orders = ${bookings.length} total`)
 
+    const fetchAllProductStock = async () => {
+      const rows: any[] = []
+      const pageSize = 1000
+      let offset = 0
+      let total = 0
+
+      while (true) {
+        let query = supabase
+          .from("products")
+          .select("id, stock_available, reorder_level", { count: "exact" })
+          .eq("is_active", true)
+          .order("id", { ascending: true })
+          .range(offset, offset + pageSize - 1)
+        if (!isSuperAdmin && franchiseId) query = query.eq("franchise_id", franchiseId)
+
+        const result = await query
+        if (result.error) throw result.error
+        const page = result.data || []
+        rows.push(...page)
+        total = result.count ?? total
+        offset += page.length
+        if (page.length < pageSize || offset >= total) break
+      }
+
+      return rows
+    }
+
     // Parallel queries for other data
     const [customersResult, productsResult] = await Promise.all([
       isSuperAdmin || !franchiseId
         ? supabase.from("customers").select("id", { count: 'exact', head: true })
         : supabase.from("customers").select("id", { count: 'exact', head: true }).eq("franchise_id", franchiseId),
-      isSuperAdmin || !franchiseId
-        ? supabase.from("products").select("id, stock_available, reorder_level")
-        : supabase.from("products").select("id, stock_available, reorder_level").eq("franchise_id", franchiseId)
+      fetchAllProductStock(),
     ])
 
     const totalCustomers = customersResult.count || 0
-    const productsData = productsResult.data || []
+    const productsData = productsResult
     const activeBookings = bookings.filter((b: any) => 
       ['confirmed', 'delivered'].includes(b.status)
     ).length

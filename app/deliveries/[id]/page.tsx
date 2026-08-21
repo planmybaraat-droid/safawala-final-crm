@@ -136,7 +136,7 @@ export default function DeliveryReturnPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="crm-ops-module crm-deliveries-ui crm-delivery-detail-ui flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <div className="flex items-center space-x-4">
           <Button

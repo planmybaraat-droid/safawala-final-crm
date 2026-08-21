@@ -21,6 +21,7 @@ import { BarcodePrintDialog } from '@/components/inventory/barcode-print-dialog'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
+import { OptimizedImage } from '@/components/ui/optimized-image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
@@ -113,52 +114,58 @@ function StatCard({
   prefix?: string
 }) {
   const animatedValue = useAnimatedCount(value)
-  const colorMap: Record<string, { bg: string; icon: string; text: string; glow: string }> = {
+  const colorMap: Record<string, { bg: string; icon: string; text: string; glow: string; accent: string }> = {
     default: {
-      bg: "from-[#fcf7f0] to-[#f9f2e8]",
-      icon: "text-[#102516] bg-[#102516]/8",
-      text: "text-[#102516]",
-      glow: "shadow-[0_8px_25px_rgba(16,37,22,0.08)]",
+      bg: "from-white via-white to-[#fbf8ff]",
+      icon: "text-[#4c1d95] bg-[#f1e9ff]",
+      text: "text-[#21143f]",
+      glow: "shadow-[0_18px_42px_rgba(30,20,70,0.08)]",
+      accent: "from-[#8b5cf6] via-[#6d28d9] to-[#2e1065]",
     },
     green: {
-      bg: "from-emerald-50/80 to-[#fcf7f0]",
+      bg: "from-white via-white to-emerald-50/70",
       icon: "text-emerald-700 bg-emerald-100",
       text: "text-emerald-700",
-      glow: "shadow-[0_8px_25px_rgba(16,185,129,0.1)]",
+      glow: "shadow-[0_18px_42px_rgba(16,185,129,0.10)]",
+      accent: "from-emerald-400 via-emerald-500 to-teal-700",
     },
     amber: {
-      bg: "from-amber-50/80 to-[#fcf7f0]",
+      bg: "from-white via-white to-amber-50/70",
       icon: "text-amber-700 bg-amber-100",
       text: "text-amber-700",
-      glow: "shadow-[0_8px_25px_rgba(245,158,11,0.1)]",
+      glow: "shadow-[0_18px_42px_rgba(245,158,11,0.10)]",
+      accent: "from-amber-300 via-amber-500 to-orange-600",
     },
     red: {
-      bg: "from-red-50/80 to-[#fcf7f0]",
+      bg: "from-white via-white to-red-50/70",
       icon: "text-red-700 bg-red-100",
       text: "text-red-700",
-      glow: "shadow-[0_8px_25px_rgba(239,68,68,0.1)]",
+      glow: "shadow-[0_18px_42px_rgba(239,68,68,0.10)]",
+      accent: "from-rose-300 via-red-500 to-red-700",
     },
     royal: {
-      bg: "from-[#f6e1c3]/40 to-[#fcf7f0]",
-      icon: "text-[#102516] bg-[#f6e1c3]",
-      text: "text-[#102516]",
-      glow: "shadow-[0_8px_25px_rgba(16,37,22,0.12)]",
+      bg: "from-white via-white to-[#f5ecff]",
+      icon: "text-[#7c2d12] bg-[#f8dfbb]",
+      text: "text-[#21143f]",
+      glow: "shadow-[0_18px_42px_rgba(64,35,140,0.10)]",
+      accent: "from-[#f0c886] via-[#d97706] to-[#7c2d12]",
     },
   }
   const c = colorMap[color] || colorMap.default
 
   return (
-    <Card className={`relative overflow-hidden border border-[#102516]/8 bg-gradient-to-br ${c.bg} ${c.glow} hover:translate-y-[-2px] hover:shadow-lg transition-all duration-300 group`}>
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#102516]/30 to-transparent" />
-      <div className="p-4 flex items-center justify-between">
+    <Card className={`relative overflow-hidden rounded-2xl border border-[#ded3f2] bg-gradient-to-br ${c.bg} ${c.glow} transition-all duration-300 group hover:-translate-y-1 hover:border-[#c7b5ee] hover:shadow-[0_24px_56px_rgba(64,35,140,0.16)]`}>
+      <div className={`absolute left-0 top-0 h-1 w-full bg-gradient-to-r ${c.accent}`} />
+      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#8b5cf6]/8 blur-2xl transition-opacity group-hover:opacity-80" />
+      <div className="relative p-4 flex items-center justify-between gap-3">
         <div className="space-y-1">
-          <p className="text-xs font-medium text-[#102516]/60 uppercase tracking-wider">{title}</p>
-          <p className={`text-2xl font-bold ${c.text} tracking-tight`}>
+          <p className="text-[11px] font-semibold text-[#665b7d] uppercase tracking-[0.14em]">{title}</p>
+          <p className={`text-2xl font-bold ${c.text} tracking-[-0.04em]`}>
             {prefix}{animatedValue.toLocaleString()}
           </p>
-          <p className="text-[10px] text-[#102516]/50">{subtext}</p>
+          <p className="text-[10px] font-medium text-[#7b7190]">{subtext}</p>
         </div>
-        <div className={`w-11 h-11 rounded-xl ${c.icon} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+        <div className={`w-11 h-11 rounded-2xl ${c.icon} flex items-center justify-center shadow-[0_12px_24px_rgba(15,23,42,0.08)] transition-transform duration-300 group-hover:scale-110`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -319,31 +326,58 @@ export default function InventoryDashboard() {
 
       await fetchCategoriesList(currentUser)
 
-      const prodRes = await fetch(
-        `/api/products?limit=3000&active_only=true${currentUser.franchise_id ? `&franchise_id=${encodeURIComponent(currentUser.franchise_id)}` : ""}`,
-        { cache: "no-store" }
-      )
-      const prodJson = prodRes.ok ? await prodRes.json() : { data: [] }
-      const activeData = (prodJson.data || []).filter((p: any) => p.is_active !== false)
+      const pageSize = 1000
+      const franchiseQuery = currentUser.franchise_id
+        ? `&franchise_id=${encodeURIComponent(currentUser.franchise_id)}`
+        : ""
+      const allProducts: any[] = []
+      let offset = 0
+      let totalProducts: number | null = null
+
+      do {
+        const prodRes = await fetch(
+          `/api/products?limit=${pageSize}&offset=${offset}&active_only=true${franchiseQuery}`,
+          { cache: "no-store" }
+        )
+        if (!prodRes.ok) {
+          const errorBody = await prodRes.json().catch(() => ({}))
+          throw new Error(errorBody.error || `Failed to fetch products (${prodRes.status})`)
+        }
+
+        const prodJson = await prodRes.json()
+        const pageProducts = Array.isArray(prodJson.data) ? prodJson.data : []
+        allProducts.push(...pageProducts)
+        totalProducts = typeof prodJson.total === "number" ? prodJson.total : totalProducts
+        offset += pageProducts.length
+
+        if (pageProducts.length < pageSize) break
+      } while (totalProducts === null || offset < totalProducts)
+
+      // Stable API ordering plus id de-duplication protects the UI if a product
+      // is created while the multi-page inventory request is in progress.
+      const uniqueProducts = Array.from(new Map(allProducts.map((product) => [product.id, product])).values())
+      const activeData = uniqueProducts.filter((p: any) => p.is_active !== false)
       const normalized = activeData.map(normalizeProduct)
 
       try {
         const productIds = normalized.map((p: any) => p.id)
         if (productIds.length > 0) {
-          const { data: varCounts } = await supabase
-            .from("product_variations")
-            .select("product_id")
-            .in("product_id", productIds)
-            .eq("is_active", true)
+          const countMap: Record<string, number> = {}
+          for (let start = 0; start < productIds.length; start += 500) {
+            const productIdBatch = productIds.slice(start, start + 500)
+            const { data: varCounts, error: varCountError } = await supabase
+              .from("product_variations")
+              .select("product_id")
+              .in("product_id", productIdBatch)
+              .eq("is_active", true)
 
-          if (varCounts) {
-            const countMap: Record<string, number> = {}
-            for (const row of varCounts) {
+            if (varCountError) throw varCountError
+            for (const row of varCounts || []) {
               countMap[row.product_id] = (countMap[row.product_id] || 0) + 1
             }
-            for (const p of normalized) {
-              ;(p as any)._variation_count = countMap[p.id] || 0
-            }
+          }
+          for (const p of normalized) {
+            ;(p as any)._variation_count = countMap[p.id] || 0
           }
         }
       } catch (varErr) {
@@ -502,6 +536,7 @@ export default function InventoryDashboard() {
   const handleSaveProduct = async (data: any) => {
     const { images, variants, _variation_count, category_name, product_code, ...productData } = data
     let productId = selectedProduct?.id
+    let createdProduct: any = null
     const isExistingProduct = Boolean(productId)
     const activeFranchiseId = resolvedFranchiseId || user?.franchise_id || null
 
@@ -527,6 +562,7 @@ export default function InventoryDashboard() {
       }
       const result = await res.json()
       productId = result.id
+      createdProduct = result.product
     }
 
     if (variants && variants.length > 0 && productId) {
@@ -593,8 +629,22 @@ export default function InventoryDashboard() {
         })
       )
     } else {
-      // New products still need a full fetch so server-generated fields are included.
-      await fetchProducts()
+      // Show the server-created product immediately. A full background refresh keeps
+      // derived fields in sync without making the editor wait for every inventory page.
+      const normalizedCreatedProduct = normalizeProduct({
+        ...createdProduct,
+        id: productId,
+        image_url: images?.find((image: any) => image.is_main)?.url ?? createdProduct?.image_url,
+      })
+      ;(normalizedCreatedProduct as any)._variation_count = variants?.length ?? 0
+
+      setProducts((currentProducts) => [
+        normalizedCreatedProduct,
+        ...currentProducts.filter((product) => product.id !== productId),
+      ])
+      void fetchProducts({ background: true }).catch((error) => {
+        console.error("Failed to refresh inventory after creating product:", error)
+      })
     }
   }
 
@@ -850,7 +900,7 @@ export default function InventoryDashboard() {
               </Card>
             ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {[...Array(4)].map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -963,7 +1013,7 @@ export default function InventoryDashboard() {
         <div className="h-[1px] bg-gradient-to-r from-transparent via-[#102516]/20 to-transparent" />
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="inventory-summary-grid grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatCard title="Total Products" value={stats.total} icon={Boxes} color="default" subtext="Active in inventory" />
           <StatCard title="In Stock" value={stats.inStock} icon={CheckCircle} color="green" subtext="Above reorder level" />
           <StatCard title="Low Stock" value={stats.lowStock} icon={AlertTriangle} color="amber" subtext="Below reorder level" />
@@ -972,21 +1022,21 @@ export default function InventoryDashboard() {
         </div>
 
         {/* Search, Filters & Sort */}
-        <div className="flex gap-3 items-end flex-wrap">
+        <div className="inventory-controls-panel flex gap-3 items-end flex-wrap rounded-2xl border border-[#ded3f2] bg-white/80 p-3 shadow-[0_18px_42px_rgba(30,20,70,0.07)] backdrop-blur">
           <div className="flex-1 min-w-48 max-w-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#102516]/40" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7c3aed]/55" />
               <Input
                 placeholder="Search products, barcode..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border-[#102516]/15 bg-[#fefaf6] focus:border-[#102516]/40"
+                className="h-10 rounded-xl border-[#ded3f2] bg-[#fbf8ff] pl-10 text-[#21143f] shadow-inner focus:border-[#a78bfa] focus-visible:ring-[#8b5cf6]/20"
               />
             </div>
           </div>
 
           <Select value={stockFilter} onValueChange={(value: any) => setStockFilter(value)}>
-            <SelectTrigger className="w-40 border-[#102516]/15 bg-[#fefaf6]">
+            <SelectTrigger className="h-10 w-40 rounded-xl border-[#ded3f2] bg-white text-[#21143f] shadow-sm">
               <SelectValue placeholder="Stock Status" />
             </SelectTrigger>
             <SelectContent>
@@ -998,7 +1048,7 @@ export default function InventoryDashboard() {
           </Select>
 
           <Select value={categoryFilter} onValueChange={(value: any) => setCategoryFilter(value)}>
-            <SelectTrigger className="w-40 border-[#102516]/15 bg-[#fefaf6]">
+            <SelectTrigger className="h-10 w-40 rounded-xl border-[#ded3f2] bg-white text-[#21143f] shadow-sm">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -1012,8 +1062,8 @@ export default function InventoryDashboard() {
           </Select>
 
           <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-            <SelectTrigger className="w-44 border-[#102516]/15 bg-[#fefaf6]">
-              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-[#102516]/50" />
+            <SelectTrigger className="h-10 w-44 rounded-xl border-[#ded3f2] bg-white text-[#21143f] shadow-sm">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-[#7c3aed]/60" />
               <SelectValue placeholder="Sort By" />
             </SelectTrigger>
             <SelectContent>
@@ -1033,7 +1083,7 @@ export default function InventoryDashboard() {
               size="sm"
               onClick={handleOpenBulkEditor}
               disabled={filteredProducts.length === 0}
-              className="gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-50"
+              className="h-10 gap-1.5 rounded-xl border-[#c7b5ee] bg-white px-4 font-semibold text-[#4c1d95] shadow-sm hover:bg-[#f3edff]"
             >
               <Edit2 className="w-4 h-4" />
               Bulk Editor
@@ -1042,7 +1092,7 @@ export default function InventoryDashboard() {
               variant="outline"
               size="sm"
               onClick={() => setCategoryDrawerOpen(true)}
-              className="gap-1.5 border-[#102516]/15 text-[#102516] hover:bg-[#f9f2e8]"
+              className="h-10 gap-1.5 rounded-xl border-[#ded3f2] bg-white px-4 font-semibold text-[#21143f] shadow-sm hover:bg-[#fbf8ff]"
             >
               <BarChart3 className="w-4 h-4" />
               Manage Categories
@@ -1052,13 +1102,13 @@ export default function InventoryDashboard() {
 
         {/* Results count */}
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs bg-[#fcf7f0] border-[#102516]/10 text-[#102516]/70">
+          <Badge variant="outline" className="rounded-full border-[#ded3f2] bg-white/90 px-3 py-1 text-xs font-semibold text-[#4c1d95] shadow-sm">
             {filteredProducts.length} of {products.length} products
           </Badge>
           {(searchTerm || stockFilter !== "all" || categoryFilter !== "all" || sortBy !== "created_desc") && (
             <button
               onClick={handleResetFilters}
-              className="text-xs text-[#102516]/50 hover:text-[#102516] underline"
+              className="rounded-full px-2 py-1 text-xs font-semibold text-[#7c3aed] transition hover:bg-[#f3edff] hover:text-[#4c1d95]"
             >
               Reset filters
             </button>
@@ -1080,7 +1130,7 @@ export default function InventoryDashboard() {
             </div>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
@@ -1208,9 +1258,10 @@ export default function InventoryDashboard() {
                       {/* Image Thumbnail with zoom effect on hover */}
                       <div className="relative w-12 h-12 rounded-lg border border-slate-200 overflow-visible shrink-0 group bg-slate-50">
                         {p.image_url ? (
-                          <img
+                          <OptimizedImage
                             src={p.image_url}
                             alt={p.name}
+                            webpWidth={360}
                             className="w-full h-full object-cover transition-all duration-200 group-hover:scale-[6.5] group-hover:translate-x-6 group-hover:shadow-2xl group-hover:z-50 rounded-lg origin-left bg-white border border-slate-200"
                           />
                         ) : (

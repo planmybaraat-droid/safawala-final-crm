@@ -611,9 +611,9 @@ export default function LeadsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="crm-workspace-shell leads-module-ui space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="crm-module-hero flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-serif font-semibold text-gray-900 tracking-tight flex items-center gap-2">
               <Users className="w-8 h-8 text-[#102516]" />
@@ -631,7 +631,7 @@ export default function LeadsPage() {
             <Button 
               onClick={() => { resetAddForm(); setShowAddDialog(true) }} 
               size="sm" 
-              className="bg-[#102516] hover:bg-[#1a3a26] text-white"
+              className="crm-primary-action leads-action-button bg-[#102516] hover:bg-[#1a3a26] text-white"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Lead
@@ -640,7 +640,7 @@ export default function LeadsPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="crm-stats-grid grid grid-cols-2 lg:grid-cols-5 gap-3">
           {(["new", "contacted", "interested", "converted", "lost"] as const).map((s) => {
             const cfg = STATUS_CONFIG[s]
             const isActive = statusFilter === s
@@ -665,7 +665,7 @@ export default function LeadsPage() {
         </div>
 
         {/* Filters Toolbar */}
-        <Card className="shadow-sm border-gray-100">
+        <Card className="crm-filter-surface shadow-sm border-gray-100">
           <CardContent className="p-4 flex flex-col md:flex-row gap-3 items-end">
             <div className="flex-1 w-full space-y-1">
               <Label className="text-xs font-semibold text-gray-700">Search</Label>
@@ -730,9 +730,9 @@ export default function LeadsPage() {
         </Card>
 
         {/* Content Area: Table + Detail Panel */}
-        <div className="flex gap-4 items-start overflow-hidden">
+        <div className="leads-content-grid flex gap-4 items-start overflow-hidden">
           {/* Leads Table */}
-          <div className={`bg-white border rounded-xl overflow-hidden shadow-sm transition-all ${selectedLead ? "w-[58%]" : "w-full"}`}>
+          <div className={`crm-table-surface leads-table-panel bg-white border rounded-xl overflow-hidden shadow-sm transition-all ${selectedLead ? "w-[58%]" : "w-full"}`}>
             {loading ? (
               <div className="p-20 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
                 <Loader2 className="w-8 h-8 animate-spin text-[#102516]" />
@@ -841,7 +841,7 @@ export default function LeadsPage() {
 
           {/* Lead Detail Panel */}
           {selectedLead && (
-            <div className="w-[42%] bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col max-h-[85vh]">
+            <div className="crm-detail-panel w-[42%] bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col max-h-[85vh]">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b">
                 <div>
@@ -1045,7 +1045,7 @@ export default function LeadsPage() {
                               disabled={updatingId === selectedLead.id}
                               className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all ${
                                 isActive
-                                  ? cfg.color + " border-2 ring-1 ring-[#102516]/10"
+                                  ? "leads-status-pill-active border-transparent text-white shadow-sm"
                                   : "border-gray-200 hover:bg-slate-50 text-gray-600"
                               }`}
                             >
@@ -1120,7 +1120,7 @@ export default function LeadsPage() {
                 <Badge className="text-xs bg-green-100 text-green-800 border-green-200 hover:bg-green-100">{lockedDates.filter(ld => ld.locked_date >= format(new Date(), "yyyy-MM-dd")).length} upcoming</Badge>
               )}
             </div>
-            <Button size="sm" onClick={() => setShowAddLockDialog(true)} className="bg-green-600 hover:bg-green-700 text-white">
+            <Button size="sm" onClick={() => setShowAddLockDialog(true)} className="leads-action-button bg-green-600 hover:bg-green-700 text-white">
               <Plus className="h-4 w-4 mr-1" />
               Lock a Date
             </Button>
@@ -1293,7 +1293,7 @@ export default function LeadsPage() {
 
       {/* Lock a Date Dialog */}
       <Dialog open={showAddLockDialog} onOpenChange={setShowAddLockDialog}>
-        <DialogContent className="max-w-md bg-white border border-slate-100 shadow-lg rounded-xl">
+        <DialogContent className="crm-dialog-panel max-w-md bg-white border border-slate-100 shadow-lg rounded-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900">
               <Lock className="h-5 w-5 text-green-600" />
@@ -1375,7 +1375,7 @@ export default function LeadsPage() {
 
       {/* Duplicate Customer Confirmation */}
       <Dialog open={!!duplicateCandidate} onOpenChange={(open) => !open && setDuplicateCandidate(null)}>
-        <DialogContent className="max-w-md bg-white border border-slate-100 shadow-lg rounded-xl">
+        <DialogContent className="crm-dialog-panel max-w-md bg-white border border-slate-100 shadow-lg rounded-xl">
           <DialogHeader>
             <DialogTitle className="text-gray-900">Already a Customer</DialogTitle>
             <DialogDescription>
@@ -1417,7 +1417,7 @@ export default function LeadsPage() {
 
       {/* Manual Add Lead Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-white border border-slate-100 shadow-lg rounded-xl">
+        <DialogContent className="crm-dialog-panel max-w-xl max-h-[90vh] overflow-y-auto bg-white border border-slate-100 shadow-lg rounded-xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-serif font-semibold text-gray-900">Add New Lead Manually</DialogTitle>
             <DialogDescription>Create a new lead entry inside the CRM dashboard database.</DialogDescription>

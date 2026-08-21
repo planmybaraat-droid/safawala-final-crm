@@ -7,7 +7,7 @@ import { PortalIcon } from "@/components/portal/portal-icons"
 import { ProductFormSheet } from "../product-form-sheet"
 import { BarcodePrintDialog } from "@/components/inventory/barcode-print-dialog"
 
-const COLOR = "#a855f7"
+const COLOR = "#6f3f7b"
 
 function fmtRupee(n?: number) { return `₹${(n ?? 0).toLocaleString("en-IN")}` }
 
@@ -174,7 +174,7 @@ export default function ProductDetailPortalPage() {
   )
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 warehouse-product-page">
       <PortalPageHeader
         title={product.name ?? "Product"}
         subtitle={product.category ?? product.sku ?? ""}
@@ -287,7 +287,7 @@ export default function ProductDetailPortalPage() {
       {/* REPORT DAMAGE MODAL */}
       {damageModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 warehouse-damage-modal">
             {/* Header */}
             <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50">
               <h3 className="font-extrabold text-[15px]" style={{ color: "#1e1208" }}>Report Damaged Stock</h3>

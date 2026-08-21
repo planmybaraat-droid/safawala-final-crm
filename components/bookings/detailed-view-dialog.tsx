@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -47,6 +47,10 @@ export function DetailedBookingViewDialog({
   onStatusUpdate,
 }: DetailedBookingViewDialogProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const bookingEditorPath = pathname.startsWith("/portal/booking")
+    ? "/portal/booking/bookings/new"
+    : "/create-invoice"
   const { toast } = useToast()
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
@@ -137,11 +141,11 @@ export function DetailedBookingViewDialog({
 
   const handleEdit = () => {
     onOpenChange(false)
-    router.push(`/create-invoice?mode=edit&id=${booking.id}`)
+    router.push(`${bookingEditorPath}?mode=edit&id=${booking.id}`)
   }
 
   const handlePrint = () => {
-    window.open(`/create-invoice?mode=edit&id=${booking.id}&print=true`, "_blank")
+    window.open(`${bookingEditorPath}?mode=edit&id=${booking.id}&print=true`, "_blank")
   }
 
   const handleSendWhatsapp = async () => {

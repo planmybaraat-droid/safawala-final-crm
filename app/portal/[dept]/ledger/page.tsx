@@ -269,7 +269,7 @@ export default function LedgerPage() {
   }
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: "#1e1208", minHeight: "100vh" }}>
+    <div className={dept === "warehouse" ? "warehouse-ledger-page" : undefined} style={{ fontFamily: "'Inter', sans-serif", color: "#1e1208", minHeight: "100vh" }}>
       <PortalPageHeader 
         title={isAdminView ? "Staff Ledgers" : "My Ledger"} 
         subtitle={!isAdminView && dept === "warehouse" ? "Warehouse Advance & Expense Ledger" : "Staff advance and settlement ledger"}

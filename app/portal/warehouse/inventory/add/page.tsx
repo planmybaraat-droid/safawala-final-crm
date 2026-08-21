@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { PortalPageHeader } from "@/components/portal/portal-shared"
 
-const COLOR = "#0ea5e9"
+const COLOR = "#6f3f7b"
 
 export default function AddInventoryItemPage() {
   const router = useRouter()
@@ -53,7 +53,7 @@ export default function AddInventoryItemPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f9ff 0%, #e0f2fe 100%)", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div className="warehouse-add-item-page" style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f9ff 0%, #e0f2fe 100%)", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <PortalPageHeader title="Add Item" subtitle="Create a new inventory item" color={COLOR} backHref="/portal/warehouse/inventory" />
 
       <div style={{ padding: "16px 16px 100px" }}>

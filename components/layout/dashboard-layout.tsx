@@ -28,6 +28,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell"
 import { SafawalaAIAssistant } from "@/components/safawala-ai-assistant"
 import { TeamChat } from "@/components/team-chat"
 import { useSessionGuard } from "@/hooks/use-session-guard"
+import { getCachedAuthUser, getCachedJson } from "@/lib/client-read-cache"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -45,21 +46,17 @@ export function DashboardLayout({ children, userRole, compactHeader = false, hid
   const [showLockDate, setShowLockDate] = useState(false)
   const [lockedDates, setLockedDates] = useState<any[]>([])
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Fetch fresh user data from API instead of localStorage
-        const response = await fetch("/api/auth/user", {
-          credentials: "include",
-        })
+        const userData = await getCachedAuthUser()
 
-        if (!response.ok) {
+        if (!userData) {
           router.push("/")
           return
         }
-
-        const userData = await response.json()
         
         setUser(userData)
         await fetchNotifications(userData)
@@ -105,13 +102,10 @@ export function DashboardLayout({ children, userRole, compactHeader = false, hid
         user_id: currentUser.id,
       })
 
-      const response = await fetch(`/api/settings/profile?${params}`)
-      
-      if (response.ok) {
-        const result = await response.json()
-        if (result.data?.profile_photo_url) {
-          setProfilePhoto(result.data.profile_photo_url)
-        }
+      const result = await getCachedJson(`/api/settings/profile?${params}`, { maxAgeMs: 30_000 })
+
+      if (result?.data?.profile_photo_url) {
+        setProfilePhoto(result.data.profile_photo_url)
       }
     } catch {
       return
@@ -124,6 +118,12 @@ export function DashboardLayout({ children, userRole, compactHeader = false, hid
   }
 
   const unreadNotifications = notifications.filter((n) => !n.read).length
+  const isVadodaraCrmTheme =
+    String(user?.email || "").trim().toLowerCase() === "vadodara@safawala.com" &&
+    !pathname.startsWith("/portal")
+  const isVadodaraBookingsModule =
+    isVadodaraCrmTheme &&
+    (pathname.startsWith("/bookings") || pathname.startsWith("/create-invoice"))
 
   if (!user) {
     return (
@@ -136,7 +136,10 @@ export function DashboardLayout({ children, userRole, compactHeader = false, hid
   return (
     <SidebarProvider
       defaultOpen={true}
-      className="bg-[#F7F6F9]"
+      className={`bg-[#F7F6F9]${isVadodaraCrmTheme ? " vadodara-crm-shell" : ""}${isVadodaraBookingsModule ? " vadodara-bookings-shell" : ""}`}
+      data-crm-visual-account={isVadodaraCrmTheme ? "vadodara" : undefined}
+      data-crm-visual-scope={isVadodaraCrmTheme ? "main" : undefined}
+      data-crm-module={isVadodaraBookingsModule ? "bookings" : undefined}
       style={{ backgroundColor: "#F7F6F9" }}
     >
       {!hideSidebar && <AppSidebar userRole={user.role} />}
@@ -179,7 +182,7 @@ export function DashboardLayout({ children, userRole, compactHeader = false, hid
                 <DropdownMenuLabel>Create New</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/create-invoice" className="cursor-pointer">
+                  <Link href="/bookings/new" className="cursor-pointer">
                     New Booking
                   </Link>
                 </DropdownMenuItem>
@@ -253,12 +256,12 @@ function MobileBottomNav() {
     { href: "/bookings",    icon: "📅", label: "Bookings" },
     { href: "/customers",   icon: "👥", label: "Customers" },
     { href: "/deliveries",  icon: "🚚", label: "Deliveries" },
-    { href: "/create-invoice", icon: "➕", label: "New" },
+    { href: "/bookings/new", icon: "➕", label: "New" },
   ]
   return (
     <nav className="print:hidden md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 flex items-center justify-around h-14 px-1 safe-b">
       {tabs.map(tab => {
-        const isActive = pathname === tab.href || (tab.href !== "/dashboard" && tab.href !== "/create-invoice" && pathname.startsWith(tab.href))
+        const isActive = pathname === tab.href || (tab.href !== "/dashboard" && tab.href !== "/bookings/new" && pathname.startsWith(tab.href))
         return (
           <a
             key={tab.href}

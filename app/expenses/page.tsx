@@ -592,7 +592,7 @@ export default function ExpensesPage() {
         onConfirm={()=>{ if(deleteCategoryTarget) deleteCategory(deleteCategoryTarget.id); setDeleteCategoryTarget(null) }}
         onCancel={()=>setDeleteCategoryTarget(null)}
       />
-      <div className="space-y-4">
+      <div className="crm-ops-module crm-expenses-ui space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
             <div>
@@ -620,7 +620,7 @@ export default function ExpensesPage() {
                   Add Expense
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="crm-ops-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Expense</DialogTitle>
                   <DialogDescription>
@@ -1066,13 +1066,13 @@ export default function ExpensesPage() {
 
         {/* Category Management Dialog */}
         <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="crm-ops-dialog max-w-md">
             <DialogHeader>
               <DialogTitle>Manage Expense Categories</DialogTitle>
               <DialogDescription>Add or remove expense categories.</DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <div className="crm-ops-module crm-expenses-ui space-y-4">
               {/* Existing Categories */}
               {categories.length > 0 && (
                 <div className="space-y-2">
@@ -1155,7 +1155,7 @@ export default function ExpensesPage() {
 
         {/* View Expense Dialog */}
         <Dialog open={!!viewExpense} onOpenChange={(o) => { if(!o) setViewExpense(null); }}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="crm-ops-dialog max-w-lg">
             <DialogHeader>
               <DialogTitle>Expense Details</DialogTitle>
               <DialogDescription>
@@ -1163,7 +1163,7 @@ export default function ExpensesPage() {
               </DialogDescription>
             </DialogHeader>
             {viewExpense && (
-              <div className="space-y-4">
+              <div className="crm-ops-module crm-expenses-ui space-y-4">
                 {/* Amount & Date Header */}
                 <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                   <div>
@@ -1242,7 +1242,7 @@ export default function ExpensesPage() {
 
         {/* Edit Expense Dialog */}
         <Dialog open={!!editExpense} onOpenChange={(o) => { if(!o) setEditExpense(null); }}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="crm-ops-dialog max-w-md">
             <DialogHeader>
               <DialogTitle>Edit Expense</DialogTitle>
             </DialogHeader>
@@ -1291,12 +1291,12 @@ export default function ExpensesPage() {
 
         {/* File Viewer Dialog */}
         <Dialog open={!!fileViewer} onOpenChange={(o) => { if(!o) setFileViewer(null); }}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="crm-ops-dialog max-w-2xl">
             <DialogHeader>
               <DialogTitle>Receipt File</DialogTitle>
             </DialogHeader>
             {fileViewer?.receipt_url ? (
-              <div className="space-y-4">
+              <div className="crm-ops-module crm-expenses-ui space-y-4">
                 {fileViewer.receipt_url.split('|').map((url,i)=>{
                   const isImg = /\.(png|jpg|jpeg|gif|webp)$/i.test(url)
                   const isPdf = /\.(pdf)$/i.test(url)

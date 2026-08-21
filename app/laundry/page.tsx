@@ -102,7 +102,7 @@ interface NewBatchItem {
   notes: string
 }
 
-export default function LaundryPage() {
+export function LaundryManagement({ portalMode = false }: { portalMode?: boolean }) {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [batches, setBatches] = useState<LaundryBatch[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -223,18 +223,12 @@ export default function LaundryPage() {
         hasErrors = true
       }
 
-      // Try to fetch products
+      // Load the complete active inventory through the shared paginated API.
       try {
-        const { data: productsResult, error: productsError } = await supabase
-          .from("products")
-          .select("id, name, category, price")
-
-        if (productsError) {
-          console.error("Products error:", productsError)
-          hasErrors = true
-        } else {
-          productsData = productsResult || []
-        }
+        const productsResponse = await fetch("/api/products?limit=5000&active_only=true", { cache: "no-store" })
+        const productsResult = await productsResponse.json()
+        if (!productsResponse.ok) throw new Error(productsResult.error || "Products request failed")
+        productsData = productsResult.data || []
       } catch (error) {
         console.error("Products fetch failed:", error)
         hasErrors = true
@@ -818,14 +812,14 @@ export default function LaundryPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 bg-[#F8F7FA] p-4 pt-6 md:p-8">
+    <div className={`${portalMode ? "warehouse-laundry-management" : ""} crm-ops-module crm-laundry-ui flex-1 space-y-6 bg-[#F8F7FA] p-4 pt-6 md:p-8`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-4 border-b border-[#E7E2EA] pb-5">
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => (window.location.href = "/dashboard")}
+            onClick={() => (window.location.href = portalMode ? "/portal/warehouse" : "/dashboard")}
             className="flex items-center"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -851,7 +845,7 @@ export default function LaundryPage() {
                 Create Batch
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="crm-ops-dialog max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Laundry Batch</DialogTitle>
                 <DialogDescription>Create a new batch to send items to a laundry vendor</DialogDescription>
@@ -1208,7 +1202,7 @@ export default function LaundryPage() {
                   {dateFilter?.from || dateFilter?.to ? "Date Filtered" : "Date Filter"}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="crm-ops-dialog sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Filter by Date</DialogTitle>
                   <DialogDescription>Filter batches by sent date range</DialogDescription>
@@ -1432,7 +1426,7 @@ export default function LaundryPage() {
 
       {/* Batch Details Dialog */}
       <Dialog open={showBatchDetails} onOpenChange={setShowBatchDetails}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="crm-ops-dialog max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Batch Details - {selectedBatch?.batch_number}</DialogTitle>
             <DialogDescription>Detailed information about this laundry batch</DialogDescription>
@@ -1611,7 +1605,7 @@ export default function LaundryPage() {
 
       {/* Edit Batch Dialog */}
       <Dialog open={showEditBatch} onOpenChange={setShowEditBatch}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="crm-ops-dialog max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Batch - {editingBatch?.batch_number}</DialogTitle>
             <DialogDescription>Modify batch items and update details</DialogDescription>
@@ -1860,4 +1854,8 @@ export default function LaundryPage() {
       </Dialog>
     </div>
   )
+}
+
+export default function LaundryPage() {
+  return <LaundryManagement />
 }

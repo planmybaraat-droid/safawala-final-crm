@@ -5,6 +5,17 @@ import { authenticateRequest } from "@/lib/auth-middleware"
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+async function authenticateCategoryWrite(request: NextRequest) {
+  const auth = await authenticateRequest(request, { minRole: 'staff' })
+  if (!auth.authorized) return auth
+  const user = auth.user!
+  const canManage = user.is_super_admin || user.permissions.packages || user.department === "warehouse"
+  if (!canManage) {
+    return { authorized: false as const, error: { error: "Forbidden", message: "Package management permission is required" }, statusCode: 403 }
+  }
+  return auth
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request, { minRole: 'readonly' })
@@ -34,7 +45,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authenticateRequest(request, { minRole: 'staff', requirePermission: 'packages' })
+    const auth = await authenticateCategoryWrite(request)
     if (!auth.authorized) {
       return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
     }
@@ -70,5 +81,49 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Category creation error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const auth = await authenticateCategoryWrite(request)
+    if (!auth.authorized) return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
+    const { id, name } = await request.json()
+    if (!id || !name?.trim()) return NextResponse.json({ error: "Category ID and name are required" }, { status: 400 })
+
+    const supabase = createClient()
+    const { data: existing } = await supabase.from("packages_categories").select("id, franchise_id").eq("id", id).maybeSingle()
+    if (!existing) return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    if (!auth.user!.is_super_admin && existing.franchise_id && existing.franchise_id !== auth.user!.franchise_id) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    }
+
+    const { data, error } = await supabase.from("packages_categories").update({ name: name.trim(), updated_at: new Date().toISOString() }).eq("id", id).select().single()
+    if (error) throw error
+    return NextResponse.json({ success: true, data })
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || "Failed to update category" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await authenticateCategoryWrite(request)
+    if (!auth.authorized) return NextResponse.json(auth.error, { status: auth.statusCode || 401 })
+    const id = new URL(request.url).searchParams.get("id")
+    if (!id) return NextResponse.json({ error: "Category ID is required" }, { status: 400 })
+
+    const supabase = createClient()
+    const { data: existing } = await supabase.from("packages_categories").select("id, franchise_id").eq("id", id).maybeSingle()
+    if (!existing) return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    if (!auth.user!.is_super_admin && existing.franchise_id && existing.franchise_id !== auth.user!.franchise_id) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    }
+
+    const { error } = await supabase.from("packages_categories").update({ is_active: false, updated_at: new Date().toISOString() }).eq("id", id)
+    if (error) throw error
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || "Failed to delete category" }, { status: 500 })
   }
 }

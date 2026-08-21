@@ -1,0 +1,440 @@
+/*
+ * Warehouse Portal visual polish.
+ *
+ * Every rule is scoped to .warehouse-portal-theme, which is applied only by
+ * the authenticated Warehouse Portal layout. Other portals retain their
+ * existing visual presentation.
+ */
+
+.warehouse-portal-theme {
+  --warehouse-primary: #6f3f7b;
+  --warehouse-primary-strong: #4b2458;
+  --warehouse-primary-hover: #5d3268;
+  --warehouse-primary-soft: #f3edf5;
+  --warehouse-gold: #c8a96b;
+  --warehouse-bg: #f5f5f6;
+  --warehouse-surface: #ffffff;
+  --warehouse-surface-muted: #f8f8f9;
+  --warehouse-border: #dde1e6;
+  --warehouse-border-strong: #cbd1d8;
+  --warehouse-text: #172033;
+  --warehouse-text-muted: #566274;
+  --warehouse-text-subtle: #768295;
+  --warehouse-success: #177a52;
+  --warehouse-warning: #986600;
+  --warehouse-danger: #b42318;
+  --warehouse-info: #2f6fad;
+  --warehouse-shadow-sm: 0 1px 2px rgba(23, 32, 51, 0.05), 0 3px 10px rgba(23, 32, 51, 0.04);
+  --warehouse-shadow-md: 0 8px 24px rgba(34, 21, 42, 0.09);
+  color: var(--warehouse-text);
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body.warehouse-portal-theme {
+  background: var(--warehouse-bg);
+  color: var(--warehouse-text);
+}
+
+.warehouse-portal-theme ::selection {
+  background: rgba(111, 63, 123, 0.2);
+  color: var(--warehouse-primary-strong);
+}
+
+.warehouse-portal-theme.warehouse-portal-desktop,
+.warehouse-portal-theme.warehouse-portal-mobile,
+.warehouse-portal-theme .warehouse-home-page,
+.warehouse-portal-theme .warehouse-tasks-page,
+.warehouse-portal-theme .warehouse-laundry-page,
+.warehouse-portal-theme .warehouse-scan-page,
+.warehouse-portal-theme .warehouse-product-page,
+.warehouse-portal-theme .warehouse-ledger-page,
+.warehouse-portal-theme .warehouse-profile-page {
+  background: var(--warehouse-bg) !important;
+  color: var(--warehouse-text);
+}
+
+.warehouse-portal-theme .portal-desktop-content {
+  color: var(--warehouse-text);
+}
+
+/* Typography stays within the current component dimensions, but avoids
+   low-contrast 8–10px operational copy. */
+.warehouse-portal-theme [class~="text-[8px]"] {
+  font-size: 10px !important;
+}
+
+.warehouse-portal-theme [class~="text-[9px]"] {
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+}
+
+.warehouse-portal-theme [class~="text-[10px]"] {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+.warehouse-portal-theme [class~="text-[11px]"] {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+.warehouse-portal-theme .text-slate-400,
+.warehouse-portal-theme .text-gray-400 {
+  color: var(--warehouse-text-subtle) !important;
+}
+
+.warehouse-portal-theme .text-slate-500,
+.warehouse-portal-theme .text-gray-500 {
+  color: var(--warehouse-text-muted) !important;
+}
+
+.warehouse-portal-theme .text-slate-700,
+.warehouse-portal-theme .text-gray-700,
+.warehouse-portal-theme .text-slate-800,
+.warehouse-portal-theme .text-gray-800,
+.warehouse-portal-theme .text-slate-900,
+.warehouse-portal-theme .text-gray-900 {
+  color: var(--warehouse-text) !important;
+}
+
+/* Portal shell */
+.warehouse-portal-theme .portal-sidebar {
+  background: linear-gradient(180deg, #25152f 0%, #311b3b 100%) !important;
+  border-right-color: #493455 !important;
+  box-shadow: 6px 0 24px rgba(37, 21, 47, 0.12) !important;
+}
+
+.warehouse-portal-theme .portal-sidebar nav a {
+  border: 1px solid transparent;
+  color: #cfc5d5 !important;
+}
+
+.warehouse-portal-theme .portal-sidebar nav a:hover {
+  background: rgba(255, 255, 255, 0.055) !important;
+  color: #ffffff !important;
+}
+
+.warehouse-portal-theme .portal-sidebar nav a[aria-current="page"] {
+  background: #4a2756 !important;
+  border-color: rgba(200, 169, 107, 0.2);
+  color: #f3dda6 !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.warehouse-portal-theme .portal-top-nav {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-color: var(--warehouse-border) !important;
+  box-shadow: 0 1px 0 rgba(23, 32, 51, 0.02);
+}
+
+.warehouse-portal-theme .portal-top-nav > a {
+  color: var(--warehouse-primary-strong) !important;
+}
+
+.warehouse-portal-theme .portal-bottom-nav {
+  background: rgba(35, 23, 42, 0.98) !important;
+  border-color: #4b3a54 !important;
+  box-shadow: 0 -6px 20px rgba(35, 23, 42, 0.18) !important;
+}
+
+.warehouse-portal-theme .portal-bottom-nav a[aria-current="page"] span:last-child {
+  color: #f1d696 !important;
+}
+
+/* Headers */
+.warehouse-portal-theme .warehouse-home-hero,
+.warehouse-portal-theme .portal-page-header {
+  background: linear-gradient(135deg, var(--warehouse-primary-strong) 0%, var(--warehouse-primary) 100%) !important;
+  border-bottom: 1px solid rgba(200, 169, 107, 0.35);
+  box-shadow: 0 6px 18px rgba(75, 36, 88, 0.13);
+}
+
+.warehouse-portal-theme .warehouse-home-hero p,
+.warehouse-portal-theme .portal-page-header p {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.warehouse-portal-theme .portal-page-header button {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.13) !important;
+}
+
+.warehouse-portal-theme .portal-page-header button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Cards, rows, and information surfaces */
+.warehouse-portal-theme .portal-home-card {
+  background: var(--warehouse-surface) !important;
+  border-color: var(--warehouse-border) !important;
+  box-shadow: var(--warehouse-shadow-sm) !important;
+}
+
+.warehouse-portal-theme .portal-home-card:hover {
+  border-color: #cfc3d3 !important;
+  box-shadow: var(--warehouse-shadow-md) !important;
+}
+
+.warehouse-portal-theme .portal-home-card p:first-of-type,
+.warehouse-portal-theme .portal-section-label {
+  color: var(--warehouse-text-muted) !important;
+}
+
+.warehouse-portal-theme .portal-home-card p:nth-of-type(2) {
+  color: var(--warehouse-text) !important;
+}
+
+.warehouse-portal-theme .portal-list-card {
+  background: var(--warehouse-surface) !important;
+  border-color: #e5e8ec !important;
+  min-height: 64px;
+}
+
+.warehouse-portal-theme .portal-list-card:hover {
+  background: #faf9fb !important;
+}
+
+.warehouse-portal-theme .portal-list-card > div:nth-child(2) > p:first-child {
+  color: var(--warehouse-text) !important;
+}
+
+.warehouse-portal-theme .portal-list-card > div:nth-child(2) > p:nth-child(2) {
+  color: var(--warehouse-text-muted) !important;
+}
+
+.warehouse-portal-theme .portal-info-row {
+  border-color: #e5e8ec !important;
+}
+
+.warehouse-portal-theme .portal-info-row > span:first-child {
+  color: var(--warehouse-text-muted) !important;
+}
+
+.warehouse-portal-theme .portal-info-row > span:last-child {
+  color: var(--warehouse-text) !important;
+}
+
+.warehouse-portal-theme .portal-empty-state > p:first-of-type {
+  color: var(--warehouse-text) !important;
+}
+
+.warehouse-portal-theme .portal-empty-state > p:last-of-type {
+  color: var(--warehouse-text-muted) !important;
+}
+
+.warehouse-portal-theme .portal-status-badge {
+  border: 1px solid currentColor;
+  letter-spacing: 0.045em;
+}
+
+/* Common translucent cards used by the home, tasks, laundry, product, and
+   ledger screens become consistent solid operational surfaces. */
+.warehouse-portal-theme .warehouse-home-page .rounded-2xl,
+.warehouse-portal-theme .warehouse-tasks-page .rounded-2xl,
+.warehouse-portal-theme .warehouse-laundry-page .rounded-2xl,
+.warehouse-portal-theme .warehouse-scan-page .rounded-2xl,
+.warehouse-portal-theme .warehouse-product-page .rounded-2xl,
+.warehouse-portal-theme .warehouse-ledger-page .rounded-2xl,
+.warehouse-portal-theme .warehouse-profile-page .rounded-2xl {
+  border-color: var(--warehouse-border) !important;
+}
+
+/* Search, fields, selects, and focus states */
+.warehouse-portal-theme .portal-search-bar > div {
+  background: var(--warehouse-surface) !important;
+  border-color: var(--warehouse-border) !important;
+  box-shadow: var(--warehouse-shadow-sm);
+}
+
+.warehouse-portal-theme input,
+.warehouse-portal-theme select,
+.warehouse-portal-theme textarea {
+  color: var(--warehouse-text) !important;
+  caret-color: var(--warehouse-primary);
+}
+
+.warehouse-portal-theme input::placeholder,
+.warehouse-portal-theme textarea::placeholder {
+  color: #8792a2 !important;
+  opacity: 1;
+}
+
+.warehouse-portal-theme input:focus,
+.warehouse-portal-theme select:focus,
+.warehouse-portal-theme textarea:focus,
+.warehouse-portal-theme button:focus-visible,
+.warehouse-portal-theme a:focus-visible {
+  outline: 3px solid rgba(111, 63, 123, 0.2) !important;
+  outline-offset: 2px;
+  border-color: var(--warehouse-primary) !important;
+}
+
+.warehouse-portal-theme button:disabled,
+.warehouse-portal-theme input:disabled,
+.warehouse-portal-theme select:disabled,
+.warehouse-portal-theme textarea:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.58 !important;
+}
+
+/* Loading states */
+.warehouse-portal-theme .portal-skeleton .bg-zinc-100 {
+  background: #e8eaee !important;
+}
+
+.warehouse-portal-theme .portal-skeleton .animate-pulse {
+  animation-duration: 1.8s;
+}
+
+/* Inventory family */
+.warehouse-portal-theme .warehouse-inventory-page,
+.warehouse-portal-theme .warehouse-add-item-page {
+  background: linear-gradient(160deg, #f7f5f8 0%, #f0eff2 100%) !important;
+  color: var(--warehouse-text);
+}
+
+.warehouse-portal-theme .warehouse-inventory-page > div:first-child {
+  background: linear-gradient(135deg, var(--warehouse-primary-strong), var(--warehouse-primary)) !important;
+  border-bottom: 1px solid rgba(200, 169, 107, 0.35);
+  box-shadow: 0 6px 18px rgba(75, 36, 88, 0.13);
+}
+
+.warehouse-portal-theme .warehouse-inventory-page input,
+.warehouse-portal-theme .warehouse-inventory-page select,
+.warehouse-portal-theme .warehouse-add-item-page input,
+.warehouse-portal-theme .warehouse-add-item-page select {
+  background: var(--warehouse-surface) !important;
+  border-color: var(--warehouse-border) !important;
+}
+
+.warehouse-portal-theme .warehouse-inventory-page [style*="background: white"],
+.warehouse-portal-theme .warehouse-add-item-page [style*="background: white"] {
+  border-color: var(--warehouse-border) !important;
+  box-shadow: var(--warehouse-shadow-sm) !important;
+}
+
+.warehouse-portal-theme .warehouse-add-item-page label {
+  color: var(--warehouse-text-muted) !important;
+}
+
+.warehouse-portal-theme .warehouse-action-sheet,
+.warehouse-portal-theme .warehouse-categories-sheet,
+.warehouse-portal-theme .warehouse-product-editor,
+.warehouse-portal-theme .warehouse-damage-modal,
+.warehouse-portal-theme .warehouse-task-modal,
+.warehouse-portal-theme .warehouse-job-tracker-modal,
+.warehouse-portal-theme .portal-notification-panel {
+  background: var(--warehouse-surface) !important;
+  border-color: var(--warehouse-border) !important;
+  box-shadow: 0 24px 70px rgba(23, 32, 51, 0.24) !important;
+}
+
+.warehouse-portal-theme .warehouse-product-editor {
+  --primary: 289 32% 36%;
+  border-top-color: var(--warehouse-primary) !important;
+}
+
+/* Modal and drawer consistency, including Radix portals rendered under body. */
+body.warehouse-portal-theme [role="dialog"] {
+  color: var(--warehouse-text);
+  border-color: var(--warehouse-border) !important;
+  box-shadow: 0 24px 70px rgba(23, 32, 51, 0.24) !important;
+}
+
+body.warehouse-portal-theme [role="dialog"] input,
+body.warehouse-portal-theme [role="dialog"] select,
+body.warehouse-portal-theme [role="dialog"] textarea {
+  border-color: var(--warehouse-border) !important;
+}
+
+body.warehouse-portal-theme [role="dialog"] input:focus,
+body.warehouse-portal-theme [role="dialog"] select:focus,
+body.warehouse-portal-theme [role="dialog"] textarea:focus {
+  border-color: var(--warehouse-primary) !important;
+  box-shadow: 0 0 0 3px rgba(111, 63, 123, 0.14) !important;
+}
+
+/* Ledger and operational status surfaces */
+.warehouse-portal-theme .warehouse-ledger-page .bg-white,
+.warehouse-portal-theme .warehouse-product-page .bg-white,
+.warehouse-portal-theme .warehouse-task-modal .bg-white,
+.warehouse-portal-theme .warehouse-job-tracker-modal .bg-white {
+  background: var(--warehouse-surface) !important;
+}
+
+.warehouse-portal-theme .warehouse-ledger-page .border-slate-100,
+.warehouse-portal-theme .warehouse-ledger-page .border-gray-100,
+.warehouse-portal-theme .warehouse-product-page .border-slate-100,
+.warehouse-portal-theme .warehouse-task-modal .border-slate-100,
+.warehouse-portal-theme .warehouse-job-tracker-modal .border-slate-100 {
+  border-color: var(--warehouse-border) !important;
+}
+
+.warehouse-portal-theme .text-emerald-600,
+.warehouse-portal-theme .text-emerald-700,
+.warehouse-portal-theme .text-emerald-800 {
+  color: var(--warehouse-success) !important;
+}
+
+.warehouse-portal-theme .text-red-600,
+.warehouse-portal-theme .text-red-700,
+.warehouse-portal-theme .text-red-800,
+.warehouse-portal-theme .text-rose-600,
+.warehouse-portal-theme .text-rose-700 {
+  color: var(--warehouse-danger) !important;
+}
+
+.warehouse-portal-theme .bg-red-50,
+.warehouse-portal-theme .bg-rose-50 {
+  background: #fff4f2 !important;
+}
+
+.warehouse-portal-theme .border-red-100,
+.warehouse-portal-theme .border-red-200,
+.warehouse-portal-theme .border-rose-100,
+.warehouse-portal-theme .border-rose-200 {
+  border-color: #f4c7c1 !important;
+}
+
+/* Desktop keeps the existing layout while preventing full-page inner screens
+   from visually fighting the desktop shell. */
+@media (min-width: 768px) {
+  .warehouse-portal-theme .warehouse-inventory-page,
+  .warehouse-portal-theme .warehouse-add-item-page,
+  .warehouse-portal-theme .warehouse-home-page,
+  .warehouse-portal-theme .warehouse-tasks-page,
+  .warehouse-portal-theme .warehouse-laundry-page,
+  .warehouse-portal-theme .warehouse-scan-page,
+  .warehouse-portal-theme .warehouse-product-page,
+  .warehouse-portal-theme .warehouse-ledger-page,
+  .warehouse-portal-theme .warehouse-profile-page {
+    border: 1px solid var(--warehouse-border);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: var(--warehouse-shadow-sm);
+  }
+}
+
+@media (max-width: 767px) {
+  .warehouse-portal-theme .portal-list-card {
+    min-height: 62px;
+  }
+
+  .warehouse-portal-theme .portal-page-header,
+  .warehouse-portal-theme .warehouse-home-hero {
+    box-shadow: 0 4px 14px rgba(75, 36, 88, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warehouse-portal-theme *,
+  .warehouse-portal-theme *::before,
+  .warehouse-portal-theme *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

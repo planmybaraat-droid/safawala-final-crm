@@ -278,15 +278,19 @@ export default function CreateProductOrderPage() {
         setCustomers(customersData)
         // ✅ Map ProductWithBarcodes to Product interface (include barcode metadata for search)
         const mappedProducts = productsWithBarcodes.map(p => ({
+          ...p,
           id: p.id,
           name: p.name,
-          category: '', // ProductWithBarcodes doesn't include full category data
+          category: '',
           category_id: p.category_id,
-          subcategory_id: undefined,
+          subcategory_id: (p as any).subcategory_id,
           rental_price: p.rental_price || 0,
           sale_price: p.sale_price || 0,
           security_deposit: p.security_deposit || 0,
           stock_available: p.stock_available || 0,
+          reorder_level: (p as any).reorder_level || 0,
+          created_at: (p as any).created_at,
+          updated_at: (p as any).updated_at,
           image_url: (p as any).image_url || undefined,
           barcode: (p as any).barcode || (p as any).barcode_number || null,
           product_code: p.product_code || null,

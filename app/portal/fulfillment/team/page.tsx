@@ -24,6 +24,7 @@ export default function TeamAssignmentPage() {
 
   const [selectedWO, setSelectedWO] = useState<WorkOrder | null>(null)
   const [selectedTask, setSelectedTask] = useState<StylingTask | null>(null)
+  const [selectedTravelTask, setSelectedTravelTask] = useState<StylingTask | null>(null)
 
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" } | null>(null)
   function showToast(message: string, kind: "success" | "error" = "success") {
@@ -49,22 +50,25 @@ export default function TeamAssignmentPage() {
     }
   }
 
-  const jobs = workOrders.flatMap(wo =>
-    (wo.work_order_tasks ?? [])
-      .filter(t => t.status !== "cancelled")
-      .map(t => ({ workOrder: wo, task: t }))
-  )
-  const openJobs = jobs.filter(({ task }) => task.status !== "completed")
-  const closedJobs = jobs.filter(({ task }) => task.status === "completed")
+  const jobs = workOrders.flatMap(wo => {
+    const task = (wo.work_order_tasks ?? []).find(t => t.department === "styling" && t.status !== "cancelled")
+    if (!task) return []
+    const travelTask = (wo.work_order_tasks ?? []).find(t => t.department === "travels" && t.status !== "cancelled") || null
+    return [{ workOrder: wo, task, travelTask }]
+  })
+  const openJobs = jobs.filter(({ task, travelTask }) => !task.assigned_to || (travelTask && travelTask.status !== "completed"))
+  const closedJobs = jobs.filter(({ task, travelTask }) => !!task.assigned_to && (!travelTask || travelTask.status === "completed"))
   const visibleJobs = view === 'open' ? openJobs : closedJobs
 
-  function openJob(wo: WorkOrder, task: StylingTask) {
+  function openJob(wo: WorkOrder, task: StylingTask, travelTask: StylingTask | null) {
     setSelectedWO(wo)
     setSelectedTask(task)
+    setSelectedTravelTask(travelTask)
   }
   function closeJob() {
     setSelectedWO(null)
     setSelectedTask(null)
+    setSelectedTravelTask(null)
   }
 
   return (
@@ -119,15 +123,15 @@ export default function TeamAssignmentPage() {
             color={COLOR}
           />
         ) : (
-          visibleJobs.map(({ workOrder, task }) => (
+          visibleJobs.map(({ workOrder, task, travelTask }) => (
             <PortalListCard
               key={task.id}
               title={`${workOrder.customer_name} (${workOrder.booking_number})`}
               subtitle={task.assigned_to ? `Stylist: ${task.metadata?.assigned_stylist?.name || "Assigned"}` : `${(task.metadata?.interested_stylists || []).length} interested`}
-              badge={task.assigned_to ? "assigned" : "open"}
+              badge={task.assigned_to && (!travelTask || travelTask.status === "completed") ? "completed" : task.assigned_to ? "travel pending" : "open"}
               color={COLOR}
               icon="team"
-              onClick={() => openJob(workOrder, task)}
+              onClick={() => openJob(workOrder, task, travelTask)}
             />
           ))
         )}
@@ -149,6 +153,7 @@ export default function TeamAssignmentPage() {
                 key={selectedTask.id}
                 workOrder={selectedWO}
                 stylingTask={selectedTask}
+                travelTask={selectedTravelTask}
                 onStylingTaskUpdate={setSelectedTask}
                 showToast={showToast}
                 onTravelSaved={() => {

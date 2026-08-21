@@ -89,8 +89,8 @@ export function BookingWorkflowStepper({
   const currentStepIndex = steps.findIndex((s) => s.key === currentStep)
 
   return (
-    <div className="w-full bg-white/70 backdrop-blur-md border border-slate-100 rounded-2xl p-5 mb-6 shadow-sm print:hidden">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="booking-workflow-stepper w-full bg-white/80 backdrop-blur-md border border-slate-100 rounded-2xl p-4 mb-6 shadow-sm print:hidden">
+      <div className="booking-workflow-stepper-grid flex flex-col md:flex-row md:items-center justify-between gap-3">
         {steps.map((step, idx) => {
           const Icon = step.icon
           const path = step.getPath()
@@ -102,7 +102,7 @@ export function BookingWorkflowStepper({
           const content = (
             <div
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl transition-all duration-200 w-full text-left",
+                "booking-workflow-step flex items-center gap-3 p-3 rounded-xl transition-all duration-200 w-full text-left",
                 isActive && "border shadow-sm",
                 isClickable && "hover:bg-slate-50 cursor-pointer"
               )}
@@ -111,7 +111,7 @@ export function BookingWorkflowStepper({
               {/* Icon / Status badge */}
               <div
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300",
+                  "booking-workflow-icon w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300",
                   isCompleted && "text-white",
                   isActive && "text-white shadow-md scale-105 animate-pulse-slow",
                   isUpcoming && "bg-slate-100 text-slate-400 border border-slate-200"
@@ -160,7 +160,7 @@ export function BookingWorkflowStepper({
           )
 
           return (
-            <div key={step.key} className="flex-1 flex items-center">
+            <div key={step.key} className="booking-workflow-step-wrap flex-1 flex items-center">
               {path && isClickable ? (
                 <Link href={path} className="w-full">
                   {content}
@@ -170,7 +170,7 @@ export function BookingWorkflowStepper({
               )}
 
               {idx < steps.length - 1 && (
-                <div className="hidden md:flex items-center justify-center px-1 text-slate-300">
+                <div className="booking-workflow-arrow hidden md:flex items-center justify-center px-1 text-slate-300">
                   <ChevronRight className="w-5 h-5" />
                 </div>
               )}

@@ -8,8 +8,10 @@ const COLOR = "#14b8a6"
 
 export interface StylingTask {
   id: string
+  department?: string
   status: "pending" | "active" | "completed" | "cancelled"
   assigned_to?: string | null
+  checklist?: Array<{ text: string; checked: boolean }>
   metadata?: {
     interested_stylists?: Array<{ user_id: string; name: string; note?: string; at: string }>
     assigned_stylist?: { id: string; name: string; assigned_at: string }
@@ -103,12 +105,14 @@ function DocUploadSection({
 export function TeamTravelPanel({
   workOrder,
   stylingTask,
+  travelTask,
   onStylingTaskUpdate,
   showToast,
   onTravelSaved,
 }: {
   workOrder: { booking_id: string; booking_number: string; customer_name: string }
   stylingTask: StylingTask
+  travelTask?: StylingTask | null
   onStylingTaskUpdate: (task: StylingTask) => void
   showToast: (message: string, kind?: "success" | "error") => void
   /** Called after travel details save successfully — parent can close the popup and jump to Closed Jobs. */
@@ -234,6 +238,17 @@ export function TeamTravelPanel({
       const res = await fetch("/api/travel-bookings", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const json = await res.json()
       if (!json.success) throw new Error(json.error || "Save failed")
+
+      if (travelTask && travelTask.status !== "completed") {
+        const completedChecklist = (travelTask.checklist || []).map(item => ({ ...item, checked: true }))
+        const taskRes = await fetch(`/api/work-orders/tasks/${travelTask.id}/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "completed", checklist: completedChecklist }),
+        })
+        const taskJson = await taskRes.json()
+        if (!taskRes.ok) throw new Error(taskJson.error || "Travel saved but the workflow task could not be completed")
+      }
       showToast(stylingTask.assigned_to ? "Job confirmed — stylist notified!" : "Travel details saved!")
       onTravelSaved?.()
     } catch (err: any) {

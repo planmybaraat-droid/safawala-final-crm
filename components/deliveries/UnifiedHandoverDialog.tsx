@@ -391,7 +391,7 @@ export function UnifiedHandoverDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="crm-ops-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Complete Delivery Handover</DialogTitle>
           <DialogDescription>

@@ -26,7 +26,7 @@ export function PortalHomeCard({
 }: PortalHomeCardProps) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform duration-150"
+      className="relative overflow-hidden rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform duration-150 portal-home-card"
       style={{
         background: "#ffffff",
         border: "1px solid #e4e4e7",

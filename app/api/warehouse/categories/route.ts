@@ -15,12 +15,15 @@ export async function GET(request: NextRequest) {
   const permission = await requireRbacPermission(request, "warehouse.view")
   if ("response" in permission) return permission.response
 
-  const { data, error } = await supabaseServer
+  const includeAll = new URL(request.url).searchParams.get("all") === "true"
+  let query = supabaseServer
     .from("product_categories")
-    .select("id, name")
+    .select("id, name, parent_id")
     .eq("is_active", true)
-    .is("parent_id", null)
     .order("name")
+  if (!includeAll) query = query.is("parent_id", null)
+
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true, data: data || [] })

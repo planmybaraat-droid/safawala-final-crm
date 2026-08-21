@@ -894,7 +894,7 @@ export default function DeliveriesPage() {
     const riderReturns = returns.filter(r => r.delivery?.assigned_staff_id === currentUser.id || r.processed_by === currentUser.id)
 
     return (
-      <div className="flex-1 space-y-4 p-4 md:p-6 max-w-md mx-auto">
+      <div className="crm-ops-module crm-deliveries-ui crm-deliveries-rider-ui flex-1 space-y-4 p-4 md:p-6 max-w-md mx-auto">
         {/* Rider Header */}
         <div className="flex items-center justify-between pb-2 border-b">
           <div>
@@ -1024,7 +1024,7 @@ export default function DeliveriesPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 bg-[#F7F6F9] min-h-screen text-slate-900">
+    <div className="crm-ops-module crm-deliveries-ui flex-1 space-y-6 p-4 md:p-8 pt-6 bg-[#F7F6F9] min-h-screen text-slate-900">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-200">
         <div className="flex items-center space-x-4">
@@ -1049,7 +1049,7 @@ export default function DeliveriesPage() {
                 Schedule Delivery
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="crm-ops-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Schedule New Delivery</DialogTitle>
                 <DialogDescription>Create a new delivery schedule for wedding turban orders</DialogDescription>
@@ -2039,7 +2039,7 @@ export default function DeliveriesPage() {
           if (!open) clearActionParams()
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="crm-ops-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Delivery Details</DialogTitle>
             <DialogDescription>View complete delivery information</DialogDescription>
@@ -2350,7 +2350,7 @@ export default function DeliveriesPage() {
           if (!open) clearActionParams()
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="crm-ops-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Delivery</DialogTitle>
             <DialogDescription>Update delivery information</DialogDescription>
@@ -2688,7 +2688,7 @@ export default function DeliveriesPage() {
           if (!open) clearActionParams()
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="crm-ops-dialog max-w-md">
           <DialogHeader>
             <DialogTitle>Reschedule Rental Return</DialogTitle>
             <DialogDescription>

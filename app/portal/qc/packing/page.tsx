@@ -335,13 +335,13 @@ export default function QcPackingPage() {
     }
   }
 
-  const packingTasks = workOrders.flatMap(wo =>
+  const qcTasks = workOrders.flatMap(wo =>
     (wo.work_order_tasks ?? [])
-      .filter(t => t.department === "packing")
+      .filter(t => t.department === "packing" || t.department === "return_qc")
       .map(t => ({ workOrder: wo, task: t }))
   )
-  const openTasks = packingTasks.filter(({ task }) => task.status === "active" || task.status === "pending" || task.status === "shortage")
-  const closedTasks = packingTasks.filter(({ task }) => task.status === "completed" || task.status === "cancelled")
+  const openTasks = qcTasks.filter(({ task }) => task.status === "active" || task.status === "pending" || task.status === "shortage")
+  const closedTasks = qcTasks.filter(({ task }) => task.status === "completed" || task.status === "cancelled")
   const visibleTasks = jobsView === "open" ? openTasks : closedTasks
 
   async function handleOpenTask(wo: WorkOrder, t: Task) {
@@ -350,7 +350,7 @@ export default function QcPackingPage() {
     setChecklist(t.checklist ? [...t.checklist] : [])
     setPhotos(t.photos ? [...t.photos] : [])
     const qcStatus = t.metadata?.qc_status || "pending"
-    setStep(qcStatus === "passed" ? "packing" : "qc")
+    setStep(t.department === "return_qc" ? "qc" : qcStatus === "passed" ? "packing" : "qc")
     // Seed from any saved per-item results while the item list itself loads.
     setQcItems((t.metadata?.qc_checklist as any) || [])
 
@@ -428,14 +428,15 @@ export default function QcPackingPage() {
     }
 
     if (failed.length > 0) {
-      if (!window.confirm(`${failed.length} item${failed.length > 1 ? "s" : ""} failed. Send back to Warehouse for rework?`)) return
+      const isReturnQc = selectedTask.department === "return_qc"
+      if (!isReturnQc && !window.confirm(`${failed.length} item${failed.length > 1 ? "s" : ""} failed. Send back to Warehouse for rework?`)) return
       setUpdating(true)
       try {
         const res = await fetch(`/api/work-orders/tasks/${selectedTask.id}/status`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            status: "shortage",
+            ...(isReturnQc ? {} : { status: "shortage" }),
             metadata: {
               qc_status: "failed",
               qc_checklist: qcItems,
@@ -445,9 +446,14 @@ export default function QcPackingPage() {
         })
         const data = await res.json()
         if (res.ok) {
-          showToast(`Sent back to Warehouse — ${failed.map(i => i.name).join(", ")} failed QC.`)
-          handleCloseTask()
-          fetchWorkOrders()
+          if (isReturnQc) {
+            showToast(`Return remains in QC — resolve: ${failed.map(i => i.name).join(", ")}.`, "error")
+            setSelectedTask(prev => prev ? { ...prev, metadata: { ...prev.metadata, qc_status: "failed", qc_checklist: qcItems } } : prev)
+          } else {
+            showToast(`Sent back to Warehouse — ${failed.map(i => i.name).join(", ")} failed QC.`)
+            handleCloseTask()
+            fetchWorkOrders()
+          }
         } else {
           showToast(data.error || "Failed to send back for rework.", "error")
         }
@@ -459,20 +465,28 @@ export default function QcPackingPage() {
       return
     }
 
+    const isReturnQc = selectedTask.department === "return_qc"
     setUpdating(true)
     try {
       const res = await fetch(`/api/work-orders/tasks/${selectedTask.id}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(isReturnQc ? { status: "completed" } : {}),
           metadata: { qc_status: "passed", qc_checklist: qcItems, qc_passed_at: new Date().toISOString() },
         }),
       })
       const data = await res.json()
       if (res.ok) {
-        showToast("All items passed Quality Check — packing unlocked!")
-        setStep("packing")
-        setSelectedTask(prev => prev ? { ...prev, metadata: { ...prev.metadata, qc_status: "passed" } } : prev)
+        if (isReturnQc) {
+          showToast("Return QC passed — sent to Warehouse Storage!")
+          handleCloseTask()
+          fetchWorkOrders()
+        } else {
+          showToast("All items passed Quality Check — packing unlocked!")
+          setStep("packing")
+          setSelectedTask(prev => prev ? { ...prev, metadata: { ...prev.metadata, qc_status: "passed" } } : prev)
+        }
       } else {
         showToast(data.error || "Failed to save Quality Check.", "error")
       }
@@ -581,7 +595,7 @@ export default function QcPackingPage() {
         </div>
       )}
 
-      <PortalPageHeader title="Packing Queue" subtitle="Quality check, then pack" color={COLOR} backHref="/portal/qc" />
+      <PortalPageHeader title="QC & Packing Queue" subtitle="Quality check outbound and returned items" color={COLOR} backHref="/portal/qc" />
 
       {errorState && (
         <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-1.5 shadow-sm">
@@ -609,7 +623,7 @@ export default function QcPackingPage() {
         ))}
       </div>
 
-      <PortalSectionLabel label={jobsView === 'open' ? "Packing Jobs" : "Packing History"} />
+      <PortalSectionLabel label={jobsView === 'open' ? "QC Jobs" : "QC History"} />
 
       <div className="mx-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.9)" }}>
         {loading ? (
@@ -618,7 +632,7 @@ export default function QcPackingPage() {
           <PortalEmptyState
             icon="laundry"
             title="No jobs found"
-            subtitle={jobsView === 'open' ? "No orders waiting to be packed right now." : "No completed packing jobs yet."}
+            subtitle={jobsView === 'open' ? "No items waiting for QC right now." : "No completed QC jobs yet."}
             color={COLOR}
           />
         ) : (
@@ -627,7 +641,7 @@ export default function QcPackingPage() {
               key={task.id}
               title={`${workOrder.customer_name} (${workOrder.booking_number})`}
               subtitle={task.status === "shortage" ? "Needs Rework — waiting on Warehouse" : task.title}
-              meta={jobsView === 'open' ? (task.status === "active" ? (task.metadata?.qc_status === "passed" ? "Packing" : "QC Needed") : task.status === "shortage" ? undefined : "Waiting") : undefined}
+              meta={jobsView === 'open' ? (task.status === "active" ? (task.department === "return_qc" ? "Return QC" : task.metadata?.qc_status === "passed" ? "Packing" : "QC Needed") : task.status === "shortage" ? undefined : "Waiting") : undefined}
               badge={task.status}
               color={COLOR}
               icon="laundry"
@@ -656,10 +670,12 @@ export default function QcPackingPage() {
               {/* Step indicator */}
               {!isClosed && !isShortage && (
                 <div className="flex items-center gap-2">
-                  {[
+                  {(selectedTask.department === "return_qc" ? [
+                    { key: "qc", label: "Return Quality Check" },
+                  ] : [
                     { key: "qc", label: "① Quality Check" },
                     { key: "packing", label: "② Packing" },
-                  ].map((s, i) => {
+                  ]).map((s) => {
                     const active = step === s.key
                     const done = s.key === "qc" && step === "packing"
                     return (
@@ -804,7 +820,9 @@ export default function QcPackingPage() {
                     {updating ? "Submitting…" : (
                       <>
                         <PortalIcon name="check" size={15} />
-                        {qcItems.some(i => i.status === "fail") ? "Submit — Send Back for Rework" : "Submit Quality Check"}
+                        {qcItems.some(i => i.status === "fail")
+                          ? selectedTask.department === "return_qc" ? "Record QC Issues" : "Submit — Send Back for Rework"
+                          : selectedTask.department === "return_qc" ? "Pass Return QC & Send to Storage" : "Submit Quality Check"}
                       </>
                     )}
                   </button>
@@ -812,7 +830,7 @@ export default function QcPackingPage() {
               )}
 
               {/* STEP 2: Packing */}
-              {(step === "packing" || isClosed) && (
+              {selectedTask.department === "packing" && (step === "packing" || isClosed) && (
                 <div className="space-y-5 animate-in fade-in slide-in-from-right-2 duration-300">
                   {checklist.length > 0 && (
                     <div className="space-y-2">
@@ -905,6 +923,13 @@ export default function QcPackingPage() {
                       </button>
                     )}
                   </div>
+                </div>
+              )}
+
+              {selectedTask.department === "return_qc" && selectedTask.status === "completed" && (
+                <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center flex items-center justify-center gap-2">
+                  <PortalIcon name="check-circle" size={16} className="text-emerald-600" />
+                  <p className="text-[12px] font-bold text-emerald-700">Return QC passed and sent to Warehouse Storage</p>
                 </div>
               )}
             </div>

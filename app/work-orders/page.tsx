@@ -32,7 +32,7 @@ const formatDateSafe = (dateStr: string | null | undefined): string => {
 
 interface Task {
   id: string
-  department: 'warehouse' | 'packing' | 'dispatch' | 'event_team' | 'returns' | 'accounts'
+  department: 'warehouse' | 'packing' | 'dispatch' | 'event_team' | 'styling' | 'travels' | 'returns' | 'return_qc' | 'return_receiving' | 'accounts'
   task_number: string
   title: string
   status: 'pending' | 'active' | 'picked' | 'shortage' | 'completed' | 'cancelled'
@@ -59,7 +59,7 @@ interface WorkOrder {
 const isRentalSource = (source: string) =>
   source === "product_orders" || source === "package_bookings"
 
-const DEPT_ORDER = ['warehouse', 'packing', 'dispatch', 'event_team', 'returns', 'accounts']
+const DEPT_ORDER = ['warehouse', 'packing', 'dispatch', 'event_team', 'styling', 'travels', 'returns', 'return_qc', 'return_receiving', 'accounts']
 
 // First not-yet-done task for a work order, in department flow order — used by the Remind button
 const getActiveTask = (workOrder: WorkOrder) => {
@@ -170,7 +170,7 @@ export default function WorkOrdersPage() {
 
   // Compute counts for each department for badges
   const departmentCounts = useMemo(() => {
-    const counts = {
+    const counts: Record<string, number> = {
       bookings: 0,
       warehouse: 0,
       packing: 0,

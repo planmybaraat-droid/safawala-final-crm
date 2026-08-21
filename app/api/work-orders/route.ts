@@ -174,19 +174,18 @@ export async function GET(request: NextRequest) {
 
     const visibleWorkOrders = rbacContext?.user.department === "warehouse" && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"
       ? enrichedWorkOrders
-          // Warehouse picking is rental-only — direct sales don't go through this queue.
-          .filter((wo: any) => wo.is_rental)
           .map((wo: any) => ({
             ...wo,
-            // Warehouse only handles picking — packing moved to the QC portal.
+            // Warehouse handles both initial picking and final return receiving.
             work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>
-              t.department === "warehouse" && (!t.assigned_to || t.assigned_to === rbacContext.user.id)
+              (t.department === "warehouse" || t.department === "return_receiving") &&
+              (!t.assigned_to || t.assigned_to === rbacContext.user.id)
             ),
           })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
       : (rbacContext?.user.department === "qc" || rbacContext?.user.role === "qc_staff")
         ? enrichedWorkOrders.filter((wo: any) =>
             // QC owns both the packing step (any status) and the post-pack audit register.
-            (wo.work_order_tasks || []).some((t: any) => t.department === "packing")
+            (wo.work_order_tasks || []).some((t: any) => t.department === "packing" || t.department === "return_qc")
           )
         : rbacContext?.user.department === "styling"
         ? enrichedWorkOrders.filter((wo: any) =>
@@ -207,7 +206,7 @@ export async function GET(request: NextRequest) {
               // assignment works independently of dispatch/packing/QC.
               work_order_tasks: (wo.work_order_tasks || []).filter((t: any) =>
                 t.department === "styling" ||
-                ((t.department === "dispatch" || t.department === "travels") && (!t.assigned_to || t.assigned_to === rbacContext.user.id))
+                ((t.department === "dispatch" || t.department === "travels" || t.department === "returns") && (!t.assigned_to || t.assigned_to === rbacContext.user.id))
               ),
             })).filter((wo: any) => (wo.work_order_tasks || []).length > 0)
           : (rbacContext?.user.department === "accounts" || rbacContext?.user.role === "accounts_staff") && !rbacContext.user.is_super_admin && rbacContext.user.role !== "franchise_admin"

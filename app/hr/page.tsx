@@ -56,8 +56,8 @@ const HR_SECTIONS = [
 export default function HRPage() {
   return (
     <DashboardLayout>
-      <div className="hr-payroll-ui space-y-6">
-        <div>
+      <div className="crm-workspace-shell hr-payroll-ui hr-module-ui space-y-6">
+        <div className="crm-module-hero">
           <h1 className="text-3xl font-sans font-semibold text-gray-900 tracking-tight flex items-center gap-2">
             <Award className="w-8 h-8 text-[#6366f1]" />
             HR & Staff
@@ -67,10 +67,10 @@ export default function HRPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="hr-section-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {HR_SECTIONS.map((section) => (
             <Link key={section.href} href={section.href} className="group">
-              <Card className="h-full border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-150">
+              <Card className="hr-section-card h-full border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-150">
                 <CardContent className="p-5 flex items-start gap-4">
                   <div
                     className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"

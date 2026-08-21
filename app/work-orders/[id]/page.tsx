@@ -50,7 +50,7 @@ type TransitMode = "bus" | "train" | "self_drive" | "aeroplane"
 interface Task {
   id: string
   work_order_id: string
-  department: "warehouse" | "packing" | "dispatch" | "event_team" | "returns" | "accounts"
+  department: "warehouse" | "packing" | "dispatch" | "event_team" | "styling" | "travels" | "returns" | "return_qc" | "return_receiving" | "accounts"
   task_number: string
   title: string
   status: "pending" | "active" | "picked" | "shortage" | "completed" | "cancelled"
@@ -98,13 +98,15 @@ const getDeptIcon = (dept: string) => {
     case "dispatch":  return <Truck className="h-5 w-5" />
     case "event_team": return <MapPin className="h-5 w-5" />
     case "returns":   return <RotateCcw className="h-5 w-5" />
+    case "return_qc": return <CheckCircle2 className="h-5 w-5" />
+    case "return_receiving": return <Warehouse className="h-5 w-5" />
     case "accounts":  return <DollarSign className="h-5 w-5" />
     default: return <CheckCircle2 className="h-5 w-5" />
   }
 }
 
 const getDeptCode = (dept: string) =>
-  ({ warehouse:"WH", packing:"PK", dispatch:"DP", event_team:"EV", returns:"RT", accounts:"AC" }[dept] ?? "??")
+  ({ warehouse:"WH", packing:"PK", dispatch:"DP", event_team:"EV", styling:"ST", travels:"TR", returns:"RT", return_qc:"RQ", return_receiving:"RR", accounts:"AC" }[dept] ?? "??")
 
 const getStatusColor = (s: string) =>
   s === "completed" || s === "picked" ? "bg-green-100 text-green-800 border-green-200"

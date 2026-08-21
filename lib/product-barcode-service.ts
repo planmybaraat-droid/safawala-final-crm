@@ -40,46 +40,79 @@ export async function fetchProductsWithBarcodes(
   franchiseId?: string
 ): Promise<ProductWithBarcodes[]> {
   try {
-    // Step 1: Fetch all products (with franchise filter if provided)
-    let productsQuery = supabase
-      .from("products")
-      .select("*")
-      .order("name")
+    // Supabase/PostgREST returns at most 1,000 rows per request by default.
+    // Page through the table so booking selectors receive the complete inventory.
+    const pageSize = 1000
+    const products: any[] = []
+    for (let from = 0; ; from += pageSize) {
+      let productsQuery = supabase
+        .from("products")
+        .select("*")
+        .order("name")
+        .range(from, from + pageSize - 1)
 
-    if (franchiseId) {
-      productsQuery = productsQuery.eq('franchise_id', franchiseId)
+      if (franchiseId) productsQuery = productsQuery.eq("franchise_id", franchiseId)
+
+      const { data: productPage, error: productsError } = await productsQuery
+      if (productsError) throw productsError
+      products.push(...(productPage || []))
+      if (!productPage || productPage.length < pageSize) break
     }
 
-    const { data: products, error: productsError } = await productsQuery
+    if (products.length === 0) return []
 
-    if (productsError) throw productsError
-    if (!products) return []
+    // Step 2: Fetch all active barcodes.
+    // Some deployments use the older `barcodes` table while the current CRM
+    // uses `product_barcodes`. Try both quietly so booking screens do not show
+    // alarming console warnings when only one schema is present.
+    const allBarcodes: any[] = []
+    const fetchBarcodePages = async (tableName: "barcodes" | "product_barcodes") => {
+      const rows: any[] = []
+      for (let from = 0; ; from += pageSize) {
+        const query = tableName === "barcodes"
+          ? supabase
+              .from("barcodes")
+              .select("id, product_id, barcode_number, barcode_type, is_active")
+              .eq("is_active", true)
+              .range(from, from + pageSize - 1)
+          : supabase
+              .from("product_barcodes")
+              .select("id, product_id, barcode_number, status")
+              .in("status", ["available", "active", "in_stock"])
+              .range(from, from + pageSize - 1)
 
-    // Step 2: Fetch all active barcodes from the barcodes table
-    let barcodesQuery = supabase
-      .from("barcodes")
-      .select("id, product_id, barcode_number, barcode_type, is_active")
-      .eq("is_active", true)
+        const { data: barcodePage, error: barcodesError } = await query
+        if (barcodesError) return { rows: [], error: barcodesError }
 
-    const { data: allBarcodes, error: barcodesError } = await barcodesQuery
+        rows.push(...(barcodePage || []))
+        if (!barcodePage || barcodePage.length < pageSize) break
+      }
+      return { rows, error: null }
+    }
 
-    if (barcodesError) {
-      console.warn('Warning: Could not fetch barcodes table:', barcodesError)
-      // Continue without barcodes if table doesn't exist yet
-      return products as ProductWithBarcodes[]
+    const legacyBarcodeResult = await fetchBarcodePages("barcodes")
+    if (legacyBarcodeResult.rows.length > 0) {
+      allBarcodes.push(...legacyBarcodeResult.rows)
+    } else {
+      const currentBarcodeResult = await fetchBarcodePages("product_barcodes")
+      if (currentBarcodeResult.rows.length > 0) {
+        allBarcodes.push(...currentBarcodeResult.rows.map((barcode: any) => ({
+          ...barcode,
+          barcode_type: barcode.barcode_type || "Item",
+          is_active: true,
+        })))
+      }
     }
 
     // Step 3: Map barcodes to products
     const barcodesMap = new Map<string, any[]>()
     
-    if (allBarcodes) {
-      allBarcodes.forEach((barcode: any) => {
-        if (!barcodesMap.has(barcode.product_id)) {
-          barcodesMap.set(barcode.product_id, [])
-        }
-        barcodesMap.get(barcode.product_id)!.push(barcode)
-      })
-    }
+    allBarcodes.forEach((barcode: any) => {
+      if (!barcodesMap.has(barcode.product_id)) {
+        barcodesMap.set(barcode.product_id, [])
+      }
+      barcodesMap.get(barcode.product_id)!.push(barcode)
+    })
 
     // Step 4: Enhance products with barcode data
     const productsWithBarcodes: ProductWithBarcodes[] = products.map(

@@ -347,9 +347,9 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-6">
+    <div className="crm-workspace-shell tasks-module-ui container mx-auto p-6 max-w-7xl space-y-6">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="crm-module-hero flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center space-x-3">
           <Button variant="ghost" size="sm" onClick={() => router.back()} className="hover:bg-slate-100">
             <ArrowLeft className="h-4 w-4 mr-1.5" />
@@ -365,7 +365,7 @@ export default function TasksPage() {
           </div>
         </div>
 
-        <Button onClick={() => setShowAssignDialog(true)} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md self-start md:self-auto px-5 py-2.5">
+        <Button onClick={() => setShowAssignDialog(true)} className="crm-primary-action bg-blue-600 hover:bg-blue-700 text-white shadow-md self-start md:self-auto px-5 py-2.5">
           <Plus className="h-4 w-4 mr-2" />
           Assign New Task
         </Button>
@@ -373,7 +373,7 @@ export default function TasksPage() {
 
       {/* Metrics panel */}
       {loading && tasks.length === 0 ? null : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="crm-stats-grid grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-white border shadow-sm hover:shadow transition-shadow">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="space-y-1">
@@ -425,7 +425,7 @@ export default function TasksPage() {
       )}
 
       {/* Filter and View toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
+      <div className="crm-filter-surface flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
         <div className="flex items-center gap-2 flex-wrap flex-1">
           {/* Search bar */}
           <div className="relative min-w-[220px] max-w-sm flex-1">
@@ -523,7 +523,7 @@ export default function TasksPage() {
         </div>
       ) : viewType === "board" ? (
         /* Kanban Board view */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+        <div className="tasks-board-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
           {/* Column definitions */}
           {(["pending", "in_progress", "completed", "cancelled"] as const).map((statusKey) => {
             const columnTasks = boardTasks[statusKey]
@@ -623,7 +623,7 @@ export default function TasksPage() {
         </div>
       ) : (
         /* List Table view */
-        <Card className="bg-white border rounded-xl overflow-hidden shadow-sm">
+        <Card className="crm-table-surface bg-white border rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>

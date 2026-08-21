@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ImageIcon, MoreHorizontal, Edit, Trash2, Barcode, Copy, Tag } from "lucide-react"
 import { toast } from "sonner"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 
 interface Product {
   id: string
@@ -60,20 +61,22 @@ export function ProductCard({ product, onEdit, onDelete, onGenerateBarcode }: Pr
   }
 
   return (
-    <Card className="group overflow-hidden flex flex-col h-full border-slate-200 bg-white hover:shadow-md transition-shadow duration-200 rounded-xl">
+    <Card className="group overflow-hidden flex flex-col h-full rounded-2xl border border-[#e5ddf3] bg-white shadow-[0_10px_28px_rgba(30,20,70,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#c7b5ee] hover:shadow-[0_18px_38px_rgba(64,35,140,0.12)]">
 
       {/* Image */}
-      <div className="relative w-full aspect-square bg-slate-100 overflow-hidden flex items-center justify-center">
+      <div className="relative w-full aspect-[1.08/1] bg-[#f8f6fb] overflow-hidden flex items-center justify-center">
         {product.image_url ? (
           <>
-            <img
+            <OptimizedImage
               src={product.image_url}
               alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              webpWidth={500}
+              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.025]"
               onError={(e) => {
                 const t = e.target as HTMLImageElement
                 t.style.display = "none"
-                ;(t.nextElementSibling as HTMLElement)?.style.setProperty("display", "flex")
+                const fallback = (t.closest("picture")?.nextElementSibling ?? t.nextElementSibling) as HTMLElement | null
+                fallback?.style.setProperty("display", "flex")
               }}
             />
             <div className="hidden w-full h-full items-center justify-center">
@@ -88,13 +91,15 @@ export function ProductCard({ product, onEdit, onDelete, onGenerateBarcode }: Pr
         )}
 
         {/* Stock dot */}
-        <div className={`absolute top-2.5 left-2.5 w-2.5 h-2.5 rounded-full ${getStockDot()} ring-2 ring-white shadow-sm`} />
+        <div className="absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/85 shadow-[0_8px_18px_rgba(15,23,42,0.16)] backdrop-blur-md">
+          <div className={`h-2.5 w-2.5 rounded-full ${getStockDot()} ring-2 ring-white`} />
+        </div>
 
         {/* Category badge */}
         {product.category_name && (
-          <div className="absolute top-2 right-2">
-            <Badge variant="outline" className="text-[9px] font-medium bg-white/90 border-slate-200 text-slate-600 shadow-sm px-1.5 py-0.5">
-              <Tag className="w-2.5 h-2.5 mr-1" />
+          <div className="absolute top-3 right-3 max-w-[72%]">
+            <Badge variant="outline" className="max-w-full rounded-full border-white/70 bg-white/92 px-2.5 py-1 text-[9px] font-semibold text-[#20133f] shadow-[0_8px_20px_rgba(15,23,42,0.14)] backdrop-blur-md">
+              <Tag className="mr-1 h-2.5 w-2.5 shrink-0 text-[#6d28d9]" />
               {product.category_name}
             </Badge>
           </div>
@@ -102,23 +107,23 @@ export function ProductCard({ product, onEdit, onDelete, onGenerateBarcode }: Pr
       </div>
 
       {/* Content */}
-      <div className="p-3 flex flex-col flex-1 gap-2">
+      <div className="flex flex-1 flex-col gap-3 p-3.5">
 
         {/* Name + menu */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-sm leading-tight truncate text-slate-900">
+            <h3 className="truncate text-[14px] font-semibold leading-tight tracking-[-0.01em] text-[#120d29]">
               {product.name}
             </h3>
             {product.brand && (
-              <p className="text-[11px] text-slate-400 truncate mt-0.5">{product.brand}</p>
+              <p className="mt-1 truncate text-[11px] font-medium text-[#7b7190]">{product.brand}</p>
             )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm"
-                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100 rounded-lg">
-                <MoreHorizontal className="h-4 w-4 text-slate-500" />
+                className="h-8 w-8 rounded-full border border-[#eadff8] bg-[#fbf8ff] p-0 text-[#4c1d95] opacity-100 shadow-sm transition-all hover:bg-[#f1e9ff] hover:text-[#2e1065] md:opacity-0 md:group-hover:opacity-100">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
@@ -141,10 +146,10 @@ export function ProductCard({ product, onEdit, onDelete, onGenerateBarcode }: Pr
 
         {/* Stock status */}
         <div className="flex items-center justify-between gap-2">
-          <Badge variant="outline" className={`text-[10px] font-medium px-2 py-0.5 ${getStockColor()}`}>
+          <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-[0_6px_16px_rgba(15,23,42,0.06)] ${getStockColor()}`}>
             {getStockLabel()}
           </Badge>
-          <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+          <span className="whitespace-nowrap rounded-full bg-[#f8f5ff] px-2 py-1 text-[11px] font-semibold text-[#7b7190]">
             {product.stock_available}/{product.stock_total} units
           </span>
         </div>
@@ -164,22 +169,22 @@ export function ProductCard({ product, onEdit, onDelete, onGenerateBarcode }: Pr
         </div>
 
         {/* Pricing */}
-        <div className="border-t border-slate-100 pt-2 mt-auto space-y-1">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-400">Rental</span>
-            <span className="font-bold text-slate-900">₹{product.rental_price.toLocaleString()}</span>
+        <div className="mt-auto space-y-2 rounded-xl border border-[#eee7fb] bg-[#fbf9ff] p-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-[#8a809b]">Rental</span>
+            <span className="text-sm font-bold text-[#120d29]">₹{product.rental_price.toLocaleString()}</span>
           </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-400">Sale</span>
-            <span className="font-semibold text-slate-600">₹{product.price.toLocaleString()}</span>
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-[#8a809b]">Sale</span>
+            <span className="text-sm font-semibold text-[#3f3654]">₹{product.price.toLocaleString()}</span>
           </div>
         </div>
 
         {/* Barcode */}
         {product.barcode && (
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md mt-1">
-            <Barcode className="w-3 h-3 text-slate-400" />
-            <code className="font-mono text-[9px] font-bold tracking-wide">{product.barcode}</code>
+          <div className="mt-0.5 flex items-center gap-1.5 rounded-xl bg-[#f6f2fb] px-2.5 py-1.5 text-[10px] text-[#6a607a]">
+            <Barcode className="h-3 w-3 text-[#8b5cf6]" />
+            <code className="truncate font-mono text-[9px] font-bold tracking-wide">{product.barcode}</code>
           </div>
         )}
       </div>

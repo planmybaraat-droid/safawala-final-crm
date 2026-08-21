@@ -7,7 +7,7 @@ import KycWorkflow from "@/app/portal/hr/kyc/page"
 export default function HRKycPage() {
   return (
     <DashboardLayout>
-      <div className="hr-payroll-ui">
+      <div className="crm-workspace-shell hr-payroll-ui hr-module-ui hr-workflow-page">
       <KycWorkflow />
       </div>
     </DashboardLayout>

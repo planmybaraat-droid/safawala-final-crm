@@ -163,7 +163,7 @@ export function TaskListDialog({ open, onOpenChange, currentUser }: TaskListDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
+      <DialogContent className="crm-dialog-panel sm:max-w-[700px] max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Task Management</DialogTitle>
           <DialogDescription>View and manage assigned tasks. Staff can mark tasks as completed.</DialogDescription>

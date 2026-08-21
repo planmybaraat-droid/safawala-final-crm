@@ -7,7 +7,7 @@ import { PortalDeptHeader } from "@/components/portal/portal-dept-header"
 import { PortalHomeCard } from "@/components/portal/portal-home-card"
 import { PortalListCard } from "@/components/portal/portal-shared"
 import type { PortalConfig } from "@/lib/portal-config"
-import type { User } from "@/lib/types"
+import { usePortalUser } from "@/components/portal/portal-user-context"
 
 interface DashboardStats {
   todayBookings: number
@@ -24,8 +24,8 @@ export default function PortalHomePage() {
   const params = useParams()
   const router = useRouter()
   const dept = params.dept as string
-  const [user, setUser] = useState<User | null>(null)
-  const [config, setConfig] = useState<PortalConfig | null>(null)
+  const user = usePortalUser()
+  const config: PortalConfig | null = getPortalConfig(dept)
   const [stats, setStats] = useState<DashboardStats>({
     todayBookings: 0,
     pendingPayments: 0,
@@ -48,18 +48,6 @@ export default function PortalHomePage() {
   const [jobsLoading, setJobsLoading] = useState(true)
 
   useEffect(() => {
-    const raw = localStorage.getItem("safawala_user")
-    if (!raw) return
-    try {
-      const u: User = JSON.parse(raw)
-      setUser(u)
-      const c = getPortalConfig(dept)
-      if (c) setConfig(c)
-    } catch {}
-  }, [dept])
-
-  useEffect(() => {
-    if (!user) return
     fetchStats()
     if (JOB_DEPTS[dept]) fetchJobStats()
   }, [user, dept])
@@ -90,23 +78,33 @@ export default function PortalHomePage() {
 
   async function fetchStats() {
     try {
-      const today = new Date().toISOString().split("T")[0]
-
-      const [bookingsRes, leadsRes] = await Promise.allSettled([
-        fetch(`/api/bookings?date_from=${today}&date_to=${today}&limit=1`),
-        fetch(`/api/leads?limit=1&created_today=true`),
-      ])
-
-      const bookingsData = bookingsRes.status === "fulfilled" && bookingsRes.value.ok
-        ? await bookingsRes.value.json() : null
-      const leadsData = leadsRes.status === "fulfilled" && leadsRes.value.ok
-        ? await leadsRes.value.json() : null
-
-      setStats(prev => ({
-        ...prev,
-        todayBookings: bookingsData?.total ?? bookingsData?.data?.length ?? 0,
-        newLeads: leadsData?.total ?? leadsData?.data?.length ?? 0,
-      }))
+      if (dept === "booking" || dept === "admin") {
+        const today = new Date().toISOString().split("T")[0]
+        const [bookingsRes, leadsRes] = await Promise.allSettled([
+          fetch(`/api/bookings?date_from=${today}&date_to=${today}&limit=1`),
+          fetch(`/api/leads?limit=1&created_today=true`),
+        ])
+        const bookingsData = bookingsRes.status === "fulfilled" && bookingsRes.value.ok
+          ? await bookingsRes.value.json() : null
+        const leadsData = leadsRes.status === "fulfilled" && leadsRes.value.ok
+          ? await leadsRes.value.json() : null
+        setStats(prev => ({
+          ...prev,
+          todayBookings: bookingsData?.total ?? bookingsData?.data?.length ?? 0,
+          newLeads: leadsData?.total ?? leadsData?.data?.length ?? 0,
+        }))
+      } else if (dept === "warehouse") {
+        const inventoryRes = await fetch("/api/warehouse/inventory")
+        if (!inventoryRes.ok) throw new Error("Unable to load warehouse inventory")
+        const inventoryData = await inventoryRes.json()
+        const products = Array.isArray(inventoryData.data) ? inventoryData.data : []
+        const lowStock = products.filter((product: any) => {
+          const available = Number(product.stock_available) || 0
+          const reorderLevel = Number(product.reorder_level) || 0
+          return available > 0 && available <= reorderLevel
+        }).length
+        setStats(prev => ({ ...prev, lowStock }))
+      }
     } catch {
       // stats stay at 0 — non-blocking
     } finally {
@@ -114,7 +112,7 @@ export default function PortalHomePage() {
     }
   }
 
-  if (!config || !user) return null
+  if (!config) return null
 
   const greeting = getGreeting()
   const firstName = user.name?.split(" ")[0] || "there"
@@ -154,10 +152,10 @@ export default function PortalHomePage() {
   )
 
   return (
-    <div>
+    <div className={dept === "warehouse" ? "warehouse-home-page" : undefined}>
       {/* Header */}
       <div
-        className="px-4 pt-5 pb-6 text-white"
+        className="px-4 pt-5 pb-6 text-white warehouse-home-hero"
         style={{
           background: `linear-gradient(135deg, ${config.color}, ${adjustColor(config.color, -25)})`,
         }}

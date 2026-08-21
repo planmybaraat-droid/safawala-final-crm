@@ -171,14 +171,14 @@ export function CustomerFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-5 rounded-xl border border-slate-100 bg-white">
+      <DialogContent className="customer-form-dialog sm:max-w-[420px] p-5 rounded-xl border border-slate-100 bg-white">
         <DialogHeader className="pb-3 border-b border-slate-100">
           <DialogTitle className="text-lg font-bold text-slate-900 tracking-tight">
             {mode === "edit" ? t("edit_customer_details") : t("new_customer_profile")}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-3">
+        <form onSubmit={handleSubmit} className="customer-form-panel space-y-4 pt-3">
           <div className="space-y-1.5">
             <Label htmlFor="name" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               {t("name")} *
@@ -279,7 +279,7 @@ export function CustomerFormDialog({
             <Button 
               type="submit" 
               disabled={loading} 
-              className="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition-colors"
+              className="customer-form-submit h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition-colors"
             >
               {loading ? (
                 <div className="flex items-center space-x-1.5">

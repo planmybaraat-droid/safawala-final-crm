@@ -477,7 +477,7 @@ function QuotesPageContent() {
     const Icon = config.icon
 
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
+      <Badge variant={config.variant} className={`quote-status-pill quote-status-${status} flex items-center gap-1`}>
         <Icon className="h-3 w-3" />
         {config.label}
       </Badge>
@@ -920,7 +920,7 @@ function QuotesPageContent() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={quote.booking_type === 'package' ? 'default' : 'secondary'} className="text-xs">
+                        <Badge variant="outline" className="quote-type-pill !bg-white !text-[#21143f] !border-[#ded3f2] text-xs">
                           {quote.booking_type === 'package' 
                             ? '📦 Package (Rent)' 
                             : `🛍️ Product (${quote.booking_subtype === 'sale' ? 'Sale' : 'Rent'})`}
@@ -2102,10 +2102,10 @@ const getStatusBadge = (status: string) => {
 
   return (
     <DashboardLayout userRole={user?.role}>
-      <div className="space-y-6">
+      <div className="quote-module-page space-y-6">
       {/* Header */}
 
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      <div className="quote-module-header flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -2122,6 +2122,14 @@ const getStatusBadge = (status: string) => {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={() => router.push("/quotes/new")}
+            className="quote-new-cta"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            New Quote
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -2144,8 +2152,8 @@ const getStatusBadge = (status: string) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="border-[#E5DFE8] bg-white p-6 shadow-sm">
+      <div className="quote-stats-grid grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="quote-stat-card border-[#E5DFE8] bg-white p-6 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
             <div className="flex items-center space-x-1">
               <CardTitle className="text-sm font-medium text-[#6F6878]">Total Quotes</CardTitle>
@@ -2166,7 +2174,7 @@ const getStatusBadge = (status: string) => {
               <div className="text-3xl font-semibold text-[#1F1B24]">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card className="border-[#E5DFE8] bg-white p-6 shadow-sm">
+        <Card className="quote-stat-card border-[#E5DFE8] bg-white p-6 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
             <div className="flex items-center space-x-1">
               <CardTitle className="text-sm font-medium text-[#6F6878]">Generated</CardTitle>
@@ -2187,7 +2195,7 @@ const getStatusBadge = (status: string) => {
             <div className="text-3xl font-semibold text-[#1F1B24]">{stats.generated}</div>
           </CardContent>
         </Card>
-        <Card className="p-3">
+        <Card className="quote-stat-card p-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
             <div className="flex items-center space-x-1">
               <CardTitle className="text-sm font-medium text-[#6F6878]">Converted</CardTitle>
@@ -2208,7 +2216,7 @@ const getStatusBadge = (status: string) => {
             <div className="text-3xl font-semibold text-[#1F1B24]">{stats.converted}</div>
           </CardContent>
         </Card>
-        <Card className="p-3">
+        <Card className="quote-stat-card p-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
             <div className="flex items-center space-x-1">
               <CardTitle className="text-sm font-medium text-[#6F6878]">Rejected</CardTitle>
@@ -2232,7 +2240,7 @@ const getStatusBadge = (status: string) => {
       </div>
 
       {/* Filters */}
-      <Card className="p-3">
+      <Card className="quote-filter-card p-3">
         <CardHeader className="p-0 pb-2">
           <div className="flex items-center space-x-2">
             <CardTitle className="text-sm">Filters</CardTitle>
@@ -2297,10 +2305,10 @@ const getStatusBadge = (status: string) => {
       </Card>
 
       {/* Quotes Table */}
-      <Card className="p-3">
-        <CardHeader className="p-0 pb-2">
+      <Card className="quote-table-card p-3">
+        <CardHeader className="quote-table-header p-0 pb-2">
           <div className="flex items-center space-x-2">
-            <CardTitle className="text-sm">
+            <CardTitle className="quote-table-title text-sm">
               Quotes (Showing {startIndex + 1}-{Math.min(endIndex, filteredQuotes.length)} of {filteredQuotes.length})
             </CardTitle>
             <Tooltip>
@@ -2312,11 +2320,11 @@ const getStatusBadge = (status: string) => {
               </TooltipContent>
             </Tooltip>
           </div>
-          <CardDescription className="text-xs">All generated quotes with customer details and status</CardDescription>
+          <CardDescription className="quote-table-desc text-xs">All generated quotes with customer details and status</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="quote-table-scroll overflow-x-auto">
+            <Table className="quote-table">
               <TableHeader>
                 <TableRow className="h-8">
                   <TableHead className="text-xs">Quote #</TableHead>
@@ -2355,8 +2363,8 @@ const getStatusBadge = (status: string) => {
               </TableHeader>
               <TableBody>
                 {paginatedQuotes.map((quote) => (
-                  <TableRow key={quote.id} className="h-12">
-                    <TableCell className="font-medium text-xs">{quote.quote_number}</TableCell>
+                  <TableRow key={quote.id} className="quote-table-row h-12">
+                    <TableCell className="quote-number-cell font-medium text-xs">{quote.quote_number}</TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium text-xs">{quote.customer_name}</div>
@@ -2364,7 +2372,7 @@ const getStatusBadge = (status: string) => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={quote.booking_type === 'package' ? 'default' : 'secondary'} className="text-xs">
+                      <Badge variant="outline" className="quote-type-pill !bg-white !text-[#21143f] !border-[#ded3f2] text-xs">
                         {quote.booking_type === 'package' 
                           ? '📦 Package (Rent)' 
                           : `🛍️ Product (${quote.booking_subtype === 'sale' ? 'Sale' : 'Rent'})`}
@@ -2379,12 +2387,12 @@ const getStatusBadge = (status: string) => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-xs">{formatCurrency(quote.total_amount)}</div>
+                      <div className="quote-amount-cell font-medium text-xs">{formatCurrency(quote.total_amount)}</div>
                     </TableCell>
                     <TableCell>{getStatusBadge(quote.status)}</TableCell>
                     <TableCell className="text-xs">{new Date(quote.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
+                      <div className="quote-actions flex items-center gap-1">
                         <Button
                           size="sm"
                           variant="ghost"

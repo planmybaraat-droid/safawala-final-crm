@@ -320,20 +320,20 @@ export default function CustomersPage() {
 
   return (
     <DashboardLayout userRole={user.role}>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="customer-module-page space-y-6">
+        <div className="customer-module-header flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Customer Management</h1>
             <p className="text-muted-foreground">Manage your customer database and relationships</p>
           </div>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button className="customer-primary-action" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+        <div className="customer-stats-grid grid gap-4 md:grid-cols-4">
+          <Card className="customer-stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -343,7 +343,7 @@ export default function CustomersPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="customer-stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -353,7 +353,7 @@ export default function CustomersPage() {
               <p className="text-xs text-muted-foreground">Customer bookings</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="customer-stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">This Month</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -373,7 +373,7 @@ export default function CustomersPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="customer-stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
               <UserPlus className="h-4 w-4 text-muted-foreground" />
@@ -395,7 +395,7 @@ export default function CustomersPage() {
           </Card>
         </div>
 
-        <Card>
+        <Card className="customer-filter-card">
           <CardContent className="pt-6">
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -409,11 +409,12 @@ export default function CustomersPage() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden">
+        <Card className="customer-table-card overflow-hidden">
           <CardContent className="p-0">
             {paginatedCustomers.length > 0 ? (
-              <Table>
-                <TableHeader>
+              <div className="customer-table-scroll">
+              <Table className="customer-table">
+                <TableHeader className="customer-table-header">
                   <TableRow>
                     <TableHead className="w-[100px]">Code</TableHead>
                     <TableHead>Name</TableHead>
@@ -428,11 +429,11 @@ export default function CustomersPage() {
                 </TableHeader>
                 <TableBody>
                   {paginatedCustomers.map((customer) => (
-                    <TableRow key={customer.id} className="hover:bg-slate-50/50">
-                      <TableCell className="font-mono text-xs text-slate-500 font-medium">
+                    <TableRow key={customer.id} className="customer-table-row hover:bg-slate-50/50">
+                      <TableCell className="customer-code-cell font-mono text-xs text-slate-500 font-medium">
                         {customer.customer_code}
                       </TableCell>
-                      <TableCell className="font-semibold text-slate-900">
+                      <TableCell className="customer-name-cell font-semibold text-slate-900">
                         {customer.name}
                       </TableCell>
                       <TableCell className="text-slate-600 text-sm">
@@ -454,7 +455,7 @@ export default function CustomersPage() {
                       <TableCell>
                         <Badge 
                           variant={customer.status === "inactive" ? "destructive" : "default"}
-                          className="text-[10px] uppercase font-semibold tracking-wider"
+                          className={`customer-status-pill customer-status-${customer.status || "active"} text-[10px] uppercase font-semibold tracking-wider`}
                         >
                           {customer.status || "active"}
                         </Badge>
@@ -462,7 +463,7 @@ export default function CustomersPage() {
                       <TableCell>
                         <Badge 
                           variant="outline"
-                          className={`text-[10px] uppercase font-semibold tracking-wider ${
+                          className={`customer-kyc-pill customer-kyc-${customer.kyc_status || 'pending'} text-[10px] uppercase font-semibold tracking-wider ${
                             customer.kyc_status === 'verified' 
                               ? 'bg-green-50 text-green-700 border-green-200' 
                               : customer.kyc_status === 'rejected'
@@ -476,7 +477,7 @@ export default function CustomersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="customer-actions flex items-center justify-end gap-1.5">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -537,8 +538,9 @@ export default function CustomersPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             ) : (
-              <div className="text-center py-16">
+              <div className="customer-empty-state text-center py-16">
                 <UserPlus className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                 <h3 className="text-sm font-semibold text-slate-900 mb-1">No customers found</h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto mb-4">
@@ -558,7 +560,7 @@ export default function CustomersPage() {
 
         {/* Pagination Controls */}
         {filteredCustomers.length > 0 && (
-          <Card>
+          <Card className="customer-pagination-card">
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -638,7 +640,7 @@ export default function CustomersPage() {
 
         {/* View Customer Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="customer-details-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold flex items-center gap-2">
                 <Users className="h-6 w-6" />

@@ -1,0 +1,365 @@
+/*
+ * Visual-only polish for the operational portals.
+ *
+ * The theme is deliberately scoped to portal-polish-theme, which is added by
+ * the authenticated portal shell only for Booking, QC, Fulfillment/Delivery,
+ * Styling, Accounts, HR, and Travels. Warehouse, Admin, and the main CRM are
+ * intentionally excluded. No dimensions, spacing, positioning, or content are
+ * changed here.
+ */
+
+.portal-polish-theme,
+body.portal-polish-theme {
+  --portal-accent: #4f46e5;
+  --portal-accent-strong: #3730a3;
+  --portal-accent-soft: #eef2ff;
+  --portal-canvas: #f6f7f9;
+  --portal-surface: #ffffff;
+  --portal-surface-muted: #f8fafc;
+  --portal-border: #dfe4ea;
+  --portal-border-strong: #cbd3dd;
+  --portal-text: #172033;
+  --portal-text-muted: #5b6677;
+  --portal-text-subtle: #7d8796;
+  --portal-sidebar: #172033;
+  --portal-sidebar-deep: #111827;
+  --portal-shadow-sm: 0 1px 2px rgba(23, 32, 51, 0.05), 0 5px 16px rgba(23, 32, 51, 0.045);
+  --portal-shadow-md: 0 12px 30px rgba(23, 32, 51, 0.1);
+  color: var(--portal-text);
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.portal-polish-theme[data-portal="booking"],
+body.portal-polish-theme[data-active-portal="booking"] {
+  --portal-accent: #168653;
+  --portal-accent-strong: #0f643e;
+  --portal-accent-soft: #eaf7f0;
+}
+
+.portal-polish-theme[data-portal="qc"],
+body.portal-polish-theme[data-active-portal="qc"] {
+  --portal-accent: #b77905;
+  --portal-accent-strong: #85580a;
+  --portal-accent-soft: #fff7df;
+}
+
+.portal-polish-theme[data-portal="fulfillment"],
+body.portal-polish-theme[data-active-portal="fulfillment"] {
+  --portal-accent: #0f817c;
+  --portal-accent-strong: #0b625f;
+  --portal-accent-soft: #e7f7f6;
+}
+
+.portal-polish-theme[data-portal="styling"],
+body.portal-polish-theme[data-active-portal="styling"] {
+  --portal-accent: #c03576;
+  --portal-accent-strong: #922653;
+  --portal-accent-soft: #fcecf4;
+}
+
+.portal-polish-theme[data-portal="accounts"],
+body.portal-polish-theme[data-active-portal="accounts"] {
+  --portal-accent: #c43d36;
+  --portal-accent-strong: #922d29;
+  --portal-accent-soft: #fff0ef;
+}
+
+.portal-polish-theme[data-portal="hr"],
+body.portal-polish-theme[data-active-portal="hr"] {
+  --portal-accent: #5552bd;
+  --portal-accent-strong: #3f3c91;
+  --portal-accent-soft: #efeffc;
+}
+
+body.portal-polish-theme,
+.portal-polish-theme.portal-desktop-shell,
+.portal-polish-theme.portal-mobile-shell {
+  background: var(--portal-canvas) !important;
+  color: var(--portal-text);
+}
+
+.portal-polish-theme ::selection,
+body.portal-polish-theme ::selection {
+  background: color-mix(in srgb, var(--portal-accent) 20%, transparent);
+  color: var(--portal-accent-strong);
+}
+
+/* Portal chrome */
+.portal-polish-theme .portal-sidebar {
+  background: linear-gradient(180deg, var(--portal-sidebar) 0%, var(--portal-sidebar-deep) 100%) !important;
+  border-right-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 6px 0 26px rgba(15, 23, 42, 0.13) !important;
+}
+
+.portal-polish-theme .portal-sidebar nav a {
+  border: 1px solid transparent;
+  color: #cbd5e1 !important;
+}
+
+.portal-polish-theme .portal-sidebar nav a:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+.portal-polish-theme .portal-sidebar nav a[aria-current="page"] {
+  background: color-mix(in srgb, var(--portal-accent) 30%, #172033) !important;
+  border-color: color-mix(in srgb, var(--portal-accent) 48%, transparent) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.portal-polish-theme .portal-sidebar nav a[aria-current="page"] span {
+  color: #ffffff !important;
+}
+
+.portal-polish-theme .portal-top-nav {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: var(--portal-border) !important;
+  box-shadow: 0 1px 0 rgba(23, 32, 51, 0.025);
+}
+
+.portal-polish-theme .portal-top-nav > a {
+  color: var(--portal-text) !important;
+}
+
+.portal-polish-theme .portal-top-nav button:hover {
+  background: var(--portal-accent-soft) !important;
+  color: var(--portal-accent-strong) !important;
+}
+
+.portal-polish-theme .portal-bottom-nav {
+  background: rgba(17, 24, 39, 0.97) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 -6px 22px rgba(15, 23, 42, 0.2) !important;
+}
+
+.portal-polish-theme .portal-bottom-nav a[aria-current="page"] span:last-child {
+  color: var(--portal-accent) !important;
+}
+
+/* Headers and familiar navigation landmarks */
+.portal-polish-theme .portal-page-header {
+  background: linear-gradient(135deg, var(--portal-accent) 0%, var(--portal-accent-strong) 100%) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--portal-accent-strong) 60%, transparent);
+  box-shadow: 0 7px 20px color-mix(in srgb, var(--portal-accent) 18%, transparent);
+}
+
+.portal-polish-theme .portal-page-header p {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.portal-polish-theme .portal-page-header button {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.portal-polish-theme .portal-page-header button:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Existing cards and rows: appearance only; geometry is intentionally untouched. */
+.portal-polish-theme .portal-home-card,
+.portal-polish-theme .portal-list-card {
+  background: var(--portal-surface) !important;
+  border-color: var(--portal-border) !important;
+  box-shadow: var(--portal-shadow-sm) !important;
+}
+
+.portal-polish-theme .portal-home-card:hover,
+.portal-polish-theme .portal-list-card:hover {
+  border-color: color-mix(in srgb, var(--portal-accent) 25%, var(--portal-border)) !important;
+  box-shadow: var(--portal-shadow-md) !important;
+}
+
+.portal-polish-theme .portal-list-card > div:nth-child(2) > p:first-child,
+.portal-polish-theme .portal-home-card p:nth-of-type(2),
+.portal-polish-theme .portal-empty-state > p:first-of-type,
+.portal-polish-theme .portal-info-row > span:last-child {
+  color: var(--portal-text) !important;
+}
+
+.portal-polish-theme .portal-list-card > div:nth-child(2) > p:nth-child(2),
+.portal-polish-theme .portal-home-card p:first-of-type,
+.portal-polish-theme .portal-empty-state > p:last-of-type,
+.portal-polish-theme .portal-info-row > span:first-child,
+.portal-polish-theme .portal-section-label {
+  color: var(--portal-text-muted) !important;
+}
+
+.portal-polish-theme .portal-info-row,
+.portal-polish-theme .rounded-2xl.border,
+.portal-polish-theme .rounded-xl.border,
+.portal-polish-theme .rounded-lg.border,
+.portal-polish-theme .border-slate-100,
+.portal-polish-theme .border-slate-200,
+.portal-polish-theme .border-gray-100,
+.portal-polish-theme .border-gray-200,
+.portal-polish-theme .border-zinc-100,
+.portal-polish-theme .border-zinc-200 {
+  border-color: var(--portal-border) !important;
+}
+
+.portal-polish-theme .text-slate-400,
+.portal-polish-theme .text-gray-400,
+.portal-polish-theme .text-zinc-400 {
+  color: var(--portal-text-subtle) !important;
+}
+
+.portal-polish-theme .text-slate-500,
+.portal-polish-theme .text-gray-500,
+.portal-polish-theme .text-zinc-500,
+.portal-polish-theme .text-slate-600,
+.portal-polish-theme .text-gray-600,
+.portal-polish-theme .text-zinc-600 {
+  color: var(--portal-text-muted) !important;
+}
+
+.portal-polish-theme .text-slate-700,
+.portal-polish-theme .text-gray-700,
+.portal-polish-theme .text-zinc-700,
+.portal-polish-theme .text-slate-800,
+.portal-polish-theme .text-gray-800,
+.portal-polish-theme .text-zinc-800,
+.portal-polish-theme .text-slate-900,
+.portal-polish-theme .text-gray-900,
+.portal-polish-theme .text-zinc-900 {
+  color: var(--portal-text) !important;
+}
+
+.portal-polish-theme .portal-status-badge {
+  border: 1px solid currentColor;
+  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.04);
+}
+
+/* Forms, search, filters, and interaction states */
+.portal-polish-theme .portal-search-bar > div,
+.portal-polish-theme input:not([type="checkbox"]):not([type="radio"]),
+.portal-polish-theme select,
+.portal-polish-theme textarea {
+  background-color: var(--portal-surface) !important;
+  border-color: var(--portal-border) !important;
+  color: var(--portal-text) !important;
+}
+
+.portal-polish-theme .portal-search-bar > div {
+  box-shadow: var(--portal-shadow-sm);
+}
+
+.portal-polish-theme input::placeholder,
+.portal-polish-theme textarea::placeholder {
+  color: var(--portal-text-subtle) !important;
+  opacity: 1;
+}
+
+.portal-polish-theme input:focus,
+.portal-polish-theme select:focus,
+.portal-polish-theme textarea:focus,
+.portal-polish-theme button:focus-visible,
+.portal-polish-theme a:focus-visible,
+body.portal-polish-theme [role="dialog"] button:focus-visible,
+body.portal-polish-theme [role="dialog"] input:focus,
+body.portal-polish-theme [role="dialog"] select:focus,
+body.portal-polish-theme [role="dialog"] textarea:focus {
+  outline: 3px solid color-mix(in srgb, var(--portal-accent) 20%, transparent) !important;
+  outline-offset: 2px;
+  border-color: var(--portal-accent) !important;
+}
+
+.portal-polish-theme button:disabled,
+.portal-polish-theme input:disabled,
+.portal-polish-theme select:disabled,
+.portal-polish-theme textarea:disabled,
+body.portal-polish-theme [role="dialog"] button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.58 !important;
+}
+
+.portal-polish-theme [role="tab"][aria-selected="true"],
+.portal-polish-theme [data-state="active"] {
+  border-color: var(--portal-accent) !important;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--portal-accent) 15%, transparent);
+}
+
+/* Tables, panels, sheets, and overlays */
+.portal-polish-theme table {
+  background: var(--portal-surface);
+  color: var(--portal-text);
+}
+
+.portal-polish-theme thead,
+.portal-polish-theme thead tr {
+  background: var(--portal-surface-muted) !important;
+}
+
+.portal-polish-theme th {
+  color: var(--portal-text-muted) !important;
+  border-color: var(--portal-border) !important;
+}
+
+.portal-polish-theme td,
+.portal-polish-theme tbody tr {
+  border-color: var(--portal-border) !important;
+}
+
+.portal-polish-theme tbody tr:hover {
+  background: color-mix(in srgb, var(--portal-accent-soft) 58%, white) !important;
+}
+
+.portal-polish-theme .bg-white,
+.portal-polish-theme .bg-white\/95,
+.portal-polish-theme .bg-white\/90 {
+  background-color: var(--portal-surface) !important;
+}
+
+.portal-polish-theme .bg-slate-50,
+.portal-polish-theme .bg-gray-50,
+.portal-polish-theme .bg-zinc-50 {
+  background-color: var(--portal-surface-muted) !important;
+}
+
+body.portal-polish-theme [role="dialog"],
+body.portal-polish-theme [data-radix-popper-content-wrapper] > div,
+body.portal-polish-theme .portal-notification-panel,
+body.portal-polish-theme .portal-job-tracker-modal {
+  background: var(--portal-surface) !important;
+  border-color: var(--portal-border) !important;
+  color: var(--portal-text) !important;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.23) !important;
+}
+
+body.portal-polish-theme [data-sonner-toast],
+body.portal-polish-theme [data-radix-toast-viewport] > * {
+  background: var(--portal-surface) !important;
+  border-color: var(--portal-border) !important;
+  color: var(--portal-text) !important;
+  box-shadow: var(--portal-shadow-md) !important;
+}
+
+/* Loading and blank states */
+.portal-polish-theme .portal-skeleton .bg-zinc-100,
+.portal-polish-theme .portal-skeleton .bg-slate-100,
+.portal-polish-theme .portal-skeleton .bg-gray-100 {
+  background: #e7ebf0 !important;
+}
+
+.portal-polish-theme .portal-skeleton .animate-pulse {
+  animation-duration: 1.8s;
+}
+
+.portal-polish-theme .portal-fab {
+  background: var(--portal-accent) !important;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--portal-accent) 35%, transparent) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-polish-theme *,
+  .portal-polish-theme *::before,
+  .portal-polish-theme *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

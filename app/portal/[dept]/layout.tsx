@@ -45,5 +45,5 @@ export default async function PortalLayout({
     redirect(target === "dashboard" ? "/dashboard" : `/portal/${target}`)
   }
 
-  return <PortalMobileLayout config={config}>{children}</PortalMobileLayout>
+  return <PortalMobileLayout config={config} user={user}>{children}</PortalMobileLayout>
 }

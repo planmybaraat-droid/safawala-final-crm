@@ -65,6 +65,33 @@ interface PackagesClientProps {
   franchises?: any[]
 }
 
+function extractLeadingNumber(name = "") {
+  const match = name.match(/(\d+)/)
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER
+}
+
+function extractPackageNumber(name = "") {
+  const packageMatch = name.match(/package\s*(\d+)/i)
+  if (packageMatch) return Number(packageMatch[1])
+  return extractLeadingNumber(name)
+}
+
+function sortSafaCategories(cats: Category[]) {
+  return [...cats].sort((a, b) => {
+    const numDiff = extractLeadingNumber(a.name) - extractLeadingNumber(b.name)
+    if (numDiff !== 0) return numDiff
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+  })
+}
+
+function sortPackageVariants(variants: PackageVariant[]) {
+  return [...variants].sort((a, b) => {
+    const packageDiff = extractPackageNumber(a.name) - extractPackageNumber(b.name)
+    if (packageDiff !== 0) return packageDiff
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+  })
+}
+
 export function PackagesClient({ user, initialCategories, franchises }: PackagesClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -134,7 +161,7 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
     },
   ]
 
-  const [categories, setCategories] = useState<Category[]>(initialCategories || mockCategories)
+  const [categories, setCategories] = useState<Category[]>(sortSafaCategories(initialCategories || mockCategories))
 
   // Auto-select first category on load
   useEffect(() => {
@@ -563,11 +590,11 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
       console.log("[v0] Variants fetched:", allVariants?.length || 0, "variants")
       console.log("[v0] Sample variant data:", allVariants?.[0])
 
-      const categoriesWithVariants = (categoriesData || []).map((category:any) => {
-        const variants = (allVariants || []).filter((v:any) => v.category_id === category.id)
+      const categoriesWithVariants = sortSafaCategories((categoriesData || []).map((category:any) => {
+        const variants = sortPackageVariants((allVariants || []).filter((v:any) => v.category_id === category.id))
         console.log(`[v0] Category "${category.name}" has ${variants.length} matching variants`)
         return { ...category, package_variants: variants }
-      })
+      }))
 
       setCategories(categoriesWithVariants)
 
@@ -604,51 +631,57 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
     refetchData()
   }, [])
 
+  const displayCategories = sortSafaCategories(categories)
+  const selectedVariants = sortPackageVariants(selectedCategory?.package_variants || [])
+
   return (
-    <div className="heritage-container p-6 space-y-6">
-      <div className="flex items-center gap-4 mb-6">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.10),transparent_32%),linear-gradient(135deg,#fbfaff_0%,#f8fafc_48%,#f4f0ff_100%)] p-5 space-y-6 text-[#120d29]">
+      <div className="flex items-stretch gap-4">
         <Button
           variant="outline"
           size="sm"
           onClick={() => router.back()}
-          className="border-brown-300 text-brown-700 hover:bg-brown-50"
+          className="h-auto self-center rounded-2xl border-[#ded3f2] bg-white/95 px-4 py-3 text-[#21143f] shadow-[0_12px_28px_rgba(64,35,140,0.08)] hover:bg-[#f6f2ff]"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <div className="heritage-header flex-1">
-          <div className="flex items-center gap-3">
-            <Crown className="w-8 h-8 text-heritage-dark" />
+        <div className="flex-1 overflow-hidden rounded-[28px] border border-[#ded3f2] bg-white/95 p-5 shadow-[0_22px_55px_rgba(64,35,140,0.10)]">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8b5cf6] via-[#6d28d9] to-[#2e1065] text-white shadow-[0_18px_36px_rgba(109,40,217,0.25)]">
+              <Crown className="w-6 h-6" />
+            </div>
             <div>
-              <h1 className="vintage-title text-3xl font-bold">Safawala Package Management</h1>
-              <p className="vintage-subtitle text-sm opacity-80">
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-[#7c3aed]">Packages</p>
+              <h1 className="text-[30px] font-extrabold leading-tight tracking-[-0.035em] text-[#120d29]">Safawala Package Management</h1>
+              <p className="text-sm font-medium text-[#665b7d]">
                 Category-based package system
               </p>
             </div>
           </div>
         </div>
-        <div className="flex gap-4 text-sm">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-heritage-dark">{categories.length}</div>
-            <div className="text-brown-600">Categories</div>
+        <div className="grid w-[232px] grid-cols-2 gap-3 text-sm">
+          <div className="rounded-3xl border border-[#ded3f2] bg-white/95 px-4 py-4 text-center shadow-[0_16px_34px_rgba(64,35,140,0.08)]">
+            <div className="text-2xl font-extrabold text-[#5b21b6]">{categories.length}</div>
+            <div className="text-[12px] text-[#665b7d] font-semibold">Categories</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-heritage-dark">
+          <div className="rounded-3xl border border-[#ded3f2] bg-white/95 px-4 py-4 text-center shadow-[0_16px_34px_rgba(64,35,140,0.08)]">
+            <div className="text-2xl font-extrabold text-[#5b21b6]">
               {categories.reduce((acc, cat) => acc + (cat.package_variants || []).length, 0)}
             </div>
-            <div className="text-brown-600">Variants</div>
+            <div className="text-[12px] text-[#665b7d] font-semibold">Variants</div>
           </div>
           
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-12 items-start">
         {/* Left Sidebar: Categories List (Master Pane) */}
-        <div className="md:col-span-4 space-y-4">
-          <div className="flex justify-between items-center bg-cream-50/50 p-4 rounded-xl border border-brown-100">
+        <div className="md:col-span-4 space-y-3">
+          <div className="flex justify-between items-center rounded-[24px] border border-[#ded3f2] bg-white/95 p-4 shadow-[0_16px_36px_rgba(64,35,140,0.08)]">
             <div>
-              <h2 className="vintage-heading text-lg font-bold text-heritage-dark">Safa Categories</h2>
-              <p className="text-[11px] text-brown-500">{categories.length} categories active</p>
+              <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-[#120d29]">Safa Categories</h2>
+              <p className="text-[12px] font-medium text-[#7b7190]">{categories.length} categories active</p>
             </div>
             <Dialog
               open={dialogs.createCategory}
@@ -661,7 +694,7 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
               }}
             >
               <DialogTrigger asChild>
-                <Button size="sm" className="btn-heritage-dark px-3 py-1.5 h-auto text-xs" disabled={isLoading}>
+                <Button size="sm" className="h-auto rounded-xl bg-[#21143f] px-4 py-2 text-xs font-bold text-white shadow-[0_10px_24px_rgba(33,20,63,0.18)] hover:bg-[#3b1a78]" disabled={isLoading}>
                   <Plus className="w-3.5 h-3.5 mr-1" />
                   Add
                 </Button>
@@ -695,32 +728,32 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
             </Dialog>
           </div>
 
-          <div className="space-y-2.5 max-h-[70vh] overflow-y-auto pr-1">
-            {categories.map((category) => {
+          <div className="space-y-2.5 max-h-[70vh] overflow-y-auto rounded-[24px] border border-[#ded3f2] bg-white/70 p-2 pr-1 shadow-[0_18px_45px_rgba(64,35,140,0.07)]">
+            {displayCategories.map((category) => {
               const isSelected = selectedCategory?.id === category.id;
               const variantCount = (category.package_variants || category.packages || []).length;
               return (
                 <div
                   key={category.id}
                   onClick={() => setSelectedCategory(category)}
-                  className={`group relative p-4 rounded-xl border transition-all duration-300 cursor-pointer flex items-center justify-between hover:scale-[1.01] active:scale-[0.99] ${
+                  className={`group relative p-4 rounded-[20px] border transition-all duration-300 cursor-pointer flex items-center justify-between active:scale-[0.99] ${
                     isSelected
-                      ? "bg-gradient-to-r from-cream-100 to-cream-50 border-gold shadow-md"
-                      : "bg-white border-brown-100 hover:border-brown-300 hover:bg-cream-50/20"
+                      ? "border-[#c7b5ee] bg-gradient-to-r from-[#f2ecff] via-white to-white shadow-[0_14px_32px_rgba(109,40,217,0.14)]"
+                      : "border-transparent bg-white/85 hover:border-[#ded3f2] hover:bg-white hover:shadow-[0_10px_26px_rgba(64,35,140,0.07)]"
                   }`}
                 >
                   {isSelected && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold rounded-l-xl" />
+                    <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-[#7c3aed]" />
                   )}
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg transition-colors ${
-                      isSelected ? "bg-gold/25" : "bg-brown-50 group-hover:bg-brown-100"
+                    <div className={`p-2.5 rounded-2xl transition-colors ${
+                      isSelected ? "bg-[#7c3aed] text-white shadow-[0_10px_20px_rgba(124,58,237,0.22)]" : "bg-[#f6f2ff] text-[#5b21b6] group-hover:bg-[#f1e9ff]"
                     }`}>
-                      <Crown className={`w-5 h-5 ${isSelected ? "text-brown-800" : "text-heritage-dark"}`} />
+                      <Crown className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-sm text-brown-900 vintage-heading">{category.name}</h4>
-                      <p className="text-[11px] text-brown-500 mt-0.5">{variantCount} variants</p>
+                      <h4 className="font-semibold text-[15px] text-[#120d29]">{category.name}</h4>
+                      <p className="text-[12px] font-medium text-[#7b7190] mt-0.5">{variantCount} variants</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -758,66 +791,67 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
         {/* Right Detail Pane: Variants List */}
         <div className="md:col-span-8 space-y-4">
           {!selectedCategory ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-brown-200 rounded-2xl bg-cream-50/10 min-h-[400px]">
-              <Palette className="w-16 h-16 text-brown-300 mb-4 stroke-1 animate-pulse" />
-              <h3 className="vintage-heading text-lg font-semibold text-brown-800 mb-1">Select a Category</h3>
-              <p className="text-sm text-brown-500 max-w-sm">
+            <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-[#ded3f2] rounded-3xl bg-white/70 min-h-[400px]">
+              <Palette className="w-16 h-16 text-[#c7b5ee] mb-4 stroke-1 animate-pulse" />
+              <h3 className="text-lg font-bold text-[#120d29] mb-1">Select a Category</h3>
+              <p className="text-sm text-[#665b7d] max-w-sm">
                 Choose one of the safa categories from the sidebar to view, add, or edit its variants.
               </p>
             </div>
           ) : (
-            <div className="bg-cream-50/20 p-6 rounded-2xl border border-brown-100 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-brown-100">
+            <div className="bg-white/95 p-5 rounded-[28px] border border-[#ded3f2] shadow-[0_20px_50px_rgba(64,35,140,0.10)] space-y-5">
+              <div className="flex items-center justify-between rounded-[22px] border border-[#eee7fb] bg-gradient-to-r from-[#fbf8ff] to-white p-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-gold/10 text-brown-800 border-gold/30 text-xs">Active Category</Badge>
+                    <Badge variant="outline" className="rounded-full bg-[#f1e9ff] text-[#4c1d95] border-[#ded3f2] text-xs font-bold">Active Category</Badge>
                   </div>
-                  <h3 className="vintage-heading text-2xl font-bold text-heritage-dark mt-1">{selectedCategory.name}</h3>
-                  <p className="text-xs text-brown-600">
-                    {(selectedCategory.package_variants || []).length} variants configured
+                  <h3 className="text-[24px] font-extrabold tracking-[-0.03em] text-[#120d29] mt-1">{selectedCategory.name}</h3>
+                  <p className="text-[13px] font-medium text-[#665b7d]">
+                    {selectedVariants.length} variants configured
                   </p>
                 </div>
                 <Button
                   onClick={() => setDialogs((prev) => ({ ...prev, createVariant: true }))}
-                  className="bg-heritage-dark hover:bg-heritage-dark/90 text-white shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                  className="rounded-2xl bg-[#21143f] px-5 py-2.5 text-white shadow-[0_14px_30px_rgba(33,20,63,0.20)] hover:bg-[#3b1a78] hover:scale-[1.02] active:scale-[0.98] transition-transform"
                 >
                   <Plus className="w-4 h-4 mr-1.5" />
                   Add Variant
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(selectedCategory.package_variants || []).map((variant: any) => (
-                  <Card key={variant.id} className="card-heritage hover:shadow-md transition-all duration-300 border border-brown-100 hover:border-gold/40 flex flex-col h-full bg-white hover:-translate-y-0.5">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {selectedVariants.map((variant: any) => (
+                  <Card key={variant.id} className="flex h-full flex-col overflow-hidden rounded-[24px] border border-[#ded3f2] bg-white shadow-[0_14px_34px_rgba(64,35,140,0.07)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#c7b5ee] hover:shadow-[0_22px_46px_rgba(64,35,140,0.13)]">
+                    <div className="h-1.5 bg-gradient-to-r from-[#7c3aed] via-[#a78bfa] to-[#f4efff]" />
                     <CardContent className="p-5 flex flex-col h-full">
                       <div className="flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-base font-bold vintage-heading text-heritage-dark tracking-wide line-clamp-1">{variant.name}</h4>
-                          <Badge className="bg-gold text-brown-800 font-bold text-xs px-2.5 py-0.5 border border-gold shadow-sm shrink-0">₹{variant.base_price?.toLocaleString() || "0"}</Badge>
+                          <h4 className="text-[17px] font-bold text-[#120d29] tracking-[-0.02em] line-clamp-1">{variant.name}</h4>
+                          <Badge className="bg-[#f6f2ff] text-[#21143f] font-extrabold text-xs px-3 py-1 border border-[#ded3f2] shadow-sm shrink-0">₹{variant.base_price?.toLocaleString() || "0"}</Badge>
                         </div>
-                        <p className="text-xs text-brown-600 mt-2 line-clamp-2 min-h-[32px]">{variant.description || "No description provided."}</p>
+                        <p className="text-[13px] text-[#665b7d] mt-2 line-clamp-2 min-h-[34px]">{variant.description || "No description provided."}</p>
                         
-                        <div className="grid grid-cols-2 gap-2 mt-4 p-2.5 bg-brown-50/40 rounded-lg text-[11px] border border-brown-100/50">
+                        <div className="grid grid-cols-2 gap-2 mt-4 p-3.5 bg-[#fbf8ff] rounded-2xl text-[12px] border border-[#eee7fb]">
                           <div>
-                            <span className="text-brown-500">Extra Safa: </span>
-                            <span className="font-semibold text-brown-800">₹{variant.extra_safa_price || 0}</span>
+                            <span className="text-[#7b7190]">Extra Safa: </span>
+                            <span className="font-bold text-[#21143f]">₹{variant.extra_safa_price || 0}</span>
                           </div>
                           <div>
-                            <span className="text-brown-500">Security Dep: </span>
-                            <span className="font-semibold text-brown-800">₹{variant.deposit_amount || 0}</span>
+                            <span className="text-[#7b7190]">Security Dep: </span>
+                            <span className="font-bold text-[#21143f]">₹{variant.deposit_amount || 0}</span>
                           </div>
-                          <div className="col-span-2 mt-1 pt-1 border-t border-brown-100/30">
-                            <span className="text-brown-500">Missing Safa Penalty: </span>
-                            <span className="font-semibold text-brown-800">₹{variant.missing_safa_penalty || 0}</span>
+                          <div className="col-span-2 mt-1 pt-1 border-t border-[#eee7fb]">
+                            <span className="text-[#7b7190]">Missing Safa Penalty: </span>
+                            <span className="font-bold text-[#21143f]">₹{variant.missing_safa_penalty || 0}</span>
                           </div>
                         </div>
 
                         {Array.isArray(variant.inclusions) && variant.inclusions.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-brown-100/30">
-                            <h5 className="text-[11px] font-bold text-brown-700 mb-2 uppercase tracking-wider">✨ Inclusions</h5>
+                          <div className="mt-4 pt-3 border-t border-[#eee7fb]">
+                            <h5 className="text-[11px] font-extrabold text-[#4c1d95] mb-2 uppercase tracking-wider">✨ Inclusions</h5>
                             <div className="flex flex-wrap gap-1.5">
                               {variant.inclusions.map((inc: string, idx: number) => (
-                                <Badge key={idx} variant="outline" className="text-[10px] bg-cream-50/50 text-brown-800 border-brown-200 px-2 py-0.5 shadow-sm">
+                                <Badge key={idx} variant="outline" className="text-[11px] bg-white text-[#21143f] border-[#ded3f2] px-2 py-0.5 shadow-sm">
                                   {inc}
                                 </Badge>
                               ))}
@@ -826,11 +860,11 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
                         )}
                       </div>
                       
-                      <div className="pt-4 mt-4 border-t border-brown-100/30 flex items-center justify-end gap-2">
+                      <div className="pt-4 mt-4 border-t border-[#eee7fb] flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50/50 bg-blue-50/10 px-3 text-xs hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                          className="h-9 rounded-xl border-[#ded3f2] text-[#4c1d95] hover:bg-[#f6f2ff] bg-white px-3.5 text-xs font-bold hover:scale-[1.02] active:scale-[0.98] transition-transform"
                           onClick={() => handleEditVariant(variant)}
                         >
                           <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
@@ -838,7 +872,7 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 border-red-200 text-red-700 hover:bg-red-50/50 bg-red-50/10 px-3 text-xs hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                          className="h-9 rounded-xl border-red-200 text-red-700 hover:bg-red-50/50 bg-red-50/10 px-3.5 text-xs font-bold hover:scale-[1.02] active:scale-[0.98] transition-transform"
                           onClick={() => handleDeleteVariant(variant.id)}
                         >
                           <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
@@ -848,11 +882,11 @@ export function PackagesClient({ user, initialCategories, franchises }: Packages
                   </Card>
                 ))}
                 
-                {(selectedCategory.package_variants || []).length === 0 && (
-                  <div className="col-span-2 text-center py-12 border border-dashed border-brown-100 rounded-xl bg-white">
-                    <Palette className="w-10 h-10 mx-auto text-brown-300 mb-2 stroke-1 animate-pulse" />
-                    <p className="text-sm font-medium text-brown-600">No variants in this category yet</p>
-                    <p className="text-xs text-brown-400 mt-1">Click the Add Variant button to get started.</p>
+                {selectedVariants.length === 0 && (
+                  <div className="col-span-2 text-center py-12 border border-dashed border-[#ded3f2] rounded-2xl bg-white">
+                    <Palette className="w-10 h-10 mx-auto text-[#c7b5ee] mb-2 stroke-1 animate-pulse" />
+                    <p className="text-sm font-semibold text-[#665b7d]">No variants in this category yet</p>
+                    <p className="text-xs text-[#7b7190] mt-1">Click the Add Variant button to get started.</p>
                   </div>
                 )}
               </div>

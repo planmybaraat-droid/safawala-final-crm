@@ -209,7 +209,7 @@ export function TaskDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col bg-white overflow-hidden p-6 rounded-xl shadow-2xl">
+      <DialogContent className="crm-dialog-panel sm:max-w-[700px] max-h-[90vh] flex flex-col bg-white overflow-hidden p-6 rounded-xl shadow-2xl">
         <DialogHeader className="border-b pb-4">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <Badge variant="outline" className={`capitalize font-semibold border ${getStatusColor(task.status)}`}>

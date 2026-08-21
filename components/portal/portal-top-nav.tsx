@@ -16,7 +16,7 @@ export function PortalTopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-[#E7E2EA] bg-white/95 px-8 backdrop-blur">
+    <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-[#E7E2EA] bg-white/95 px-8 backdrop-blur portal-top-nav">
       <Link href="/dashboard" className="text-lg font-bold tracking-[-0.02em] text-[#1F1B24] no-underline">Safawala.com</Link>
       <div className="flex items-center gap-3">
         <button

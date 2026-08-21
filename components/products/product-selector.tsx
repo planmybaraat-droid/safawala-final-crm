@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Search, Package, AlertCircle, Eye, Plus, Scan, Minus, Check, Trash2, Camera, X } from "lucide-react"
 import { InventoryAvailabilityPopup } from "@/components/bookings/inventory-availability-popup"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 import { toast } from "sonner"
 
 export interface Product {
@@ -35,6 +36,9 @@ export interface Product {
   sale_price: number
   security_deposit: number
   stock_available: number
+  reorder_level?: number
+  created_at?: string
+  updated_at?: string
   image_url?: string
   // Optional barcode fields for search
   barcode?: string | null
@@ -72,6 +76,8 @@ interface ProductSelectorProps {
   onItemRemove?: (product_id: string) => void
   onCheckAvailability?: (productId: string, productName: string) => void
   onOpenCustomProductDialog?: () => void
+  /** Show a stock-aware shortcut for adding extra Safa items in booking Step 2. */
+  showAdditionalSafaSection?: boolean
   /** Restrict Barati Safa's visible package choices in the booking flow. */
   limitBaratiSafaPackages?: boolean
   /** Hide the broad all-items filter buttons when a focused catalogue is required. */
@@ -93,6 +99,7 @@ export function ProductSelector({
   onItemRemove,
   onCheckAvailability,
   onOpenCustomProductDialog,
+  showAdditionalSafaSection = false,
   limitBaratiSafaPackages = false,
   hideAllCategoryOptions = false,
   hideAllSubcategoryOptions = false,
@@ -102,6 +109,11 @@ export function ProductSelector({
   const [productSearch, setProductSearch] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
+  const [stockFilter, setStockFilter] = useState<"all" | "in_stock" | "low_stock" | "out_of_stock">("all")
+  const [sortBy, setSortBy] = useState<"created_desc" | "stock_desc" | "stock_asc" | "name_asc" | "name_desc" | "price_asc" | "price_desc">("created_desc")
+  const [additionalSafaPackageId, setAdditionalSafaPackageId] = useState("all")
+  const [additionalSafaId, setAdditionalSafaId] = useState("")
+  const [additionalSafaQty, setAdditionalSafaQty] = useState(1)
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const [barcodeInput, setBarcodeInput] = useState("")
   const [isScanning, setIsScanning] = useState(false)
@@ -286,6 +298,78 @@ export function ProductSelector({
     return map
   }, [categories])
 
+  const subcategoryById = useMemo(
+    () => new Map(subcategories.map((subcategory) => [subcategory.id, subcategory])),
+    [subcategories]
+  )
+
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories]
+  )
+
+  const productCategoryIds = (product: Product) => {
+    const explicitSubcategory = product.subcategory_id
+      ? subcategoryById.get(product.subcategory_id)
+      : undefined
+    const categoryAsSubcategory = product.category_id
+      ? subcategoryById.get(product.category_id)
+      : undefined
+    const subcategory = explicitSubcategory || categoryAsSubcategory
+
+    return {
+      categoryId: subcategory?.parent_id || product.category_id,
+      subcategoryId: subcategory?.id || product.subcategory_id,
+    }
+  }
+
+  const getBaratiSafaPackage = (product: Product) => {
+    const candidates = [
+      product.subcategory_id ? subcategoryById.get(product.subcategory_id) : undefined,
+      product.category_id ? subcategoryById.get(product.category_id) : undefined,
+    ].filter(Boolean) as Subcategory[]
+
+    return candidates.find((subcategory) => {
+      const parentName = categoryNameById.get(subcategory.parent_id)?.trim().toUpperCase() || ""
+      return parentName === "BARATI SAFA" && /^package\s*\d+$/i.test(subcategory.name.trim())
+    })
+  }
+
+  const additionalSafaProducts = useMemo(() => products
+    .filter((product) => Boolean(getBaratiSafaPackage(product)))
+    .sort((a, b) => a.name.localeCompare(b.name)),
+  [products, categoryNameById, subcategoryById])
+
+  const additionalSafaPackages = useMemo(() => {
+    const baratiSafaCategory = categories.find((category) => category.name.trim().toUpperCase() === "BARATI SAFA")
+    if (!baratiSafaCategory) return []
+    return subcategories
+      .filter((subcategory) => subcategory.parent_id === baratiSafaCategory.id && /^package\s*\d+$/i.test(subcategory.name.trim()))
+      .sort((a, b) => Number(a.name.match(/\d+/)?.[0] || 999) - Number(b.name.match(/\d+/)?.[0] || 999))
+  }, [categories, subcategories])
+
+  const visibleAdditionalSafaProducts = additionalSafaPackageId === "all"
+    ? additionalSafaProducts
+    : additionalSafaProducts.filter((product) => getBaratiSafaPackage(product)?.id === additionalSafaPackageId)
+
+  const additionalSafaProduct = additionalSafaProducts.find((product) => product.id === additionalSafaId)
+  const getProductSubcategoryName = (product: Product) => {
+    return getBaratiSafaPackage(product)?.name || "Package"
+  }
+  const alreadySelectedSafaQty = selectedItems.find((item) => item.product_id === additionalSafaId)?.quantity || 0
+  const additionalSafaAvailable = Math.max(0, (Number(additionalSafaProduct?.stock_available) || 0) - alreadySelectedSafaQty)
+
+  const addAdditionalSafa = () => {
+    if (!additionalSafaProduct || additionalSafaAvailable <= 0) return
+    const quantity = Math.max(1, Math.min(additionalSafaQty, additionalSafaAvailable))
+    onProductSelect(additionalSafaProduct, quantity)
+    setAdditionalSafaQty(1)
+    toast.success("Additional Safa added", {
+      description: `${quantity} × ${additionalSafaProduct.name}`,
+      duration: 2000,
+    })
+  }
+
   const selectedCategoryName = selectedCategory
     ? categories.find((category) => category.id === selectedCategory)?.name.trim().toUpperCase()
     : undefined
@@ -318,9 +402,10 @@ export function ProductSelector({
       return type === bookingType
     })
 
-    // Filter by category
+    // Products may store a child category (for example Package 1) directly in
+    // category_id. Resolve its parent so the BARATI SAFA category still works.
     if (selectedCategory) {
-      result = result.filter((p) => p.category_id === selectedCategory)
+      result = result.filter((p) => productCategoryIds(p).categoryId === selectedCategory)
     }
 
     // In the booking flow, Barati Safa only exposes Package 1–3. This also
@@ -332,7 +417,18 @@ export function ProductSelector({
 
     // Filter by subcategory
     if (selectedSubcategory) {
-      result = result.filter((p) => p.subcategory_id === selectedSubcategory)
+      result = result.filter((p) => productCategoryIds(p).subcategoryId === selectedSubcategory)
+    }
+
+    // Match the same stock definitions used by the Inventory module.
+    if (stockFilter !== "all") {
+      result = result.filter((p) => {
+        const available = Number(p.stock_available) || 0
+        const reorderLevel = Number(p.reorder_level) || 0
+        if (stockFilter === "in_stock") return available > reorderLevel
+        if (stockFilter === "low_stock") return available > 0 && available <= reorderLevel
+        return available <= 0
+      })
     }
 
     // Filter by search (supports name, category, barcode and known code fields)
@@ -340,7 +436,13 @@ export function ProductSelector({
       const term = productSearch.toLowerCase()
       result = result.filter(
         (p) => {
-          const matchesNameOrCategory = p.name.toLowerCase().includes(term) || p.category.toLowerCase().includes(term)
+          const ids = productCategoryIds(p)
+          const parentCategoryName = ids.categoryId ? categoryNameById.get(ids.categoryId) || "" : ""
+          const subcategoryName = ids.subcategoryId ? subcategoryById.get(ids.subcategoryId)?.name || "" : ""
+          const matchesNameOrCategory = p.name.toLowerCase().includes(term) ||
+            (p.category || "").toLowerCase().includes(term) ||
+            parentCategoryName.toLowerCase().includes(term) ||
+            subcategoryName.toLowerCase().includes(term)
           const matchesBarcode = p.barcode ? String(p.barcode).toLowerCase().includes(term) : false
           const matchesProductCode = p.product_code ? String(p.product_code).toLowerCase().includes(term) : false
           const matchesAnyBarcode = Array.isArray(p.all_barcode_numbers)
@@ -351,16 +453,31 @@ export function ProductSelector({
       )
     }
 
-    // Sort: selected items first, then rest
+    // Keep selected items first, then apply the same sort choices as Inventory.
     const selectedIds = new Set(selectedItems.map(i => i.product_id))
     result = [...result].sort((a, b) => {
       const aSelected = selectedIds.has(a.id) ? 0 : 1
       const bSelected = selectedIds.has(b.id) ? 0 : 1
-      return aSelected - bSelected
+      if (aSelected !== bSelected) return aSelected - bSelected
+
+      const lastActivity = (product: Product) => Math.max(
+        new Date(product.updated_at || 0).getTime(),
+        new Date(product.created_at || 0).getTime(),
+      )
+      if (sortBy === "stock_desc") return (Number(b.stock_available) || 0) - (Number(a.stock_available) || 0)
+      if (sortBy === "stock_asc") return (Number(a.stock_available) || 0) - (Number(b.stock_available) || 0)
+      if (sortBy === "name_asc") return a.name.localeCompare(b.name)
+      if (sortBy === "name_desc") return b.name.localeCompare(a.name)
+      const price = (product: Product) => bookingType === "rental"
+        ? Number(product.rental_price) || 0
+        : Number(product.sale_price || product.rental_price) || 0
+      if (sortBy === "price_asc") return price(a) - price(b)
+      if (sortBy === "price_desc") return price(b) - price(a)
+      return lastActivity(b) - lastActivity(a)
     })
 
     return result
-  }, [products, productSearch, selectedCategory, selectedSubcategory, selectedItems, categoryTypeById, bookingType, limitBaratiSafaPackages, selectedCategoryName, baratiSafaSubcategories])
+  }, [products, productSearch, selectedCategory, selectedSubcategory, stockFilter, sortBy, selectedItems, categoryTypeById, categoryNameById, subcategoryById, bookingType, limitBaratiSafaPackages, selectedCategoryName, baratiSafaSubcategories])
 
   // Calculate reserved quantities
   const getReservedQuantity = (productId: string): number => {
@@ -469,7 +586,7 @@ export function ProductSelector({
   // Reset focus when filters change
   useEffect(() => {
     setFocusedIndex(-1)
-  }, [productSearch, selectedCategory, selectedSubcategory])
+  }, [productSearch, selectedCategory, selectedSubcategory, stockFilter, sortBy])
 
   return (
     <Card className={className}>
@@ -498,65 +615,87 @@ export function ProductSelector({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Category Filter Buttons */}
-        {categories.filter((cat) => !cat.type || cat.type === "both" || cat.type === bookingType).length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {!hideAllCategoryOptions && (
-              <Button
-                size="sm"
-                variant={selectedCategory === null ? "default" : "outline"}
-                onClick={() => {
-                  setSelectedCategory(null)
-                  setSelectedSubcategory(null)
+        {showAdditionalSafaSection && bookingType === "rental" && (
+          <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-amber-950">
+                  <Package className="h-4 w-4 text-amber-700" />
+                  Additional Safa
+                  <Badge variant="outline" className="border-amber-200 bg-white/80 text-[10px] text-amber-800">
+                    {additionalSafaProducts.length} options
+                  </Badge>
+                </div>
+                <p className="mt-1 text-[11px] text-amber-800/70">
+                  Select additional Safa only from Barati Safa packages.
+                </p>
+              </div>
+              {alreadySelectedSafaQty > 0 && additionalSafaProduct && (
+                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                  {alreadySelectedSafaQty} already selected
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[150px_minmax(0,1fr)_100px_auto]">
+              <select
+                aria-label="Additional Safa package"
+                value={additionalSafaPackageId}
+                onChange={(event) => {
+                  setAdditionalSafaPackageId(event.target.value)
+                  setAdditionalSafaId("")
+                  setAdditionalSafaQty(1)
                 }}
-                className="h-7 px-3 text-xs font-normal"
+                className="h-10 rounded-md border border-amber-200 bg-white px-3 text-sm text-slate-800 focus:border-amber-400 focus:outline-none"
               >
-                All Categories
+                <option value="all">All Packages</option>
+                {additionalSafaPackages.map((subcategory) => (
+                  <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Additional Safa product"
+                value={additionalSafaId}
+                onChange={(event) => {
+                  setAdditionalSafaId(event.target.value)
+                  setAdditionalSafaQty(1)
+                }}
+                className="h-10 min-w-0 rounded-md border border-amber-200 bg-white px-3 text-sm text-slate-800 focus:border-amber-400 focus:outline-none"
+              >
+                <option value="">Select Barati Safa package product</option>
+                {visibleAdditionalSafaProducts.map((product) => (
+                  <option key={product.id} value={product.id} disabled={(Number(product.stock_available) || 0) <= 0}>
+                    {getProductSubcategoryName(product)} — {product.name} — Stock {Number(product.stock_available) || 0}
+                  </option>
+                ))}
+              </select>
+              <Input
+                aria-label="Additional Safa quantity"
+                type="number"
+                min={1}
+                max={Math.max(1, additionalSafaAvailable)}
+                value={additionalSafaQty}
+                onChange={(event) => setAdditionalSafaQty(Math.max(1, Number(event.target.value) || 1))}
+                disabled={!additionalSafaProduct || additionalSafaAvailable <= 0}
+                className="h-10 border-amber-200 bg-white"
+                title={additionalSafaProduct ? `${additionalSafaAvailable} available after current selection` : "Choose a Safa first"}
+              />
+              <Button
+                type="button"
+                onClick={addAdditionalSafa}
+                disabled={!additionalSafaProduct || additionalSafaAvailable <= 0}
+                className="h-10 bg-amber-600 text-white hover:bg-amber-700"
+              >
+                <Plus className="mr-1.5 h-4 w-4" /> Add Safa
               </Button>
+            </div>
+            {additionalSafaProduct && (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-amber-900/70">
+                <span>Available now: <strong>{additionalSafaAvailable}</strong></span>
+                <span>Rental price: <strong>₹{Number(additionalSafaProduct.rental_price) || 0}</strong></span>
+              </div>
             )}
-            {categories.filter((cat) => !cat.type || cat.type === "both" || cat.type === bookingType).map((cat) => (
-              <Button
-                key={cat.id}
-                size="sm"
-                variant={selectedCategory === cat.id ? "default" : "outline"}
-                onClick={() => {
-                  setSelectedCategory(cat.id)
-                  setSelectedSubcategory(null)
-                }}
-                className="h-7 px-3 text-xs font-normal"
-              >
-                {cat.name}
-              </Button>
-            ))}
           </div>
         )}
-
-        {/* Subcategory Filter Buttons - Show only when category is selected */}
-        {selectedCategory && visibleSubcategories.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {!hideAllSubcategoryOptions && (
-                <Button
-                  size="sm"
-                  variant={selectedSubcategory === null ? "default" : "outline"}
-                  onClick={() => setSelectedSubcategory(null)}
-                  className="h-7 px-3 text-xs font-normal"
-                >
-                  All Subcategories
-                </Button>
-              )}
-              {visibleSubcategories.map((subcat) => (
-                  <Button
-                    key={subcat.id}
-                    size="sm"
-                    variant={selectedSubcategory === subcat.id ? "default" : "outline"}
-                    onClick={() => setSelectedSubcategory(subcat.id)}
-                    className="h-7 px-3 text-xs font-normal"
-                  >
-                    {subcat.name}
-                  </Button>
-                ))}
-            </div>
-          )}
 
         {/* Barcode Scanner Input - Auto adds to cart */}
         <div className="flex gap-2">
@@ -618,15 +757,90 @@ export function ProductSelector({
           </div>
         )}
 
-        {/* Search Input */}
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search products by name or category..."
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Inventory-style product filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#102516]/40" />
+            <Input
+              placeholder="Search products, barcode..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="pl-10 border-[#102516]/15 bg-[#fefaf6] focus:border-[#102516]/40"
+            />
+          </div>
+          <select
+            aria-label="Stock status"
+            value={stockFilter}
+            onChange={(event) => setStockFilter(event.target.value as typeof stockFilter)}
+            className="h-10 min-w-[140px] rounded-md border border-[#102516]/15 bg-[#fefaf6] px-3 text-sm text-[#102516]"
+          >
+            <option value="all">All Products</option>
+            <option value="in_stock">In Stock</option>
+            <option value="low_stock">Low Stock</option>
+            <option value="out_of_stock">Out of Stock</option>
+          </select>
+          <select
+            aria-label="Product category"
+            value={selectedCategory || "all"}
+            onChange={(event) => {
+              setSelectedCategory(event.target.value === "all" ? null : event.target.value)
+              setSelectedSubcategory(null)
+            }}
+            className="h-10 min-w-[150px] rounded-md border border-[#102516]/15 bg-[#fefaf6] px-3 text-sm text-[#102516]"
+          >
+            {!hideAllCategoryOptions && <option value="all">All Categories</option>}
+            {categories
+              .filter((category) => !category.type || category.type === "both" || category.type === bookingType)
+              .map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+          {selectedCategory && visibleSubcategories.length > 0 && (
+            <select
+              aria-label="Product subcategory"
+              value={selectedSubcategory || "all"}
+              onChange={(event) => setSelectedSubcategory(event.target.value === "all" ? null : event.target.value)}
+              className="h-10 min-w-[150px] rounded-md border border-[#102516]/15 bg-[#fefaf6] px-3 text-sm text-[#102516]"
+            >
+              {!hideAllSubcategoryOptions && <option value="all">All Subcategories</option>}
+              {visibleSubcategories.map((subcategory) => (
+                <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
+              ))}
+            </select>
+          )}
+          <select
+            aria-label="Sort products"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
+            className="h-10 min-w-[175px] rounded-md border border-[#102516]/15 bg-[#fefaf6] px-3 text-sm text-[#102516]"
+          >
+            <option value="created_desc">Last Added / Updated</option>
+            <option value="stock_desc">Stock: High → Low</option>
+            <option value="stock_asc">Stock: Low → High</option>
+            <option value="name_asc">Name: A → Z</option>
+            <option value="name_desc">Name: Z → A</option>
+            <option value="price_asc">Price: Low → High</option>
+            <option value="price_desc">Price: High → Low</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs bg-[#fcf7f0] border-[#102516]/10 text-[#102516]/70">
+            {filteredProducts.length} of {products.length} products
+          </Badge>
+          {(productSearch || stockFilter !== "all" || selectedCategory || selectedSubcategory || sortBy !== "created_desc") && (
+            <button
+              type="button"
+              onClick={() => {
+                setProductSearch("")
+                setStockFilter("all")
+                setSelectedCategory(null)
+                setSelectedSubcategory(null)
+                setSortBy("created_desc")
+              }}
+              className="text-xs text-[#102516]/50 hover:text-[#102516] underline"
+            >
+              Reset filters
+            </button>
+          )}
         </div>
 
         {/* Products Grid */}
@@ -646,8 +860,10 @@ export function ProductSelector({
                   variant="outline"
                   onClick={() => {
                     setProductSearch("")
+                    setStockFilter("all")
                     setSelectedCategory(null)
                     setSelectedSubcategory(null)
+                    setSortBy("created_desc")
                   }}
                   className="mt-3"
                 >
@@ -697,7 +913,7 @@ export function ProductSelector({
                     {/* Product Image */}
                     <div className="aspect-square bg-gray-100 rounded mb-2 flex items-center justify-center text-xs text-muted-foreground overflow-hidden">
                       {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded" />
+                        <OptimizedImage src={product.image_url} alt={product.name} webpWidth={360} className="w-full h-full object-cover rounded" />
                       ) : (
                         <div className="flex flex-col items-center gap-1">
                           <Package className="h-8 w-8 text-gray-300" />

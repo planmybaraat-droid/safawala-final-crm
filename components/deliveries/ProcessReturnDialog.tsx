@@ -361,7 +361,7 @@ export function ProcessReturnDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-stone-300 rounded-xl p-6 shadow-xl">
+      <DialogContent className="crm-ops-dialog max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-stone-300 rounded-xl p-6 shadow-xl">
         <DialogHeader className="border-b border-stone-100 pb-4">
           <DialogTitle className="flex items-center gap-2 text-[#113c2c] text-xl font-bold font-serif">
             <Package className="h-5 w-5 text-[#113c2c]" />

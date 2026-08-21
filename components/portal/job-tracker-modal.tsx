@@ -6,10 +6,12 @@ import { PortalIcon } from "./portal-icons"
 const STAGES: Array<{ key: string; label: string; dept: string | null }> = [
   { key: "booking", label: "Booking Confirmed", dept: null },
   { key: "warehouse", label: "Warehouse Picking", dept: "warehouse" },
-  { key: "packing", label: "QC Packing", dept: "packing" },
+  { key: "packing", label: "QC & Packing", dept: "packing" },
   { key: "dispatch", label: "Fulfillment", dept: "dispatch" },
-  { key: "styling", label: "Team", dept: "styling" },
+  { key: "styling", label: "On-Ground Team (Stylist)", dept: "styling" },
   { key: "returns", label: "Returns Collection", dept: "returns" },
+  { key: "return_qc", label: "Return Quality Check", dept: "return_qc" },
+  { key: "return_receiving", label: "Warehouse Receiving & Storage", dept: "return_receiving" },
   { key: "accounts", label: "Accounts & Billing", dept: "accounts" },
 ]
 
@@ -70,7 +72,7 @@ export function JobTrackerModal({ workOrderId, onClose }: { workOrderId: string;
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100">
+      <div className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 warehouse-job-tracker-modal">
         <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50 sticky top-0 z-10">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Job Tracker</p>

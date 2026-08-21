@@ -192,7 +192,7 @@ export function AssignTaskDialog({ open, onOpenChange, currentUser, onSuccess }:
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px] bg-white">
+        <DialogContent className="crm-dialog-panel sm:max-w-[500px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               Assign Task

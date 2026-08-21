@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 import { ImageIcon, X, Star } from "lucide-react"
 import { toast } from "sonner"
 
@@ -131,9 +132,10 @@ export function PhotoGallery({ images, onImagesChange, onUpload, disabled }: Pho
           {images.map((img, idx) => (
             <div key={idx} className="relative group">
               <div className="relative w-full aspect-square rounded-lg border overflow-hidden bg-muted">
-                <img
+                <OptimizedImage
                   src={img.url}
                   alt={`Product image ${idx + 1}`}
+                  webpWidth={420}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { PortalPageHeader, PortalSectionLabel, PortalListCard, PortalEmptyState, PortalSkeleton } from "@/components/portal/portal-shared"
 import { PortalIcon } from "@/components/portal/portal-icons"
 import { JobTrackerModal } from "@/components/portal/job-tracker-modal"
-import { TeamTravelPanel, type StylingTask } from "@/components/portal/team-travel-panel"
 
 const COLOR = "#14b8a6"
 
@@ -42,7 +41,7 @@ export default function DeliveryJobsPage() {
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [selectedWO, setSelectedWO] = useState<WorkOrder | null>(null)
-  const [stylingTask, setStylingTask] = useState<StylingTask | null>(null)
+  const [updatingTask, setUpdatingTask] = useState(false)
 
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" } | null>(null)
   function showToast(message: string, kind: "success" | "error" = "success") {
@@ -69,37 +68,58 @@ export default function DeliveryJobsPage() {
     }
   }
 
-  // Team-assignable jobs: any confirmed rental with both a dispatch task
-  // (for the popup header/instructions) and a styling task (what's actually
-  // assigned here). Open/Closed reflects stylist assignment, not shipping
-  // status — this list is purely about Team & Travel, independent of dispatch.
-  const jobs = workOrders.flatMap(wo => {
-    const task = (wo.work_order_tasks ?? []).find(t => t.department === "dispatch")
-    const styling = (wo.work_order_tasks ?? []).find(t => t.department === "styling")
-    if (!task || !styling) return []
-    return [{ workOrder: wo, task, styling }]
-  })
-  const openTasks = jobs.filter(({ styling }) => !styling.assigned_to)
-  const closedTasks = jobs.filter(({ styling }) => !!styling.assigned_to)
+  // Fulfillment owns the sequential dispatch and rental-return stages. Team
+  // and travel assignment remains available in the dedicated Team module.
+  const jobs = workOrders.flatMap(wo =>
+    (wo.work_order_tasks ?? [])
+      .filter(task => task.department === "dispatch" || task.department === "returns")
+      .map(task => ({ workOrder: wo, task }))
+  )
+  const openTasks = jobs.filter(({ task }) => task.status !== "completed" && task.status !== "cancelled")
+  const closedTasks = jobs.filter(({ task }) => task.status === "completed" || task.status === "cancelled")
   const visibleTasks = jobsView === "open" ? openTasks : closedTasks
 
   function handleOpenTask(wo: WorkOrder, t: Task) {
     setSelectedWO(wo)
-    setSelectedTask(t)
-    setStylingTask(null)
-    fetch(`/api/work-orders/${wo.id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        const tasks: any[] = d?.data?.work_order_tasks || []
-        setStylingTask(tasks.find(t2 => t2.department === "styling") || null)
-      })
-      .catch(() => {})
+    setSelectedTask({ ...t, checklist: (t.checklist || []).map(item => ({ ...item })) })
   }
 
   function handleCloseTask() {
     setSelectedTask(null)
     setSelectedWO(null)
-    setStylingTask(null)
+  }
+
+  function toggleChecklist(index: number) {
+    setSelectedTask(task => task ? {
+      ...task,
+      checklist: (task.checklist || []).map((item, i) => i === index ? { ...item, checked: !item.checked } : item),
+    } : null)
+  }
+
+  async function completeSelectedTask() {
+    if (!selectedTask || !selectedWO) return
+    const unchecked = (selectedTask.checklist || []).find(item => !item.checked)
+    if (unchecked) {
+      showToast(`Complete checklist item: ${unchecked.text}`, "error")
+      return
+    }
+    setUpdatingTask(true)
+    try {
+      const res = await fetch(`/api/work-orders/tasks/${selectedTask.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed", checklist: selectedTask.checklist || [] }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Unable to complete job")
+      showToast(selectedTask.department === "returns" ? "Return collected — sent to Warehouse for receiving!" : "Dispatch completed — next departments activated!")
+      handleCloseTask()
+      await fetchWorkOrders()
+    } catch (error: any) {
+      showToast(error.message || "Unable to complete job", "error")
+    } finally {
+      setUpdatingTask(false)
+    }
   }
 
   return (
@@ -150,16 +170,16 @@ export default function DeliveryJobsPage() {
           <PortalEmptyState
             icon="truck"
             title="No jobs found"
-            subtitle={jobsView === 'open' ? "Every event has a stylist assigned." : "No stylists assigned yet."}
+            subtitle={jobsView === 'open' ? "No dispatch or return jobs are waiting." : "No completed fulfillment jobs yet."}
             color={COLOR}
           />
         ) : (
-          visibleTasks.map(({ workOrder, task, styling }) => (
+          visibleTasks.map(({ workOrder, task }) => (
             <PortalListCard
               key={task.id}
               title={`${workOrder.customer_name} (${workOrder.booking_number})`}
-              subtitle={styling.assigned_to ? `Stylist: ${styling.metadata?.assigned_stylist?.name || "Assigned"}` : `${(styling.metadata?.interested_stylists || []).length} interested`}
-              badge={styling.assigned_to ? "assigned" : "open"}
+              subtitle={task.department === "returns" ? `Return collection · ${task.title}` : `Dispatch · ${task.title}`}
+              badge={task.status}
               color={COLOR}
               icon="truck"
               onClick={() => handleOpenTask(workOrder, task)}
@@ -193,6 +213,30 @@ export default function DeliveryJobsPage() {
                 </div>
               )}
 
+              {(selectedTask.checklist || []).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Completion Checklist</p>
+                  {selectedTask.checklist.map((item, index) => (
+                    <button key={`${item.text}-${index}`} onClick={() => toggleChecklist(index)} className="w-full flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-left">
+                      <span className={`w-5 h-5 rounded-md border flex items-center justify-center ${item.checked ? "bg-teal-500 border-teal-500 text-white" : "bg-white border-slate-300"}`}>
+                        {item.checked ? "✓" : ""}
+                      </span>
+                      <span className="text-[12px] font-semibold text-slate-700">{item.text}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {selectedTask.status === "active" && (
+                <button onClick={completeSelectedTask} disabled={updatingTask} className="w-full py-3.5 rounded-xl text-[13px] font-bold text-white disabled:opacity-60" style={{ background: COLOR }}>
+                  {updatingTask ? "Completing…" : selectedTask.department === "returns" ? "Complete Return Collection" : "Complete Dispatch & Handover"}
+                </button>
+              )}
+
+              {selectedTask.status === "pending" && (
+                <p className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">Waiting for the previous department to finish.</p>
+              )}
+
               {/* Track this Job */}
               <button
                 onClick={() => setShowTracker(true)}
@@ -202,20 +246,6 @@ export default function DeliveryJobsPage() {
                 <PortalIcon name="map-pin" size={14} /> Track this Job
               </button>
 
-              {stylingTask && (
-                <TeamTravelPanel
-                  key={stylingTask.id}
-                  workOrder={selectedWO}
-                  stylingTask={stylingTask}
-                  onStylingTaskUpdate={setStylingTask}
-                  showToast={showToast}
-                  onTravelSaved={() => {
-                    fetchWorkOrders()
-                    setJobsView('closed')
-                    handleCloseTask()
-                  }}
-                />
-              )}
             </div>
           </div>
         </div>

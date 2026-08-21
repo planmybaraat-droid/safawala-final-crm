@@ -654,7 +654,7 @@ export default function AttendancePage() {
 
   return (
     <DashboardLayout>
-      <div className="hr-payroll-ui space-y-6 bg-[#F7F6FF] p-6 rounded-2xl border border-[#E7E2EA]">
+      <div className="crm-ops-module crm-attendance-ui hr-payroll-ui space-y-6 bg-[#F7F6FF] p-6 rounded-2xl border border-[#E7E2EA]">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E7E2EA]">
           <div className="flex items-start gap-3">
@@ -692,7 +692,7 @@ export default function AttendancePage() {
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
                 Mark Attendance
               </Button>
-              <DialogContent className="bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-md">
+              <DialogContent className="crm-ops-dialog bg-white border border-stone-200/80 rounded-2xl p-7 shadow-2xl max-w-md">
                 <DialogHeader className="border-b border-stone-100 pb-4">
                   <DialogTitle className="flex items-center gap-2.5 text-[#4A1F5E] text-2xl font-medium font-sans">
                     <Clock className="h-5 w-5 text-[#4A1F5E] stroke-[1.5]" />

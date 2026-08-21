@@ -455,7 +455,7 @@ export default function VouchersPage() {
         }
       `}</style>
 
-      <div className="space-y-6 no-print">
+      <div className="crm-ops-module crm-vouchers-ui space-y-6 no-print">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-serif font-semibold text-gray-900 tracking-tight">Payment & Receipt Vouchers</h1>
@@ -610,10 +610,10 @@ export default function VouchersPage() {
                               })}
                             </TableCell>
                             <TableCell>
-                              <Badge className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
+                              <Badge className={`voucher-type-badge text-[11px] px-3 py-1 rounded-full font-bold border shadow-sm ${
                                 voucher.voucher_type === 'expense'
-                                  ? 'bg-red-50 text-red-700 border-red-200'
-                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  ? 'voucher-type-expense !bg-red-50 !text-red-700 !border-red-200'
+                                  : 'voucher-type-receipt !bg-emerald-50 !text-emerald-700 !border-emerald-200'
                               }`}>
                                 {voucher.voucher_type === 'expense' ? 'Payment (Expense)' : 'Receipt (Payment)'}
                               </Badge>
@@ -680,7 +680,7 @@ export default function VouchersPage() {
 
       {/* CREATE / EDIT VOUCHER DIALOG */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-[#102516]/10">
+        <DialogContent className="crm-ops-dialog max-w-3xl max-h-[90vh] overflow-y-auto border-[#102516]/10">
           <DialogHeader>
             <DialogTitle className="text-xl font-serif font-semibold text-[#102516]">
               {editingVoucher ? "Edit Voucher Details" : "Create New Voucher"}
@@ -905,7 +905,7 @@ export default function VouchersPage() {
 
       {/* VIEW & PRINT VOUCHER DIALOG */}
       <Dialog open={!!viewingVoucher} onOpenChange={(open) => !open && setViewingVoucher(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-gray-200 p-6 print:p-0">
+        <DialogContent className="crm-ops-dialog max-w-4xl max-h-[90vh] overflow-y-auto border-gray-200 p-6 print:p-0">
           {viewingVoucher && (
             <div>
               {/* Dialog Control buttons */}
@@ -1081,7 +1081,7 @@ export default function VouchersPage() {
 
       {/* DELETE CONFIRMATION DIALOG */}
       <Dialog open={!!showDeleteConfirm} onOpenChange={(open) => !open && setShowDeleteConfirm(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="crm-ops-dialog max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Voucher</DialogTitle>
             <DialogDescription>

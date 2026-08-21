@@ -124,14 +124,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const barcodeParam = searchParams.get("barcode")
     const searchParam = searchParams.get("search")
-    const limitParam = parseInt(searchParams.get("limit") || "500", 10)
+    const parsedLimit = parseInt(searchParams.get("limit") || "5000", 10)
+    const parsedOffset = parseInt(searchParams.get("offset") || "0", 10)
+    // Connected CRM modules historically called this endpoint without a limit and
+    // silently received only the first 500/1,000 products. Allow a logical result
+    // limit up to 5,000 and fulfill it through multiple PostgREST-sized pages.
+    const limitParam = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 5000) : 5000
+    const offsetParam = Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0
     const idParam = searchParams.get("id")
     const categoryIdParam = searchParams.get("category_id")
     const activeOnlyParam = searchParams.get("active_only")
     const franchiseIdParam = searchParams.get("franchise_id")
-
-    const supabase = createClient()
-    let query = supabase.from("products").select("*").order("name").limit(limitParam)
 
     // Franchise isolation
     if (franchiseIdParam) {
@@ -141,47 +144,53 @@ export async function GET(req: NextRequest) {
           { status: 403 }
         )
       }
-      query = query.eq("franchise_id", franchiseIdParam)
-    } else if (!isSuperAdmin && franchiseId) {
-      query = query.eq("franchise_id", franchiseId)
     }
 
-    // Category filter (server-side, bypasses client-side matching issues)
-    if (categoryIdParam && categoryIdParam !== "all") {
-      query = query.eq("category_id", categoryIdParam)
+    const supabase = createClient()
+    const products: any[] = []
+    const postgrestPageSize = 1000
+    let currentOffset = offsetParam
+    let total = 0
+
+    while (products.length < limitParam) {
+      const pageSize = Math.min(postgrestPageSize, limitParam - products.length)
+      let query = supabase
+        .from("products")
+        .select("*", { count: "exact" })
+        .order("name", { ascending: true })
+        .order("id", { ascending: true })
+        .range(currentOffset, currentOffset + pageSize - 1)
+
+      if (franchiseIdParam) query = query.eq("franchise_id", franchiseIdParam)
+      else if (!isSuperAdmin && franchiseId) query = query.eq("franchise_id", franchiseId)
+      if (categoryIdParam && categoryIdParam !== "all") query = query.eq("category_id", categoryIdParam)
+      if (activeOnlyParam === "true") query = query.eq("is_active", true)
+      if (barcodeParam) query = query.ilike("barcode", barcodeParam.trim())
+      if (searchParam) query = query.or(`name.ilike.%${searchParam}%,barcode.ilike.%${searchParam}%,product_code.ilike.%${searchParam}%`)
+      if (idParam) query = query.eq("id", idParam)
+
+      const { data: pageProducts, error, count } = await query
+      if (error) {
+        console.error("Failed to fetch products:", error)
+        return NextResponse.json(
+          { error: error.message || "Failed to fetch products" },
+          { status: 500 }
+        )
+      }
+
+      const rows = pageProducts || []
+      products.push(...rows)
+      total = count ?? total
+      currentOffset += rows.length
+      if (rows.length < pageSize || currentOffset >= total) break
     }
 
-    // Active only filter
-    if (activeOnlyParam === "true") {
-      query = query.eq("is_active", true)
-    }
-
-    // Barcode lookup
-    if (barcodeParam) {
-      query = query.ilike("barcode", barcodeParam.trim())
-    }
-
-    // Text search
-    if (searchParam) {
-      query = query.or(`name.ilike.%${searchParam}%,barcode.ilike.%${searchParam}%,product_code.ilike.%${searchParam}%`)
-    }
-
-    // Single product by id
-    if (idParam) {
-      query = query.eq("id", idParam)
-    }
-
-    const { data: products, error } = await query
-
-    if (error) {
-      console.error("Failed to fetch products:", error)
-      return NextResponse.json(
-        { error: error.message || "Failed to fetch products" },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ data: products })
+    return NextResponse.json({
+      data: products,
+      total: total || products.length,
+      limit: limitParam,
+      offset: offsetParam,
+    })
   } catch (error) {
     console.error("Error fetching products:", error)
     return NextResponse.json(

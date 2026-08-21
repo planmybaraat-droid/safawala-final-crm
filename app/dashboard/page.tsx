@@ -398,7 +398,7 @@ export default function DashboardPage() {
   return (
     <DashboardErrorBoundary>
       <DashboardLayout userRole={user?.role}>
-        <div className="space-y-6">
+        <div className="space-y-6 vadodara-dashboard-page">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -616,7 +616,7 @@ export default function DashboardPage() {
         )}
 
         {/* Quick Actions */}
-        <Card className="bg-white border-slate-100 shadow-sm">
+        <Card className="bg-white border-slate-100 shadow-sm vadodara-quick-actions-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-extrabold">Quick Actions</CardTitle>
           </CardHeader>
@@ -625,13 +625,13 @@ export default function DashboardPage() {
               {[
                 { label: "New Lead", href: "/leads", icon: Users, className: "bg-[#4A1F5E] hover:bg-[#5C2A72]" },
                 { label: "New Quotation", href: "/quotes", icon: FileText, className: "bg-[#80658F] hover:bg-[#6F527F]" },
-                { label: "New Order", href: "/create-invoice", icon: Package, className: "bg-[#0E6B63] hover:bg-[#0A5A53]" },
-                { label: "New Invoice", href: "/create-invoice", icon: ClipboardList, className: "bg-[#9A70C2] hover:bg-[#8459AE]" },
+                { label: "New Order", href: "/bookings/new", icon: Package, className: "bg-[#0E6B63] hover:bg-[#0A5A53]" },
+                { label: "New Invoice", href: "/bookings/new", icon: ClipboardList, className: "bg-[#9A70C2] hover:bg-[#8459AE]" },
                 { label: "Add Customer", href: "/customers", icon: Plus, className: "bg-[#C8A33D] hover:bg-[#B48F2F]" },
                 { label: "Add Employee", href: "/staff", icon: Plus, className: "bg-[#506A8C] hover:bg-[#425A78]" },
               ].map((action) => (
                 <Link key={action.label} href={action.href}>
-                  <Button className={`w-full justify-start text-white font-semibold ${action.className}`}>
+                  <Button className={`w-full justify-start text-white font-semibold vadodara-quick-action-button ${action.className}`}>
                     <action.icon className="h-4 w-4 mr-2" />
                     {action.label}
                   </Button>
@@ -643,7 +643,7 @@ export default function DashboardPage() {
 
         {/* Business Flow — department tabs, same layout as the old Work Orders board, above the calendar */}
         {user?.permissions?.bookings && (
-          <Card className="bg-white border-slate-100 shadow-sm">
+          <Card className="bg-white border-slate-100 shadow-sm vadodara-business-flow-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-extrabold flex items-center gap-2">
                 <ClipboardList className="h-5 w-5 text-indigo-600" />
@@ -881,7 +881,7 @@ export default function DashboardPage() {
           />
         )}
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 vadodara-dashboard-lower-grid">
           {/* Staff Performance Card for Owner */}
           {user?.role === 'super_admin' && (
             <Card className="bg-white">
@@ -916,14 +916,14 @@ export default function DashboardPage() {
           )}
 
           {/* Quick Actions */}
-          <Card className="bg-white">
+          <Card className="bg-white vadodara-lower-quick-actions-card">
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
               <CardDescription>Common tasks and shortcuts</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {user?.permissions?.bookings && (
-                <Link href="/create-invoice">
+                <Link href="/bookings/new">
                   <Button className="w-full justify-start">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Booking
@@ -956,7 +956,7 @@ export default function DashboardPage() {
 
           {/* Recent Activity Timeline - Only show if user has bookings permission */}
           {user?.permissions?.bookings && (
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 vadodara-recent-activity-card">
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
                 <CardDescription>Latest booking updates and events</CardDescription>

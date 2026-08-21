@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         console.log(`[Items API] Joined fetch returned ${joined.length} item(s) for sale ${id}`)
         items = joined
       } else {
-        console.warn('[Items API] Join failed or not supported, falling back to two-step fetch:', joinError?.message)
+        console.log('[Items API] Using two-step direct sales item fetch')
         // Fallback: fetch items then hydrate with product info
         const { data, error } = await supabase
           .from('direct_sales_items')
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
         console.log(`[Items API] Joined fetch returned ${joined.length} item(s) for order ${id}`)
         items = joined
       } else {
-        console.warn('[Items API] Join failed or not supported, falling back to two-step fetch:', joinError?.message)
+        console.log('[Items API] Using two-step product order item fetch')
         // Fallback: fetch items then hydrate with product info
         const { data, error } = await supabase
           .from('product_order_items')

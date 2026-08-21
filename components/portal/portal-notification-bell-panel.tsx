@@ -38,7 +38,7 @@ export function PortalNotificationBellPanel({ onClose }: { onClose: () => void }
   return (
     <div className="fixed inset-0 z-[90] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto" onClick={onClose}>
       <div
-        className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-2xl border border-slate-100"
+        className="bg-white rounded-t-[28px] sm:rounded-3xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-2xl border border-slate-100 portal-notification-panel"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { OptimizedImage } from "@/components/ui/optimized-image"
 import { cn } from "@/lib/utils"
 
 import type { Customer, Product, Category } from "@/lib/types"
@@ -363,12 +364,12 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="quote-form-panel space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Form */}
         <div className="lg:col-span-2 space-y-6">
           {/* Customer Selection */}
-          <Card>
+          <Card className="quote-customer-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-5 w-5" />
@@ -528,7 +529,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
 
               {/* New Customer Form (when no customer selected) */}
               {!formData.customer_id && (
-                <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                <div className="quote-manual-customer space-y-4 p-4 bg-muted/50 rounded-lg">
                   <h4 className="font-medium">Or provide customer details:</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -554,7 +555,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
           </Card>
 
           {/* Quote Details */}
-          <Card>
+          <Card className="quote-details-card">
             <CardHeader>
               <CardTitle>Quote Details</CardTitle>
             </CardHeader>
@@ -585,7 +586,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal",
+                          "quote-date-button w-full justify-start text-left font-normal",
                           !formData.event_date && "text-muted-foreground",
                         )}
                       >
@@ -613,7 +614,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal",
+                          "quote-date-button w-full justify-start text-left font-normal",
                           !formData.delivery_date && "text-muted-foreground",
                         )}
                       >
@@ -642,7 +643,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal",
+                            "quote-date-button w-full justify-start text-left font-normal",
                             !formData.return_date && "text-muted-foreground",
                           )}
                         >
@@ -716,7 +717,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
           </Card>
 
           {/* Product Selection */}
-          <Card>
+          <Card className="quote-items-card">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -804,9 +805,10 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
                             <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                                 {product.image_url ? (
-                                  <img
+                                  <OptimizedImage
                                     src={product.image_url || "/placeholder.svg"}
                                     alt={product.name}
+                                    webpWidth={360}
                                     className="w-full h-full object-cover rounded-lg"
                                   />
                                 ) : (
@@ -884,7 +886,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
 
         {/* Right Column - Quote Summary */}
         <div className="space-y-6">
-          <Card>
+          <Card className="quote-summary-card">
             <CardHeader>
               <CardTitle>Quote Summary</CardTitle>
             </CardHeader>
@@ -944,7 +946,7 @@ export function QuoteForm({ customers, products, categories }: QuoteFormProps) {
           <Button
             onClick={handleGenerateQuote}
             disabled={generatingQuote || quoteItems.length === 0}
-            className="w-full"
+            className="quote-generate-button w-full"
             size="lg"
           >
             <FileText className="h-4 w-4 mr-2" />
