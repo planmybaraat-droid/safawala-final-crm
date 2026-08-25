@@ -577,12 +577,13 @@ export default function ChallansPage() {
                             <TableCell className="text-gray-600 text-xs">{challan.mobile_number || '-'}</TableCell>
                             <TableCell className="font-medium text-gray-900 text-sm">{formatCurrency(challan.total_amount)}</TableCell>
                             <TableCell>
-                              <Badge 
+                              <Badge
+                                variant="outline"
                                 onClick={() => handleToggleStatus(challan)}
-                                className={`challan-status-badge cursor-pointer capitalize hover:opacity-85 text-[11px] px-3 py-1 rounded-full ${
-                                  challan.status === 'active' 
-                                    ? 'challan-status-active bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                    : 'challan-status-closed bg-gray-100 text-gray-600 border border-gray-200'
+                                className={`challan-status-badge cursor-pointer capitalize hover:opacity-90 text-[11px] px-3 py-1 rounded-full ${
+                                  challan.status === 'active'
+                                    ? 'challan-status-active bg-emerald-50 !text-emerald-800 border border-emerald-200'
+                                    : 'challan-status-closed bg-violet-700 !text-white border border-violet-700'
                                 }`}
                               >
                                 {challan.status === 'active' ? 'Active' : 'Closed'}

@@ -969,7 +969,7 @@ export default function AttendancePage() {
                       <TableCell className="font-mono text-stone-600 text-xs">{record.check_out || "-"}</TableCell>
                       <TableCell className="font-mono text-stone-650 text-xs font-medium">{record.total_hours ? `${record.total_hours}h` : "-"}</TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusColor(record.status)} text-[10px] border border-transparent font-sans py-0.5 px-2 rounded-full font-normal shadow-none`}>{record.status.replace("_", " ")}</Badge>
+                        <Badge variant="outline" className={`attendance-status-badge attendance-status-${record.status} ${getStatusColor(record.status)} text-[10px] border font-sans py-0.5 px-2 rounded-full font-semibold shadow-none capitalize`}>{record.status.replace("_", " ")}</Badge>
                       </TableCell>
                       <TableCell className="font-mono text-stone-600 text-xs">{record.overtime_hours ? `${record.overtime_hours}h` : "-"}</TableCell>
                       <TableCell className="py-4 pr-4">

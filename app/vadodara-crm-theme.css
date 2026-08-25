@@ -6889,3 +6889,74 @@ body.vadodara-crm-theme[data-crm-visual-scope="main"] .crm-settings-ui .animate-
   }
 }
 
+
+/* Job Tracker page: white text over purple hero/actions. Keep this after Vadodara global typography overrides. */
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .vadodara-crm-shell[data-crm-visual-scope="main"] .job-tracker-page .job-tracker-hero-title,
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .vadodara-crm-shell[data-crm-visual-scope="main"] .job-tracker-page .job-tracker-hero-copy {
+  color: #ffffff !important;
+}
+
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .vadodara-crm-shell[data-crm-visual-scope="main"] .job-tracker-page .job-tracker-track-button,
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .vadodara-crm-shell[data-crm-visual-scope="main"] .job-tracker-page .job-tracker-track-button *,
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .vadodara-crm-shell[data-crm-visual-scope="main"] .job-tracker-page a.job-tracker-track-button,
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .vadodara-crm-shell[data-crm-visual-scope="main"] .job-tracker-page a.job-tracker-track-button:visited,
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .vadodara-crm-shell[data-crm-visual-scope="main"] .job-tracker-page a.job-tracker-track-button:hover {
+  color: #ffffff !important;
+}
+
+/* Challans table status pills: force readable foregrounds over global badge/theme rules. */
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .challan-status-badge.challan-status-active,
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .challan-status-badge.challan-status-active:hover {
+  background: #ecfdf5 !important;
+  color: #065f46 !important;
+  border-color: #a7f3d0 !important;
+}
+
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .challan-status-badge.challan-status-closed,
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .challan-status-badge.challan-status-closed:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%) !important;
+  color: #ffffff !important;
+  border-color: #6d28d9 !important;
+}
+
+/* Attendance table status pills: readable text over the CRM theme overrides. */
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .attendance-status-badge {
+  display: inline-flex !important;
+  min-width: 62px !important;
+  justify-content: center !important;
+  align-items: center !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  text-transform: capitalize !important;
+  box-shadow: 0 8px 18px rgba(23, 18, 47, 0.06) !important;
+}
+
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .attendance-status-present {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #86efac !important;
+}
+
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .attendance-status-late {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #fcd34d !important;
+}
+
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .attendance-status-absent {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #fca5a5 !important;
+}
+
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .attendance-status-half_day {
+  background: #dbeafe !important;
+  color: #1e40af !important;
+  border-color: #93c5fd !important;
+}
+
+body.vadodara-crm-theme[data-crm-visual-scope="main"] .attendance-status-on_leave {
+  background: #ffedd5 !important;
+  color: #9a3412 !important;
+  border-color: #fdba74 !important;
+}

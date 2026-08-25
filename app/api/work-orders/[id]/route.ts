@@ -105,6 +105,25 @@ export async function GET(
       })
     }
 
+    // Add assignee names/phones for tracker detail display without changing task data.
+    const assigneeIds = Array.from(
+      new Set((workOrder.work_order_tasks || []).map((task: any) => task?.assigned_to).filter(Boolean))
+    )
+    const assigneeMap = new Map<string, { name: string; phone: string | null }>()
+    if (assigneeIds.length > 0) {
+      const { data: assignees } = await supabase
+        .from("users")
+        .select("id, name, phone")
+        .in("id", assigneeIds)
+      for (const assignee of assignees || []) {
+        assigneeMap.set(assignee.id, { name: assignee.name, phone: assignee.phone || null })
+      }
+      workOrder.work_order_tasks = (workOrder.work_order_tasks || []).map((task: any) => {
+        const assignee = task?.assigned_to ? assigneeMap.get(task.assigned_to) : null
+        return { ...task, assignee_name: assignee?.name || null, assignee_phone: assignee?.phone || null }
+      })
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -195,3 +214,4 @@ export async function PATCH(
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }
+

@@ -570,3 +570,17 @@ body {
   top: 0px !important;
   position: static !important;
 }
+
+/* Job Tracker readability fixes: keep hero and primary action text readable over purple surfaces. */
+.job-tracker-page .job-tracker-hero-title,
+.job-tracker-page .job-tracker-hero-copy {
+  color: #ffffff !important;
+}
+
+.job-tracker-page .job-tracker-track-button,
+.job-tracker-page .job-tracker-track-button *,
+.job-tracker-page a.job-tracker-track-button,
+.job-tracker-page a.job-tracker-track-button:visited,
+.job-tracker-page a.job-tracker-track-button:hover {
+  color: #ffffff !important;
+}

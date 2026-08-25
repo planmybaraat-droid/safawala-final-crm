@@ -312,7 +312,7 @@ export default function DashboardPage() {
     }
   }
 
-  // Department tabs shown on the Business Flow widget — "Bookings" is the overview tab,
+  // Department task tabs retained for connected job data helpers; "Bookings" is the overview tab,
   // the rest mirror the work_order_tasks department enum in flow order.
   const DASHBOARD_TABS = [
     { key: "bookings", label: "Bookings", icon: Calendar },
@@ -640,240 +640,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Business Flow — department tabs, same layout as the old Work Orders board, above the calendar */}
-        {user?.permissions?.bookings && (
-          <Card className="bg-white border-slate-100 shadow-sm vadodara-business-flow-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-extrabold flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-indigo-600" />
-                Business Flow
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Every active booking, section by section, from Bookings through to Accounts
-              </CardDescription>
-
-              {/* Department Tabs */}
-              <div className="grid grid-cols-2 md:grid-cols-7 gap-2 bg-slate-100 p-1 rounded-xl border mt-2">
-                {DASHBOARD_TABS.map((tab) => {
-                  const Icon = tab.icon
-                  const count = tab.key === "bookings" ? activeWorkOrders.length : (departmentCounts[tab.key] || 0)
-                  const isActive = activeDeptTab === tab.key
-                  return (
-                    <button
-                      key={tab.key}
-                      onClick={() => setActiveDeptTab(tab.key)}
-                      className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-lg transition-all border ${
-                        isActive
-                          ? "bg-white text-indigo-600 border-slate-200 shadow-sm font-bold"
-                          : "text-slate-600 border-transparent hover:bg-slate-50/50 hover:text-slate-800"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 mb-1" />
-                      <span className="text-[10px] font-semibold tracking-wide uppercase">{tab.label}</span>
-                      {count > 0 && (
-                        <Badge className="mt-1 bg-indigo-100 text-indigo-800 font-bold border border-indigo-200 text-[9px] px-1.5 py-0 rounded-full">
-                          {count}
-                        </Badge>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingWorkOrders ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent" />
-                </div>
-              ) : activeDeptTab === "bookings" ? (
-                activeWorkOrders.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
-                    <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm font-medium">No active bookings</p>
-                    <p className="text-xs mt-0.5">Everything is packed and delivered!</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-[480px] overflow-y-auto pr-1">
-                    {activeWorkOrders.map((wo) => {
-                      const isRental = wo.booking_source === 'product_orders' || wo.booking_source === 'package_bookings'
-                      const totalTasks = wo.work_order_tasks?.length || 0
-                      const completedTasks = wo.work_order_tasks?.filter((t: any) => t && (t.status === 'completed' || t.status === 'picked')).length || 0
-                      const progressPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-                      const isUrgent = getWoPriorityLabel(wo.event_date).includes("Critical")
-                      const activeTask = getActiveTask(wo)
-                      const isReminding = activeTask?.id ? remindingIds.has(activeTask.id) : false
-
-                      return (
-                        <div
-                          key={wo.id}
-                          className={`bg-white border rounded-xl overflow-hidden border-t-4 ${
-                            isUrgent ? 'border-t-red-500' : isRental ? 'border-t-indigo-500' : 'border-t-emerald-500'
-                          }`}
-                        >
-                          <div className="pb-2 pt-3 px-4 flex flex-row items-start justify-between space-y-0">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs font-black text-indigo-600 tracking-wider">{wo.work_order_number || ''}</span>
-                                <span className="text-[10px] text-slate-400 font-bold">•</span>
-                                <span className="text-xs font-semibold text-slate-500">{wo.booking_number || ''}</span>
-                                {isRental ? (
-                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full">Rental</span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full">Sale</span>
-                                )}
-                              </div>
-                              <p className="text-sm font-bold text-slate-800 line-clamp-1">{wo.customer_name || 'N/A'}</p>
-                            </div>
-                            <Badge className={
-                              wo.status === 'new'
-                                ? 'bg-blue-50 text-blue-700 border-blue-100 shrink-0'
-                                : 'bg-amber-50 text-amber-700 border-amber-100 shrink-0'
-                            } variant="outline">
-                              {wo.status === 'new' ? 'New' : 'In Progress'}
-                            </Badge>
-                          </div>
-
-                          <div className="pb-3 px-4 space-y-2">
-                            <div className="flex items-center justify-between gap-2 border-y py-2 text-[11px] text-slate-500">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-slate-400" />
-                                Event: {formatWoDate(wo.event_date)}
-                              </span>
-                              <Badge variant="outline" className={`text-[9px] border font-bold ${getWoPriorityColor(wo.event_date)}`}>
-                                {getWoPriorityLabel(wo.event_date)}
-                              </Badge>
-                            </div>
-
-                            {totalTasks > 0 && (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
-                                  <span>Operations Progress</span>
-                                  <span>{completedTasks}/{totalTasks} ({progressPct}%)</span>
-                                </div>
-                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full transition-all duration-300 ${isRental ? 'bg-indigo-600' : 'bg-emerald-600'}`}
-                                    style={{ width: `${progressPct}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="flex items-center justify-end pt-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={!activeTask?.id || isReminding}
-                                onClick={() => {
-                                  if (activeTask?.id) handleRemind(activeTask.id)
-                                }}
-                                className="h-6 px-2 text-[10px] font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                              >
-                                <Bell className="h-3 w-3 mr-1" />
-                                {isReminding ? 'Reminded' : 'Remind'}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              ) : activeDeptTasks.length === 0 ? (
-                <div className="text-center py-8 text-slate-400">
-                  <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">No operations pending</p>
-                  <p className="text-xs mt-0.5">Nothing waiting in this department right now.</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-[480px] overflow-y-auto pr-1">
-                  {activeDeptTasks.map(({ workOrder: wo, task }) => {
-                    const isRental = wo.booking_source === 'product_orders' || wo.booking_source === 'package_bookings'
-                    const isUrgent = getWoPriorityLabel(wo.event_date).includes("Critical")
-                    const totalChecklist = task.checklist?.length || 0
-                    const checkedChecklist = task.checklist?.filter((c: any) => c.checked).length || 0
-                    const isReminding = remindingIds.has(task.id)
-
-                    return (
-                      <div
-                        key={task.id}
-                        className={`bg-white border rounded-xl overflow-hidden border-t-4 ${
-                          isUrgent ? 'border-t-red-500' : isRental ? 'border-t-indigo-500' : 'border-t-emerald-500'
-                        }`}
-                      >
-                        <div className="pb-2 pt-3 px-4 flex flex-row items-start justify-between space-y-0">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-black text-indigo-600 tracking-wider">{task.task_number || ''}</span>
-                              <span className="text-[10px] text-slate-400 font-bold">•</span>
-                              <span className="text-xs font-semibold text-slate-500">{wo.work_order_number || ''}</span>
-                              {isRental ? (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full">Rental</span>
-                              ) : (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full">Sale</span>
-                              )}
-                            </div>
-                            <p className="text-sm font-bold text-slate-800 line-clamp-1">{wo.customer_name || 'N/A'}</p>
-                          </div>
-                          {getTaskStatusBadge(task.status)}
-                        </div>
-
-                        <div className="px-4 pb-2 space-y-1.5">
-                          <div className="flex items-center justify-between gap-2 border-y py-2 text-[11px] text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-slate-400" />
-                              Event: {formatWoDate(wo.event_date)}
-                            </span>
-                            <Badge variant="outline" className={`text-[9px] border font-bold ${getWoPriorityColor(wo.event_date)}`}>
-                              {getWoPriorityLabel(wo.event_date)}
-                            </Badge>
-                          </div>
-                          <p className="text-xs font-bold text-slate-700 leading-snug">{task.title}</p>
-
-                          {totalChecklist > 0 && (
-                            <div className="space-y-1 pt-1">
-                              <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
-                                <span>Checklist</span>
-                                <span>{checkedChecklist}/{totalChecklist}</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full transition-all duration-300 ${isRental ? 'bg-indigo-600' : 'bg-emerald-600'}`}
-                                  style={{ width: `${(checkedChecklist / totalChecklist) * 100}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="pb-3 px-4 space-y-2">
-                          <div className="flex items-center justify-between gap-2 pt-1 text-[11px] text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <UserIcon className="h-3 w-3 text-slate-400" />
-                              <span className="font-semibold text-slate-700">{task.assignee_name || 'Unassigned'}</span>
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={isReminding}
-                              onClick={() => handleRemind(task.id)}
-                              className="h-6 px-2 text-[10px] font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                            >
-                              <Bell className="h-3 w-3 mr-1" />
-                              {isReminding ? 'Reminded' : 'Remind'}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Booking Calendar - Only show if user has bookings permission */}
         {user?.permissions?.bookings && (
           <BookingCalendar 
@@ -914,49 +680,9 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           )}
-
-          {/* Quick Actions */}
-          <Card className="bg-white vadodara-lower-quick-actions-card">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks and shortcuts</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {user?.permissions?.bookings && (
-                <Link href="/bookings/new">
-                  <Button className="w-full justify-start">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Booking
-                  </Button>
-                </Link>
-              )}
-              {user?.permissions?.customers && (
-                <Link href="/customers?add=true">
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
-                    <Users className="h-4 w-4 mr-2" />
-                    Add New Customer
-                  </Button>
-                </Link>
-              )}
-              {user?.permissions?.inventory && (
-                <Link href="/inventory">
-                  <Button variant="outline" className="w-full justify-start bg-transparent">
-                    <Package className="h-4 w-4 mr-2" />
-                    Manage Inventory
-                  </Button>
-                </Link>
-              )}
-              {!user?.permissions?.bookings && !user?.permissions?.customers && !user?.permissions?.inventory && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No quick actions available
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Recent Activity Timeline - Only show if user has bookings permission */}
           {user?.permissions?.bookings && (
-            <Card className="lg:col-span-2 vadodara-recent-activity-card">
+            <Card className="lg:col-span-3 vadodara-recent-activity-card">
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
                 <CardDescription>Latest booking updates and events</CardDescription>
@@ -1035,3 +761,5 @@ export default function DashboardPage() {
     </DashboardErrorBoundary>
   )
 }
+
+

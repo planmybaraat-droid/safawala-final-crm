@@ -1,6 +1,6 @@
 "use client"
 
-import type { ImgHTMLAttributes } from "react"
+import { useEffect, useMemo, useState, type ImgHTMLAttributes } from "react"
 
 type OptimizedImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   src: string
@@ -10,10 +10,12 @@ type OptimizedImageProps = ImgHTMLAttributes<HTMLImageElement> & {
 
 function canOptimizeImage(src: string) {
   if (!src) return false
+  const lowerSrc = src.toLowerCase().split("?")[0]
   if (src.startsWith("data:")) return false
   if (src.startsWith("blob:")) return false
   if (src.toLowerCase().includes("/api/images/webp")) return false
-  if (src.toLowerCase().split("?")[0]?.endsWith(".webp")) return false
+  if (lowerSrc.endsWith(".webp")) return false
+  if (lowerSrc.endsWith(".svg")) return false
   return src.startsWith("/") || src.startsWith("http://") || src.startsWith("https://")
 }
 
@@ -34,27 +36,32 @@ export function OptimizedImage({
   decoding = "async",
   ...props
 }: OptimizedImageProps) {
-  const optimized = canOptimizeImage(src)
-  const webpSrc = optimized ? getWebpUrl(src, webpWidth, webpQuality) : undefined
+  const webpSrc = useMemo(
+    () => (canOptimizeImage(src) ? getWebpUrl(src, webpWidth, webpQuality) : src),
+    [src, webpWidth, webpQuality],
+  )
+  const [activeSrc, setActiveSrc] = useState(webpSrc)
+
+  useEffect(() => {
+    setActiveSrc(webpSrc)
+  }, [webpSrc])
 
   const handleError: ImgHTMLAttributes<HTMLImageElement>["onError"] = (event) => {
-    const image = event.currentTarget
-    if (optimized && image.dataset.originalFallback !== "true") {
-      image.dataset.originalFallback = "true"
-      image.src = src
+    if (activeSrc !== src) {
+      setActiveSrc(src)
       return
     }
     onError?.(event)
   }
 
-  if (!optimized) {
-    return <img src={src} alt={alt} loading={loading} decoding={decoding} onError={onError} {...props} />
-  }
-
   return (
-    <picture style={{ display: "contents" }}>
-      <source srcSet={webpSrc} type="image/webp" />
-      <img src={src} alt={alt} loading={loading} decoding={decoding} onError={handleError} {...props} />
-    </picture>
+    <img
+      src={activeSrc}
+      alt={alt}
+      loading={loading}
+      decoding={decoding}
+      onError={handleError}
+      {...props}
+    />
   )
 }

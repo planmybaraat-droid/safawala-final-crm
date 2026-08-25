@@ -259,6 +259,56 @@ const navigationItems = {
   ],
 }
 
+const vadodaraNavigationItems = {
+  main: [
+    navigationItems.main[0],
+    navigationItems.business[0],
+    navigationItems.main[8],
+    navigationItems.main[3],
+    navigationItems.main[2],
+    navigationItems.main[1],
+    {
+      title: "Job Tracker",
+      url: "/job-tracker",
+      icon: BarChart3,
+      permission: "bookings",
+      description: "Track every booking and work order across warehouse, QC, fulfillment, returns, storage, and accounts",
+    },
+  ],
+  inventoryProducts: [
+    navigationItems.main[4],
+    navigationItems.main[5],
+    navigationItems.business[3],
+    navigationItems.business[7],
+  ],
+  operations: [
+    {
+      ...navigationItems.business[5],
+      title: "Fulfillment",
+      description: "Manage fulfillment, delivery schedules, shipments, logistics, and product returns",
+    },
+    navigationItems.main[10],
+    navigationItems.business[6],
+    navigationItems.main[7],
+  ],
+  business: [
+    {
+      ...navigationItems.business[1],
+      title: "Challan",
+    },
+    navigationItems.business[2],
+    navigationItems.business[4],
+    navigationItems.main[6],
+    navigationItems.reports[0],
+  ],
+  hrStaff: [
+    navigationItems.main[9],
+    navigationItems.admin[1],
+    navigationItems.business[9],
+    navigationItems.business[8],
+  ],
+  admin: [navigationItems.admin[3]],
+}
 export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
   const router = useRouter()
   const { t } = useI18n()
@@ -267,10 +317,13 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
 
   const getNavTitle = (title: string) => {
     const key = title.toLowerCase().replace(/[^a-z0-9]/g, "_")
-    if (key === "new_booking") return t("create_invoice")
-    const translated = t(key)
     const isVadodaraVisualAccount =
       String(currentUser?.email || "").trim().toLowerCase() === "vadodara@safawala.com"
+
+    if (isVadodaraVisualAccount && key === "new_booking") return "New Booking"
+    if (key === "new_booking") return t("create_invoice")
+
+    const translated = t(key)
 
     return isVadodaraVisualAccount && translated === key ? title : translated
   }
@@ -324,6 +377,26 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
 
   // Get user display info
   const userName = currentUser?.name || "User"
+  const isVadodaraSidebarAccount =
+    String(currentUser?.email || "").trim().toLowerCase() === "vadodara@safawala.com"
+
+  const sidebarGroups = isVadodaraSidebarAccount
+    ? [
+        { label: "Main", items: vadodaraNavigationItems.main },
+        { label: "Inventory & Products", items: vadodaraNavigationItems.inventoryProducts },
+        { label: "Operations", items: vadodaraNavigationItems.operations },
+        { label: "Business", items: vadodaraNavigationItems.business },
+        { label: "HR & Staff", items: vadodaraNavigationItems.hrStaff },
+        { label: "Administration", items: vadodaraNavigationItems.admin },
+      ]
+    : [
+        { label: "Main", items: navigationItems.main },
+        { label: "Business", items: navigationItems.business },
+        { label: "Analytics", items: navigationItems.reports },
+        ...(userRole === "super_admin" || userRole === "franchise_admin"
+          ? [{ label: "Administration", items: navigationItems.admin }]
+          : []),
+      ]
 
   return (
     <>
@@ -356,107 +429,42 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-2">Main</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filterItemsByRole(navigationItems.main).map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActiveItem(item.url)}
-                      tooltip={getNavTitle(item.title)}
-                      className="heritage-sidebar-item"
-                    >
-                      <Link href={item.url} className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <item.icon />
-                          <span>{getNavTitle(item.title)}</span>
-                        </div>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {sidebarGroups.map((group) => {
+            const visibleItems = filterItemsByRole(group.items)
 
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-2">Business</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filterItemsByRole(navigationItems.business).map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActiveItem(item.url)}
-                      tooltip={getNavTitle(item.title)}
-                      className="heritage-sidebar-item"
-                    >
-                      <Link href={item.url} className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <item.icon />
-                          <span>{getNavTitle(item.title)}</span>
-                        </div>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+            if (visibleItems.length === 0) {
+              return null
+            }
 
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-2">Analytics</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filterItemsByRole(navigationItems.reports).map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActiveItem(item.url)}
-                      tooltip={getNavTitle(item.title)}
-                      className="heritage-sidebar-item"
-                    >
-                      <Link href={item.url} className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <item.icon />
-                          <span>{getNavTitle(item.title)}</span>
-                        </div>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {(userRole === "super_admin" || userRole === "franchise_admin") && (
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-2">Administration</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {filterItemsByRole(navigationItems.admin).map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActiveItem(item.url)}
-                        tooltip={item.title}
-                        className="heritage-sidebar-item"
-                      >
-                        <Link href={item.url} className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </div>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
+            return (
+              <SidebarGroup key={group.label}>
+                <SidebarGroupLabel className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-2">
+                  {group.label}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {visibleItems.map((item) => (
+                      <SidebarMenuItem key={`${group.label}-${item.title}`}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActiveItem(item.url)}
+                          tooltip={getNavTitle(item.title)}
+                          className="heritage-sidebar-item"
+                        >
+                          <Link href={item.url} className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <item.icon />
+                              <span>{getNavTitle(item.title)}</span>
+                            </div>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )
+          })}
         </SidebarContent>
 
         <SidebarFooter>
@@ -509,3 +517,4 @@ export function AppSidebar({ userRole = "staff", ...props }: AppSidebarProps) {
     </>
   )
 }
+
