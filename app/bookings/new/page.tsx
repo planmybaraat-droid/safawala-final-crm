@@ -64,16 +64,18 @@ import {
   FileCheck,
   Camera,
   ImageIcon,
+  Lock,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { format } from "date-fns"
 import Link from "next/link"
-import { ProductSelector } from "@/components/products/product-selector"
+import { ProductSelector, AdditionalSafaQuickAdd } from "@/components/products/product-selector"
 import { Checkbox } from "@/components/ui/checkbox"
 import { supabase as supabaseClient } from "@/lib/supabase"
 import { fetchProductsWithBarcodes } from "@/lib/product-barcode-service"
 import { getCachedAuthUser, getCachedJson } from "@/lib/client-read-cache"
+import { openInvoicePdfForPrint } from "@/lib/print-invoice-pdf"
 
 interface Customer {
   id: string
@@ -216,6 +218,7 @@ export default function CreateInvoicePage() {
   // State
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [generatingPrintPdf, setGeneratingPrintPdf] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customersLoading, setCustomersLoading] = useState(true)
   const [products, setProducts] = useState<Product[]>([])
@@ -257,6 +260,11 @@ export default function CreateInvoicePage() {
   const [safaLimit, setSafaLimit] = useState<number | null>(null)
   const [sendWhatsAppInvoice, setSendWhatsAppInvoice] = useState(true)
   const [applyGst, setApplyGst] = useState(false)
+
+  // Date-window availability (5-day window: event date -2 to +2) for Safa products/packages in rental
+  const [availabilityMap, setAvailabilityMap] = useState<Record<string, { stockTotal: number; reserved: number; available: number }>>({})
+  const [availabilityWindow, setAvailabilityWindow] = useState<{ start: string; end: string } | null>(null)
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
 
   // Invoice Data
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
@@ -421,6 +429,33 @@ export default function CreateInvoicePage() {
     }
   }, [orderId, mode])
 
+  // Fetch date-window availability whenever the rental event date changes, so
+  // every Safa/package image can show an Available / Not available badge for
+  // that specific 5-day window (event date -2 to +2), not just live stock.
+  useEffect(() => {
+    if (invoiceData.invoice_type !== "rental" || !invoiceData.event_date) {
+      setAvailabilityMap({})
+      setAvailabilityWindow(null)
+      return
+    }
+    let cancelled = false
+    setAvailabilityLoading(true)
+    const params = new URLSearchParams({ event_date: invoiceData.event_date })
+    if (orderId) params.set("exclude_order_id", orderId)
+    fetch(`/api/inventory/availability?${params.toString()}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.success) return
+        setAvailabilityMap(data.products || {})
+        setAvailabilityWindow(data.window || null)
+      })
+      .catch((err) => console.error("[Availability] Failed to fetch:", err))
+      .finally(() => {
+        if (!cancelled) setAvailabilityLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [invoiceData.invoice_type, invoiceData.event_date, orderId])
+
   // Auto-select customer from customers list when editing
   useEffect(() => {
     if (editingOrderCustomerId && customers.length > 0 && !selectedCustomer) {
@@ -513,7 +548,8 @@ export default function CreateInvoicePage() {
         category_id: p.category_id,
         subcategory_id: (p as any).subcategory_id,
         rental_price: p.rental_price || 0,
-        sale_price: p.sale_price || 0,
+        // Fall back to the inventory `price` column if sale_price wasn't kept in sync.
+        sale_price: p.sale_price || (p as any).price || 0,
         security_deposit: p.security_deposit || 0,
         stock_available: p.stock_available || 0,
         reorder_level: (p as any).reorder_level || 0,
@@ -2023,8 +2059,9 @@ export default function CreateInvoicePage() {
     }
   }
 
-  // Print/Download
-  const handlePrint = () => {
+  // Native browser print — used as a fallback when there's no saved order yet
+  // to render server-side, or if PDF generation fails.
+  const printViaBrowser = () => {
     const originalTitle = document.title
     const eventDateStr = invoiceData.event_date
       ? format(new Date(invoiceData.event_date), "dd/MM/yy")
@@ -2040,6 +2077,20 @@ export default function CreateInvoicePage() {
     }
     window.print()
     document.title = originalTitle
+  }
+
+  // "Print" — generates a clean server-rendered PDF (no browser header/footer,
+  // no stray URL line) and opens it in a new tab, instead of printing the live
+  // page directly. Falls back to the native browser print if that ever fails,
+  // or if the booking hasn't been saved yet (nothing to render server-side).
+  const handlePrint = async () => {
+    if (orderId) {
+      setGeneratingPrintPdf(true)
+      const ok = await openInvoicePdfForPrint({ orderId })
+      setGeneratingPrintPdf(false)
+      if (ok) return
+    }
+    printViaBrowser()
   }
 
   // Format currency
@@ -2132,7 +2183,6 @@ export default function CreateInvoicePage() {
               </button>
             </div>
 
-            <p className="text-xs text-gray-400 mt-6">You can change this later inside the form</p>
           </div>
         </div>
       )}
@@ -2174,9 +2224,9 @@ export default function CreateInvoicePage() {
               All Bookings
             </Button>
           </Link>
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            Print
+          <Button variant="outline" size="sm" onClick={handlePrint} disabled={generatingPrintPdf}>
+            {generatingPrintPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+            {generatingPrintPdf ? "Preparing..." : "Print"}
           </Button>
           {/* Save as Quote - only show in new mode, not in edit mode */}
           {mode !== "edit" && (
@@ -2242,19 +2292,33 @@ export default function CreateInvoicePage() {
               <div className="text-2xl font-bold">
                 {mode === "final-bill" ? "FINAL BILL" : invoiceData.invoice_type === "rental" ? "RENTAL INVOICE" : "SALE INVOICE"}
               </div>
-              <div className="mt-2">
-                <Select
-                  value={invoiceData.invoice_type}
-                  onValueChange={(v) => setInvoiceData({ ...invoiceData, invoice_type: v as any })}
+              <div className="mt-3 flex flex-wrap items-end justify-end gap-2">
+                <div className="text-left">
+                  <Label className="text-[10px] text-white/70 block mb-1">Invoice #</Label>
+                  <Input
+                    value={invoiceData.invoice_number}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
+                    className="font-mono font-bold text-sm h-8 w-56 sm:w-64 bg-white/15 text-white border-white/30 placeholder:text-white/50 disabled:opacity-100 disabled:bg-white/15 disabled:text-white disabled:border-white/30"
+                    placeholder="e.g., ORD-2026001"
+                    disabled={!companySettings?.allow_invoice_number_edit}
+                  />
+                </div>
+                <div className="text-left">
+                  <Label className="text-[10px] text-white/70 block mb-1">Date</Label>
+                  <Input
+                    type="date"
+                    value={invoiceData.invoice_date}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
+                    className="text-sm h-8 w-36 bg-white/15 text-white border-white/30 [color-scheme:dark]"
+                  />
+                </div>
+                <div
+                  title="Invoice type cannot be changed after selection"
+                  className="inline-flex items-center gap-1.5 px-3 h-8 rounded-md border border-white/30 bg-white/20 text-white text-xs font-bold select-none"
                 >
-                  <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rental">Rental</SelectItem>
-                    <SelectItem value="sale">Sale</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Lock className="h-3 w-3 opacity-70" />
+                  {invoiceData.invoice_type === "rental" ? "Rental" : "Sale"}
+                </div>
               </div>
             </div>
           </div>
@@ -2294,12 +2358,12 @@ export default function CreateInvoicePage() {
             </div>
           )}
 
-          {/* Sale Details */}
-          {invoiceData.invoice_type === "sale" && (
+          {/* Sale Details - only render when there is actually a delivery date to show */}
+          {invoiceData.invoice_type === "sale" && invoiceData.delivery_date && (
             <div className="bg-gray-50 px-2 py-1.5 rounded">
               <div className="text-[9px] text-amber-700 font-medium mb-1 border-b border-amber-200 pb-0.5">Delivery Details</div>
               <div className="text-[10px]">
-                {invoiceData.delivery_date && <div><span className="text-gray-500">Delivery:</span> <span className="font-medium">{format(new Date(invoiceData.delivery_date), "dd MMM yyyy")} {formatTime12h(invoiceData.delivery_time)}</span></div>}
+                <div><span className="text-gray-500">Delivery:</span> <span className="font-medium">{format(new Date(invoiceData.delivery_date), "dd MMM yyyy")} {formatTime12h(invoiceData.delivery_time)}</span></div>
               </div>
             </div>
           )}
@@ -2360,48 +2424,6 @@ export default function CreateInvoicePage() {
 
           {(!usesRentalSteps || bookingStep === 1) && (
           <div className="space-y-4 md:space-y-6">
-          {/* Company Logo & Invoice Header */}
-          <div className="booking-new-company-strip flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4">
-            {/* Logo & Company Name */}
-            <div className="flex items-center gap-3">
-              <img 
-                src={companySettings?.logo_url || DEFAULT_LOGO_URL} 
-                alt="Logo" 
-                className="h-10 w-10 md:h-12 md:w-12 object-contain rounded-lg" 
-              />
-              <div>
-                <div className="font-bold text-base md:text-lg text-gray-800">
-                  {companySettings?.company_name || "SAFAWALA"}
-                </div>
-                <div className="text-[10px] md:text-xs text-gray-500">
-                  {companySettings?.phone && <span>📞 {companySettings.phone}</span>}
-                </div>
-              </div>
-            </div>
-            {/* Invoice Info */}
-            <div className="flex items-center gap-3 sm:gap-6">
-              <div className="flex-1">
-                <Label className="text-[10px] md:text-xs text-gray-500 block mb-1">Invoice #</Label>
-                <Input
-                  value={invoiceData.invoice_number}
-                  onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
-                  className="font-mono font-bold text-sm md:text-base h-8 md:h-9"
-                  placeholder="e.g., ORD-2026001"
-                  disabled={!companySettings?.allow_invoice_number_edit}
-                />
-              </div>
-              <div className="text-right flex-1">
-                <Label className="text-[10px] md:text-xs text-gray-500 block mb-1">Date</Label>
-                <Input
-                  type="date"
-                  value={invoiceData.invoice_date}
-                  onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
-                  className="font-medium text-sm md:text-base h-8 md:h-9"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Customer & Event Section - Improved Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Customer Details Card */}
@@ -2574,84 +2596,6 @@ export default function CreateInvoicePage() {
                           type="time"
                           value={invoiceData.event_time}
                           onChange={(e) => setInvoiceData({ ...invoiceData, event_time: e.target.value })}
-                          className="h-8 md:h-9 text-xs md:text-sm bg-gray-50 border-gray-200 print:border-0 print:p-0"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] md:text-xs text-gray-500 mb-1 block">Time Slot</Label>
-                      <Select value={timeSlot} onValueChange={(v) => {
-                        setTimeSlot(v)
-                        const charges: Record<string, number> = { morning: 0, afternoon: 200, evening: 500, night: 1000, early_morning: 1000, custom: timeSlotCharge }
-                        if (v !== "custom") setTimeSlotCharge(charges[v] ?? 0)
-                      }}>
-                        <SelectTrigger className="h-8 md:h-9 text-xs md:text-sm bg-gray-50 border-gray-200 print:border-0 print:p-0">
-                          <SelectValue placeholder="Select slot" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="morning">Morning (6am-12pm) — No extra</SelectItem>
-                          <SelectItem value="afternoon">Afternoon (12pm-6pm) — +₹200</SelectItem>
-                          <SelectItem value="evening">Evening (6pm-10pm) — +₹500</SelectItem>
-                          <SelectItem value="night">Night (10pm-2am) — +₹1,000</SelectItem>
-                          <SelectItem value="early_morning">Early Morning (4-6am) — +₹1,000</SelectItem>
-                          <SelectItem value="custom">Custom Charge</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {timeSlot === "custom" && (
-                      <div>
-                        <Label className="text-[10px] md:text-xs text-gray-500 mb-1 block">Custom Slot Charge (₹)</Label>
-                        <Input
-                          type="number"
-                          value={timeSlotCharge || ""}
-                          onChange={(e) => setTimeSlotCharge(Number(e.target.value) || 0)}
-                          placeholder="0"
-                          className="h-8 md:h-9 text-xs md:text-sm bg-gray-50 border-gray-200"
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <Label className="text-[10px] md:text-xs text-gray-500 mb-1 block">Delivery Date</Label>
-                      <div className="relative">
-                        <Input
-                          type="date"
-                          value={invoiceData.delivery_date}
-                          onChange={(e) => setInvoiceData({ ...invoiceData, delivery_date: e.target.value })}
-                          className="h-8 md:h-9 text-xs md:text-sm bg-gray-50 border-gray-200 pr-8 print:border-0 print:p-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                        />
-                        <CalendarIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] md:text-xs text-gray-500 mb-1 block">Delivery Time</Label>
-                      <div className="relative">
-                        <Input
-                          type="time"
-                          value={invoiceData.delivery_time}
-                          onChange={(e) => setInvoiceData({ ...invoiceData, delivery_time: e.target.value })}
-                          className="h-8 md:h-9 text-xs md:text-sm bg-gray-50 border-gray-200 print:border-0 print:p-0"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] md:text-xs text-gray-500 mb-1 block">Return Date</Label>
-                      <div className="relative">
-                        <Input
-                          type="date"
-                          value={invoiceData.return_date}
-                          onChange={(e) => setInvoiceData({ ...invoiceData, return_date: e.target.value })}
-                          className="h-8 md:h-9 text-xs md:text-sm bg-gray-50 border-gray-200 pr-8 print:border-0 print:p-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                        />
-                        <CalendarIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] md:text-xs text-gray-500 mb-1 block">Return Time</Label>
-                      <div className="relative">
-                        <Input
-                          type="time"
-                          value={invoiceData.return_time}
-                          onChange={(e) => setInvoiceData({ ...invoiceData, return_time: e.target.value })}
                           className="h-8 md:h-9 text-xs md:text-sm bg-gray-50 border-gray-200 print:border-0 print:p-0"
                         />
                       </div>
@@ -3036,7 +2980,8 @@ export default function CreateInvoicePage() {
                             .map((pkg) => (
                               <div
                                 key={pkg.id}
-                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                                id={selectedPackage?.id === pkg.id ? "selected-package-card" : undefined}
+                                className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
                                   selectedPackage?.id === pkg.id
                                     ? "border-green-500 bg-green-50"
                                     : "border-gray-200 hover:border-gray-300"
@@ -3055,6 +3000,34 @@ export default function CreateInvoicePage() {
                                   }
                                 }}
                               >
+                                {selectedPackage?.id === pkg.id && (
+                                  <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-green-500 text-white flex items-center justify-center shadow-md z-10">
+                                    <Check className="h-3.5 w-3.5" />
+                                  </div>
+                                )}
+                                {invoiceData.invoice_type === "rental" && invoiceData.event_date && Object.keys(availabilityMap).length > 0 && (() => {
+                                  const numMatch = (pkg.name || pkg.variant_name || "").match(/package\s*(\d+)/i)
+                                  if (!numMatch) return null
+                                  const baratiSafaCategory = categories.find((c: any) => (c.name || "").trim().toUpperCase() === "BARATI SAFA")
+                                  const matchingSubcategory = baratiSafaCategory
+                                    ? subcategories.find((sc: any) => sc.parent_id === baratiSafaCategory.id && new RegExp(`^package\\s*${numMatch[1]}$`, "i").test((sc.name || "").trim()))
+                                    : null
+                                  if (!matchingSubcategory) return null
+                                  const packageProducts = products.filter((p: any) => p.subcategory_id === matchingSubcategory.id)
+                                  if (packageProducts.length === 0) return null
+                                  const totalAvailable = packageProducts.reduce((sum: number, p: any) => sum + (availabilityMap[p.id]?.available ?? p.stock_available ?? 0), 0)
+                                  const badgeClass = totalAvailable <= 0
+                                    ? "bg-red-100 text-red-700 border-red-300"
+                                    : totalAvailable <= 2
+                                      ? "bg-amber-100 text-amber-700 border-amber-300"
+                                      : "bg-green-100 text-green-700 border-green-300"
+                                  const badgeText = totalAvailable <= 0 ? "Not available for this date" : `${totalAvailable} available for this date`
+                                  return (
+                                    <Badge variant="outline" className={`mb-2 text-[10px] ${badgeClass}`}>
+                                      {badgeText}
+                                    </Badge>
+                                  )
+                                })()}
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <h4 className="font-semibold">{pkg.name || pkg.variant_name}</h4>
@@ -3102,68 +3075,156 @@ export default function CreateInvoicePage() {
 
                     {/* Selected Package Summary */}
                     {selectedPackage && (
-                      <div className="space-y-3">
-                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="font-semibold text-green-800">Selected: {selectedPackage.name || selectedPackage.variant_name}</h4>
-                              {selectedPackage.inclusions && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {(Array.isArray(selectedPackage.inclusions) 
-                                    ? selectedPackage.inclusions 
-                                    : typeof selectedPackage.inclusions === 'string' 
-                                      ? selectedPackage.inclusions.split(',').map((s: string) => s.trim())
-                                      : []
-                                  ).map((inc: string, i: number) => (
-                                    <Badge key={i} variant="secondary" className="text-xs">{inc}</Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-green-700">
-                                ₹{packagePrice.toLocaleString()}
-                              </p>
-                              {selectedPackage.security_deposit > 0 && (
-                                <p className="text-xs text-gray-500">+₹{selectedPackage.security_deposit} deposit</p>
-                              )}
-                            </div>
+                      <Card id="package-summary-card" className="booking-new-section-card p-4 shadow-sm border-l-4 border-l-green-500">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-1.5 bg-green-100 rounded-lg">
+                            <Package className="h-4 w-4 text-green-600" />
+                          </div>
+                          <span className="font-semibold text-gray-800">Selected Package</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-green-800">{selectedPackage.name || selectedPackage.variant_name}</h4>
+                            {selectedPackage.inclusions && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {(Array.isArray(selectedPackage.inclusions) 
+                                  ? selectedPackage.inclusions 
+                                  : typeof selectedPackage.inclusions === 'string' 
+                                    ? selectedPackage.inclusions.split(',').map((s: string) => s.trim())
+                                    : []
+                                ).map((inc: string, i: number) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{inc}</Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-green-700">
+                              ₹{packagePrice.toLocaleString()}
+                            </p>
+                            {selectedPackage.security_deposit > 0 && (
+                              <p className="text-xs text-gray-500">+₹{selectedPackage.security_deposit} deposit</p>
+                            )}
+                            {useCustomPackagePrice && customPackagePrice > 0 && (
+                              <p className="text-xs text-amber-600 mt-0.5">Custom price applied</p>
+                            )}
                           </div>
                         </div>
-
-                      </div>
+                      </Card>
                     )}
 
-                    {/* Add Products to Package */}
-                    {selectedPackage && (
-                      <div className="border-t pt-4">
-                        <Label className="text-sm font-medium mb-2 block">
-                          Add Products to Package (Optional)
-                        </Label>
-                        <p className="text-xs text-gray-500 mb-3">
-                          Select additional individual products to include with this package
-                        </p>
-                        <ProductSelector
-                          products={products.map(p => ({
-                            ...p,
-                            category: p.category || '',
-                            security_deposit: p.security_deposit || 0,
-                            sale_price: p.sale_price || p.rental_price,
-                          }))}
-                          categories={categories}
-                          subcategories={subcategories}
-                          selectedItems={invoiceItems.map(item => ({
-                            product_id: item.product_id,
-                            quantity: item.quantity
-                          }))}
-                          bookingType={invoiceData.invoice_type}
-                          eventDate={invoiceData.event_date}
-                          showAdditionalSafaSection={invoiceData.invoice_type === "rental"}
-                          onProductSelect={(product, quantity) => addProduct(product as Product, quantity)}
-                          onOpenCustomProductDialog={() => setShowCustomProductDialog(true)}
-                        />
-                      </div>
-                    )}
+                    {/* Add Safas — its own clearly-separated card, with the Safa-limit status and
+                        bypass toggle living right alongside the picker it governs. Shown as soon as
+                        we're in the rental Package tab, even before a specific package is chosen,
+                        so it's never missing above the items table. */}
+                    {(() => {
+                      // This package is a Safa-count tier (e.g. "31 Safas"), so the extra items
+                      // added here should only ever be Safas — keep the picker scoped to the
+                      // Safa categories instead of showing the entire product catalogue.
+                      const safaCategoryNames = ["BARATI SAFA", "GROOM SAFA", "BRIDE SAFA"]
+                      const safaCategories = categories.filter((c) => safaCategoryNames.includes((c.name || "").trim().toUpperCase()))
+                      const safaCategoryIds = new Set(safaCategories.map((c) => c.id))
+                      const safaSubcategories = subcategories.filter((sc) => safaCategoryIds.has(sc.parent_id))
+                      const safaProducts = products.filter((p) => isSafaProduct(p))
+                      // If a package is already chosen and named e.g. "Package 3: Floral Design",
+                      // default the Safa picker's subcategory to the matching "Package 3" bucket so
+                      // it doesn't sit on "Package 1" every time — falls back gracefully otherwise.
+                      const packageNumberMatch = (selectedPackage?.name || selectedPackage?.variant_name || "").match(/package\s*(\d+)/i)
+                      const defaultSafaSubcategoryName = packageNumberMatch ? `Package ${packageNumberMatch[1]}` : undefined
+                      return (
+                        <div className="space-y-3">
+                          {/* All the Safa images/search/filters live in this card (ProductSelector
+                              renders its own Card internally) */}
+                          <ProductSelector
+                            products={safaProducts.map(p => ({
+                              ...p,
+                              category: p.category || '',
+                              security_deposit: p.security_deposit || 0,
+                              sale_price: p.sale_price || p.rental_price,
+                            }))}
+                            categories={safaCategories}
+                            subcategories={safaSubcategories}
+                            selectedItems={invoiceItems.map(item => ({
+                              product_id: item.product_id,
+                              quantity: item.quantity
+                            }))}
+                            bookingType={invoiceData.invoice_type}
+                            eventDate={invoiceData.event_date}
+                            showAdditionalSafaSection={invoiceData.invoice_type === "rental"}
+                            defaultCategoryName="BARATI SAFA"
+                            defaultSubcategoryName={defaultSafaSubcategoryName}
+                            hideAllCategoryOptions
+                            limitBaratiSafaPackages
+                            hideAdditionalSafaSection
+                            hidePricing
+                            availabilityMap={availabilityMap}
+                            onProductSelect={(product, quantity) => addProduct(product as Product, quantity)}
+                            onOpenCustomProductDialog={() => setShowCustomProductDialog(true)}
+                            className="booking-new-section-card border-l-4 border-l-blue-500 shadow-sm"
+                          />
+
+                          {/* New, separate box below the Safa images: what this picker is for,
+                              plus the Safa-limit status and bypass toggle */}
+                          <Card id="add-safas-info-card" className="booking-new-section-card p-4 shadow-sm border-l-4 border-l-blue-500 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 bg-blue-100 rounded-lg">
+                                <Tag className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <span className="font-semibold text-gray-800 block">
+                                  {selectedPackage ? "Add Safas to Package (Optional)" : "Add Safas (Optional)"}
+                                </span>
+                                <p className="text-xs text-gray-500">
+                                  {selectedPackage
+                                    ? "Select additional Safas to include with this package"
+                                    : "Select Safas to add — you can pick a package above or add Safas directly"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {safaLimit !== null && (
+                              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-blue-200 bg-white px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-blue-900">
+                                    {countSafasInInvoice()} / {safaLimit} safas used
+                                  </span>
+                                  {bypassSafaLimit ? (
+                                    <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-700 bg-orange-50">Limit bypassed</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] border-green-300 text-green-700 bg-green-50">Limit active</Badge>
+                                  )}
+                                </div>
+                                <label className="flex items-center gap-1.5 text-xs text-blue-900 cursor-pointer select-none">
+                                  <Checkbox
+                                    checked={bypassSafaLimit}
+                                    onCheckedChange={(checked) => setBypassSafaLimit(checked as boolean)}
+                                  />
+                                  Bypass limit
+                                </label>
+                              </div>
+                            )}
+                          </Card>
+
+                          {/* Additional Safa quick-add — after the bypass card, as requested */}
+                          <AdditionalSafaQuickAdd
+                            products={safaProducts.map(p => ({
+                              ...p,
+                              category: p.category || '',
+                              security_deposit: p.security_deposit || 0,
+                              sale_price: p.sale_price || p.rental_price,
+                            }))}
+                            categories={safaCategories}
+                            subcategories={safaSubcategories}
+                            selectedItems={invoiceItems.map(item => ({
+                              product_id: item.product_id,
+                              quantity: item.quantity
+                            }))}
+                            onProductSelect={(product, quantity) => addProduct(product as Product, quantity)}
+                            hidePricing
+                          />
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </Card>
@@ -3171,7 +3232,7 @@ export default function CreateInvoicePage() {
 
             {/* Product Selector - Show when products mode is selected (or for sales) */}
             {!skipProductSelection && (selectionMode === "products" || invoiceData.invoice_type === "sale") && (
-              <div className="print:hidden mb-4">
+              <div className="print:hidden mb-4 space-y-3">
                 <ProductSelector
                   products={products.map(p => ({
                     ...p,
@@ -3188,113 +3249,31 @@ export default function CreateInvoicePage() {
                   bookingType={invoiceData.invoice_type}
                   eventDate={invoiceData.event_date}
                   showAdditionalSafaSection={invoiceData.invoice_type === "rental"}
+                  hideAdditionalSafaSection
+                  defaultCategoryName={invoiceData.invoice_type === "rental" ? "BARATI SAFA" : undefined}
+                  lockCategorySelect={invoiceData.invoice_type === "rental"}
+                  availabilityMap={invoiceData.invoice_type === "rental" ? availabilityMap : undefined}
                   onProductSelect={(product, quantity) => addProduct(product as Product, quantity)}
                   onOpenCustomProductDialog={() => setShowCustomProductDialog(true)}
                 />
-              </div>
-            )}
 
-            {/* Package Details Section - Show when package is selected in rental mode (ABOVE items table) */}
-            {selectionMode === "package" && selectedPackage && invoiceData.invoice_type === "rental" && (
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Tag className="h-4 w-4 text-blue-500" />
-                  <span className="font-semibold text-blue-900">Package Details</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  {/* Package Name & Price */}
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-2">Package</h4>
-                    <p className="text-lg font-bold text-blue-700">{selectedPackage.name || selectedPackage.variant_name}</p>
-                  </div>
-                  
-                  {/* Base Price */}
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-700 mb-2">Package Price</h4>
-                    <p className="text-lg font-bold">₹{packagePrice.toLocaleString()}</p>
-                    {useCustomPackagePrice && customPackagePrice > 0 && (
-                      <p className="text-xs text-amber-600 mt-1">⚠️ Custom override price applied</p>
-                    )}
-                  </div>
-
-                  {/* Security Deposit */}
-                  {selectedPackage.security_deposit > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm text-gray-700 mb-2">Security Deposit</h4>
-                      <p className="text-lg font-bold text-red-600">₹{selectedPackage.security_deposit.toLocaleString()}</p>
-                    </div>
-                  )}
-
-                  {/* Inclusions */}
-                  {selectedPackage.inclusions && (
-                    <div className={selectedPackage.security_deposit > 0 ? "" : "md:col-span-1"}>
-                      <h4 className="font-semibold text-sm text-gray-700 mb-2">Includes</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {(Array.isArray(selectedPackage.inclusions) 
-                          ? selectedPackage.inclusions 
-                          : typeof selectedPackage.inclusions === 'string' 
-                            ? selectedPackage.inclusions.split(',').map((s: string) => s.trim())
-                            : []
-                        ).map((inc: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-xs">{inc}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Safa Limit Control */}
-            {selectedPackage && (
-              <div className="border-l-4 border-l-purple-400 bg-purple-50 p-4 rounded space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <Label className="text-sm font-medium text-purple-900 block mb-2">
-                      Safa Limit Control
-                    </Label>
-                    {safaLimit !== null ? (
-                      <div className="bg-white border border-purple-200 rounded p-3 mb-2">
-                        <p className="text-sm font-semibold text-purple-900">
-                          📦 Auto-detected Limit: <span className="text-lg text-purple-600">{safaLimit} safas</span>
-                        </p>
-                        <p className="text-xs text-purple-700 mt-1">
-                          This limit was extracted from your selected package category
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="bg-white border border-gray-200 rounded p-3 mb-2">
-                        <p className="text-sm text-gray-600">
-                          No safa limit detected. Select a package category with safas (e.g., "31 Safas") to set a limit.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-end">
-                    <Checkbox
-                      id="bypassSafaLimit"
-                      checked={bypassSafaLimit}
-                      onCheckedChange={(checked) => setBypassSafaLimit(checked as boolean)}
-                      disabled={safaLimit === null}
-                    />
-                    <label
-                      htmlFor="bypassSafaLimit"
-                      className="text-sm font-medium text-purple-900 ml-2 cursor-pointer"
-                    >
-                      Bypass Limit
-                    </label>
-                  </div>
-                </div>
-                
-                {safaLimit !== null && !bypassSafaLimit && (
-                  <div className="bg-white border border-purple-200 rounded p-2 text-xs text-purple-800">
-                    ✓ Restriction Active: Maximum {safaLimit} safas allowed | Current: {countSafasInInvoice()}
-                  </div>
-                )}
-                {safaLimit !== null && bypassSafaLimit && (
-                  <div className="bg-white border border-orange-200 rounded p-2 text-xs text-orange-800">
-                    ⚠ Bypass Enabled: Unlimited safas allowed
-                  </div>
+                {/* Additional Safa quick-add — same standalone box placement as the Package flow */}
+                {invoiceData.invoice_type === "rental" && (
+                  <AdditionalSafaQuickAdd
+                    products={products.map(p => ({
+                      ...p,
+                      category: p.category || '',
+                      security_deposit: p.security_deposit || 0,
+                      sale_price: p.sale_price || p.rental_price,
+                    }))}
+                    categories={categories}
+                    subcategories={subcategories}
+                    selectedItems={invoiceItems.map(item => ({
+                      product_id: item.product_id,
+                      quantity: item.quantity
+                    }))}
+                    onProductSelect={(product, quantity) => addProduct(product as Product, quantity)}
+                  />
                 )}
               </div>
             )}
@@ -4106,7 +4085,8 @@ export default function CreateInvoicePage() {
             </div>
           )}
 
-          {/* Lost/Damaged Charges + Policy - Always shown on invoice */}
+          {/* Lost/Damaged Charges + Policy - Rental only: sold items are never returned, so there's no loss/damage risk to charge for on a Sale invoice. */}
+          {invoiceData.invoice_type === "rental" && (
           <div className="mt-2 border border-red-200 rounded overflow-hidden">
             <div className="bg-red-600 px-2 py-1 flex items-center justify-between">
               <span className="text-[9px] font-bold text-white uppercase tracking-wide">⚠ Lost / Damage Policy &amp; Charges</span>
@@ -4160,6 +4140,7 @@ export default function CreateInvoicePage() {
               <span>I agree to the above lost/damage policy</span>
             </div>
           </div>
+          )}
 
           {/* Notes - Print */}
           {invoiceData.notes && (
@@ -4327,9 +4308,9 @@ export default function CreateInvoicePage() {
               <span className="ml-2 font-bold text-lg">{formatCurrency(grandTotal)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />
-                Print
+              <Button variant="outline" onClick={handlePrint} disabled={generatingPrintPdf}>
+                {generatingPrintPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+                {generatingPrintPdf ? "Preparing..." : "Print"}
               </Button>
               {/* Save as Quote - only show in new mode, not in edit mode */}
               {mode !== "edit" && (
@@ -4369,55 +4350,6 @@ export default function CreateInvoicePage() {
                 onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
                 placeholder="Phone number"
               />
-            </div>
-            <div>
-              <Label>Address</Label>
-              <Textarea
-                value={newCustomer.address}
-                onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
-                placeholder="Address"
-                rows={2}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <Label className="text-xs">Pincode</Label>
-                <div className="relative">
-                  <Input
-                    value={newCustomer.pincode}
-                    onChange={(e) => handlePincodeChange(e.target.value)}
-                    placeholder="6 digits"
-                    maxLength={6}
-                    className={pincodeStatus === "success" ? "border-green-500 pr-8" : pincodeStatus === "error" ? "border-red-500" : ""}
-                  />
-                  {pincodeStatus === "loading" && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                    </div>
-                  )}
-                  {pincodeStatus === "success" && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500">✓</div>
-                  )}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">City</Label>
-                <Input
-                  value={newCustomer.city}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })}
-                  placeholder="Auto-filled"
-                  className={pincodeStatus === "success" ? "bg-green-50" : ""}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">State</Label>
-                <Input
-                  value={newCustomer.state}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
-                  placeholder="Auto-filled"
-                  className={pincodeStatus === "success" ? "bg-green-50" : ""}
-                />
-              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowNewCustomerDialog(false)}>

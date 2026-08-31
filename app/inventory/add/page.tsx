@@ -416,6 +416,8 @@ export default function AddProductPage() {
         material: formData.material.trim().substring(0, 100) || null,
         description: formData.description.trim().substring(0, 1000) || null,
         price: Number(formData.price) || 0,
+        // Keep sale_price in sync with price — booking/sale screens read sale_price, not price.
+        sale_price: Number(formData.price) || 0,
         regular_price: Number(formData.regular_price) || 0,
         rental_price: Number(formData.rental_price) || 0,
         cost_price: Number(formData.cost_price) || 0,

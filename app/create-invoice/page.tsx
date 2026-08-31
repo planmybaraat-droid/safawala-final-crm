@@ -79,6 +79,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { BookingWorkflowStepper } from "@/components/shared"
 import { cn } from "@/lib/utils"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { openInvoicePdfForPrint } from "@/lib/print-invoice-pdf"
 
 
 interface Customer {
@@ -247,6 +248,7 @@ export default function CreateInvoicePage() {
   // State
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [generatingPrintPdf, setGeneratingPrintPdf] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customersLoading, setCustomersLoading] = useState(true)
   const [products, setProducts] = useState<Product[]>([])
@@ -2261,21 +2263,9 @@ export default function CreateInvoicePage() {
     }
   }
 
-  // Native browser printing — same flow as Ctrl/Cmd + P.
-  const handlePrint = () => {
-    const hasCustomer = Boolean(selectedCustomer || qCustomerName)
-    const hasItems = invoiceItems.length > 0 || Boolean(selectedPackage)
-    if (!hasCustomer || !hasItems) {
-      toast({
-        title: "Complete the booking first",
-        description: !hasCustomer
-          ? "Select a customer before creating the PDF."
-          : "Add at least one product or package before creating the PDF.",
-        variant: "destructive",
-      })
-      return
-    }
-
+  // Native browser print — used as a fallback, and for the headless-render pass
+  // itself (see the pdfToken check below), which just needs print media active.
+  const printViaBrowser = () => {
     const originalTitle = document.title
     const eventDateStr = invoiceData.event_date
       ? format(new Date(invoiceData.event_date), "dd/MM/yy")
@@ -2290,6 +2280,54 @@ export default function CreateInvoicePage() {
     }
     window.addEventListener("afterprint", restoreTitle)
     window.print()
+  }
+
+  // "Print" — generates a clean server-rendered PDF (no browser header/footer,
+  // no stray URL line) and opens it in a new tab, instead of printing the live
+  // page directly. Falls back to the native browser print if that ever fails,
+  // or if the invoice hasn't been saved yet (nothing to render server-side).
+  const handlePrint = async () => {
+    const hasCustomer = Boolean(selectedCustomer || qCustomerName)
+    const hasItems = invoiceItems.length > 0 || Boolean(selectedPackage)
+    if (!hasCustomer || !hasItems) {
+      toast({
+        title: "Complete the booking first",
+        description: !hasCustomer
+          ? "Select a customer before creating the PDF."
+          : "Add at least one product or package before creating the PDF.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // This render IS the headless capture itself (Puppeteer navigated here with
+    // pdfToken to take a screenshot/PDF) — just activate print media, don't
+    // recurse into generating another PDF.
+    if (pdfToken) {
+      printViaBrowser()
+      return
+    }
+
+    if (orderId) {
+      setGeneratingPrintPdf(true)
+      const customerName = selectedCustomer?.name || invoiceData.groom_name || qCustomerName || ""
+      const ok = await openInvoicePdfForPrint({
+        orderId,
+        customerName,
+        customerPhone: selectedCustomer?.phone || qCustomerPhone || "",
+        customerEmail: selectedCustomer?.email || qCustomerEmail || "",
+      })
+      setGeneratingPrintPdf(false)
+      if (ok) return
+      toast({
+        title: "Couldn't prepare the PDF",
+        description: "Printing the page directly instead.",
+        variant: "destructive",
+      })
+    }
+
+    // Unsaved invoice (no orderId yet) or PDF generation failed — fall back.
+    printViaBrowser()
   }
 
   // Auto-trigger print if requested via query parameter
@@ -3578,12 +3616,12 @@ export default function CreateInvoicePage() {
             variant="outline"
             size="sm"
             onClick={handlePrint}
-            disabled={saving || (!selectedCustomer && !qCustomerName) || (invoiceItems.length === 0 && !selectedPackage)}
+            disabled={saving || generatingPrintPdf || (!selectedCustomer && !qCustomerName) || (invoiceItems.length === 0 && !selectedPackage)}
             title="Print this invoice"
             className={mode === "new" ? "hidden" : "disabled:cursor-not-allowed disabled:opacity-50"}
           >
-            <Printer className="h-4 w-4 mr-2" />
-            Print Invoice
+            {generatingPrintPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+            {generatingPrintPdf ? "Preparing..." : "Print Invoice"}
           </Button>
           {/* Save as Draft - not sent to customer, lets anyone with access pick it up later */}
           <Button
@@ -3653,13 +3691,12 @@ export default function CreateInvoicePage() {
                 <h1 className="text-base font-bold text-slate-700">{companySettings?.company_name || "SAFAWALA"}</h1>
                 <p className="text-[9px] text-gray-600">Premium Wedding Turbans & Accessories</p>
                 <div className="text-[8px] text-gray-500">
-                  🏢 Delhi · Vadodara · Ahmedabad · Mumbai · Bangalore
+                  Delhi &middot; Vadodara &middot; Ahmedabad &middot; Mumbai &middot; Bangalore
                 </div>
                 <div className="text-[8px] text-gray-500 flex flex-wrap gap-x-2 mt-0.5">
-                  <span>📞 +91 97252 95691</span>
-                  <span>📞 +91 97252 95692</span>
-                  <span>🏢 +91 95103 66393 (Office)</span>
-                  <span>🌐 www.safawala.com</span>
+                  <span>Tel: +91 97252 95691 / +91 97252 95692</span>
+                  <span>Office: +91 95103 66393</span>
+                  <span>www.safawala.com</span>
                 </div>
               </div>
             </div>
@@ -3725,8 +3762,8 @@ export default function CreateInvoicePage() {
                   <div className="text-[9px] text-blue-700 font-medium mb-0.5 border-b border-blue-200 pb-0.5">Groom Details</div>
                   <div className="space-y-0.5 text-[10px]">
                     <div className="font-semibold text-gray-900">{invoiceData.groom_name}</div>
-                    {invoiceData.groom_whatsapp && <div className="text-gray-600">📱 {invoiceData.groom_whatsapp}</div>}
-                    {invoiceData.groom_address && <div className="text-gray-600">📍 {invoiceData.groom_address}</div>}
+                    {invoiceData.groom_whatsapp && <div className="text-gray-600"><span className="text-gray-400">Mobile:</span> {invoiceData.groom_whatsapp}</div>}
+                    {invoiceData.groom_address && <div className="text-gray-600"><span className="text-gray-400">Address:</span> {invoiceData.groom_address}</div>}
                   </div>
                 </div>
               )}
@@ -3735,8 +3772,8 @@ export default function CreateInvoicePage() {
                   <div className="text-[9px] text-pink-700 font-medium mb-0.5 border-b border-pink-200 pb-0.5">Bride Details</div>
                   <div className="space-y-0.5 text-[10px]">
                     <div className="font-semibold text-gray-900">{invoiceData.bride_name}</div>
-                    {invoiceData.bride_whatsapp && <div className="text-gray-600">📱 {invoiceData.bride_whatsapp}</div>}
-                    {invoiceData.bride_address && <div className="text-gray-600">📍 {invoiceData.bride_address}</div>}
+                    {invoiceData.bride_whatsapp && <div className="text-gray-600"><span className="text-gray-400">Mobile:</span> {invoiceData.bride_whatsapp}</div>}
+                    {invoiceData.bride_address && <div className="text-gray-600"><span className="text-gray-400">Address:</span> {invoiceData.bride_address}</div>}
                   </div>
                 </div>
               )}
@@ -4189,12 +4226,12 @@ export default function CreateInvoicePage() {
                             variant="outline" 
                             size="sm" 
                             onClick={handlePrint}
-                            disabled={saving || (!selectedCustomer && !qCustomerName) || (invoiceItems.length === 0 && !selectedPackage)}
+                            disabled={saving || generatingPrintPdf || (!selectedCustomer && !qCustomerName) || (invoiceItems.length === 0 && !selectedPackage)}
                             title="Print this invoice"
                             className="border-slate-200 text-slate-700 hover:bg-slate-50 h-8 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            <Printer className="h-3.5 w-3.5 mr-1.5" />
-                            Print Invoice
+                            {generatingPrintPdf ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Printer className="h-3.5 w-3.5 mr-1.5" />}
+                            {generatingPrintPdf ? "Preparing..." : "Print Invoice"}
                           </Button>
                           {mode !== "edit" && (
                             <Button 

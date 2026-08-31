@@ -285,7 +285,8 @@ export default function CreateProductOrderPage() {
           category_id: p.category_id,
           subcategory_id: (p as any).subcategory_id,
           rental_price: p.rental_price || 0,
-          sale_price: p.sale_price || 0,
+          // Fall back to the inventory `price` column if sale_price wasn't kept in sync.
+          sale_price: p.sale_price || (p as any).price || 0,
           security_deposit: p.security_deposit || 0,
           stock_available: p.stock_available || 0,
           reorder_level: (p as any).reorder_level || 0,

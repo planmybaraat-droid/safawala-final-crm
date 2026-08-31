@@ -78,12 +78,25 @@ interface ProductSelectorProps {
   onOpenCustomProductDialog?: () => void
   /** Show a stock-aware shortcut for adding extra Safa items in booking Step 2. */
   showAdditionalSafaSection?: boolean
+  /** Suppress the inline Additional Safa shortcut even when showAdditionalSafaSection is true —
+   *  used when the caller wants to render <AdditionalSafaQuickAdd /> itself, elsewhere on the page. */
+  hideAdditionalSafaSection?: boolean
+  /** Hide the per-product rental/sale price — for a fixed-price package where showing an
+   *  individual item's rental price would be misleading. */
+  hidePricing?: boolean
   /** Restrict Barati Safa's visible package choices in the booking flow. */
   limitBaratiSafaPackages?: boolean
   /** Hide the broad all-items filter buttons when a focused catalogue is required. */
   hideAllCategoryOptions?: boolean
   hideAllSubcategoryOptions?: boolean
   defaultCategoryName?: string
+  /** Once the default category resolves, also pre-select a subcategory by name (e.g. "Package 3"). */
+  defaultSubcategoryName?: string
+  /** Lock the category dropdown to defaultCategoryName so the user cannot switch away from it. */
+  lockCategorySelect?: boolean
+  /** Date-window availability (event date -2 to +2) per product id, keyed by product.id.
+   *  When provided, an Available / Limited / Not available badge is shown on each product image. */
+  availabilityMap?: Record<string, { stockTotal: number; reserved: number; available: number }>
   className?: string
 }
 
@@ -100,10 +113,15 @@ export function ProductSelector({
   onCheckAvailability,
   onOpenCustomProductDialog,
   showAdditionalSafaSection = false,
+  hideAdditionalSafaSection = false,
+  hidePricing = false,
   limitBaratiSafaPackages = false,
   hideAllCategoryOptions = false,
   hideAllSubcategoryOptions = false,
   defaultCategoryName,
+  defaultSubcategoryName,
+  lockCategorySelect = false,
+  availabilityMap,
   className = "",
 }: ProductSelectorProps) {
   const [productSearch, setProductSearch] = useState("")
@@ -391,6 +409,19 @@ export function ProductSelector({
     return all.filter((subcategory) => baratiSafaSubcategories.some((visible) => visible.id === subcategory.id))
   }, [subcategories, selectedCategory, selectedCategoryName, limitBaratiSafaPackages, baratiSafaSubcategories])
 
+  // Once a default category is resolved, also try to default the subcategory (e.g. the
+  // booking flow asking for "Package 3" to match the rental package the user already
+  // picked). Only ever matches within visibleSubcategories, so a number outside what's
+  // actually offered here (e.g. limitBaratiSafaPackages capping this at Package 1-3)
+  // is simply ignored instead of selecting a subcategory that would filter to nothing.
+  useEffect(() => {
+    if (!defaultSubcategoryName || !selectedCategory || selectedSubcategory) return
+    const defaultSubcategory = visibleSubcategories.find(
+      (subcategory) => subcategory.name.trim().toUpperCase() === defaultSubcategoryName.trim().toUpperCase()
+    )
+    if (defaultSubcategory) setSelectedSubcategory(defaultSubcategory.id)
+  }, [visibleSubcategories, selectedCategory, defaultSubcategoryName, selectedSubcategory])
+
   // Filter products based on search and categories
   const filteredProducts = useMemo(() => {
     let result = products
@@ -590,7 +621,7 @@ export function ProductSelector({
 
   return (
     <Card className={className}>
-      <CardHeader>
+      <CardHeader className="pb-4 border-b border-slate-100">
         <CardTitle className="flex items-center gap-2 justify-between">
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -614,8 +645,8 @@ export function ProductSelector({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {showAdditionalSafaSection && bookingType === "rental" && (
+      <CardContent className="space-y-4 pt-4">
+        {showAdditionalSafaSection && bookingType === "rental" && !hideAdditionalSafaSection && (
           <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -786,7 +817,8 @@ export function ProductSelector({
               setSelectedCategory(event.target.value === "all" ? null : event.target.value)
               setSelectedSubcategory(null)
             }}
-            className="h-10 min-w-[150px] rounded-md border border-[#102516]/15 bg-[#fefaf6] px-3 text-sm text-[#102516]"
+            disabled={lockCategorySelect}
+            className="h-10 min-w-[150px] rounded-md border border-[#102516]/15 bg-[#fefaf6] px-3 text-sm text-[#102516] disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[#f3efe9]"
           >
             {!hideAllCategoryOptions && <option value="all">All Categories</option>}
             {categories
@@ -911,7 +943,7 @@ export function ProductSelector({
                     )}
 
                     {/* Product Image */}
-                    <div className="aspect-square bg-gray-100 rounded mb-2 flex items-center justify-center text-xs text-muted-foreground overflow-hidden">
+                    <div className="relative aspect-square bg-gray-100 rounded mb-2 flex items-center justify-center text-xs text-muted-foreground overflow-hidden">
                       {product.image_url ? (
                         <OptimizedImage src={product.image_url} alt={product.name} webpWidth={360} className="w-full h-full object-cover rounded" />
                       ) : (
@@ -920,6 +952,20 @@ export function ProductSelector({
                           <span>No Image</span>
                         </div>
                       )}
+                      {availabilityMap && availabilityMap[product.id] && (() => {
+                        const avail = availabilityMap[product.id].available
+                        const badgeClass = avail <= 0
+                          ? "bg-red-600 text-white"
+                          : avail <= 2
+                            ? "bg-amber-500 text-white"
+                            : "bg-green-600 text-white"
+                        const badgeText = avail <= 0 ? "Not available" : avail <= 2 ? `${avail} left` : "Available"
+                        return (
+                          <span className={`absolute bottom-1 left-1 right-1 text-center text-[9px] font-semibold px-1 py-0.5 rounded ${badgeClass}`}>
+                            {badgeText}
+                          </span>
+                        )
+                      })()}
                     </div>
 
                     {/* Product Info */}
@@ -928,33 +974,35 @@ export function ProductSelector({
                     </div>
                     <div className="text-[10px] text-gray-500 mb-2">{product.category}</div>
 
-                    {/* Price — editable when selected */}
-                    <div className="mb-2">
-                      <div className="text-[10px] text-gray-500 mb-0.5">
-                        {bookingType === "rental" ? "Rental Price" : "Sale Price"}
-                      </div>
-                      {isSelected && onItemUpdate ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-gray-500 text-xs">₹</span>
-                          <Input
-                            type="number"
-                            value={currentPrice}
-                            onChange={(e) => {
-                              setInlinePrice(prev => ({ ...prev, [product.id]: e.target.value }))
-                            }}
-                            onBlur={(e) => {
-                              const price = parseFloat(e.target.value) || 0
-                              setInlinePrice(prev => ({ ...prev, [product.id]: String(price) }))
-                              onItemUpdate(product.id, reservedQty, price)
-                            }}
-                            onClick={(e) => { e.stopPropagation(); (e.target as HTMLInputElement).select() }}
-                            className="h-7 text-sm font-bold text-green-700 px-1 border-green-300 bg-white"
-                          />
+                    {/* Price — editable when selected; hidden for fixed-price packages */}
+                    {!hidePricing && (
+                      <div className="mb-2">
+                        <div className="text-[10px] text-gray-500 mb-0.5">
+                          {bookingType === "rental" ? "Rental Price" : "Sale Price"}
                         </div>
-                      ) : (
-                        <div className="font-bold text-base text-gray-800">₹{defaultPrice}</div>
-                      )}
-                    </div>
+                        {isSelected && onItemUpdate ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-500 text-xs">₹</span>
+                            <Input
+                              type="number"
+                              value={currentPrice}
+                              onChange={(e) => {
+                                setInlinePrice(prev => ({ ...prev, [product.id]: e.target.value }))
+                              }}
+                              onBlur={(e) => {
+                                const price = parseFloat(e.target.value) || 0
+                                setInlinePrice(prev => ({ ...prev, [product.id]: String(price) }))
+                                onItemUpdate(product.id, reservedQty, price)
+                              }}
+                              onClick={(e) => { e.stopPropagation(); (e.target as HTMLInputElement).select() }}
+                              className="h-7 text-sm font-bold text-green-700 px-1 border-green-300 bg-white"
+                            />
+                          </div>
+                        ) : (
+                          <div className="font-bold text-base text-gray-800">₹{defaultPrice}</div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Stock info */}
                     <div className={`text-[10px] mb-2 ${outOfStock ? "text-red-600" : availableStock <= 5 ? "text-orange-600" : "text-gray-500"}`}>
@@ -1050,5 +1098,178 @@ export function ProductSelector({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * AdditionalSafaQuickAdd - standalone version of the "Additional Safa" shortcut that normally
+ * lives inline at the top of ProductSelector (see showAdditionalSafaSection). Extracted so a
+ * caller can position it independently on the page — e.g. below a Safa-limit/bypass card —
+ * instead of always having it appear above the product grid. Pass hideAdditionalSafaSection
+ * to ProductSelector to avoid rendering the shortcut twice.
+ */
+export interface AdditionalSafaQuickAddProps {
+  products: Product[]
+  categories?: Category[]
+  subcategories?: Subcategory[]
+  selectedItems?: SelectedItem[]
+  onProductSelect: (product: Product, quantity?: number) => void
+  className?: string
+  /** Hide the per-product rental price — for a fixed-price package where showing an
+   *  individual item's rental price would be misleading. */
+  hidePricing?: boolean
+}
+
+export function AdditionalSafaQuickAdd({
+  products,
+  categories = [],
+  subcategories = [],
+  selectedItems = [],
+  onProductSelect,
+  className = "",
+  hidePricing = false,
+}: AdditionalSafaQuickAddProps) {
+  const [additionalSafaPackageId, setAdditionalSafaPackageId] = useState("all")
+  const [additionalSafaId, setAdditionalSafaId] = useState("")
+  const [additionalSafaQty, setAdditionalSafaQty] = useState(1)
+
+  const subcategoryById = useMemo(
+    () => new Map(subcategories.map((subcategory) => [subcategory.id, subcategory])),
+    [subcategories]
+  )
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories]
+  )
+
+  const getBaratiSafaPackage = (product: Product) => {
+    const candidates = [
+      product.subcategory_id ? subcategoryById.get(product.subcategory_id) : undefined,
+      product.category_id ? subcategoryById.get(product.category_id) : undefined,
+    ].filter(Boolean) as Subcategory[]
+
+    return candidates.find((subcategory) => {
+      const parentName = categoryNameById.get(subcategory.parent_id)?.trim().toUpperCase() || ""
+      return parentName === "BARATI SAFA" && /^package\s*\d+$/i.test(subcategory.name.trim())
+    })
+  }
+
+  const additionalSafaProducts = useMemo(() => products
+    .filter((product) => Boolean(getBaratiSafaPackage(product)))
+    .sort((a, b) => a.name.localeCompare(b.name)),
+  [products, categoryNameById, subcategoryById])
+
+  const additionalSafaPackages = useMemo(() => {
+    const baratiSafaCategory = categories.find((category) => category.name.trim().toUpperCase() === "BARATI SAFA")
+    if (!baratiSafaCategory) return []
+    return subcategories
+      .filter((subcategory) => subcategory.parent_id === baratiSafaCategory.id && /^package\s*\d+$/i.test(subcategory.name.trim()))
+      .sort((a, b) => Number(a.name.match(/\d+/)?.[0] || 999) - Number(b.name.match(/\d+/)?.[0] || 999))
+  }, [categories, subcategories])
+
+  const visibleAdditionalSafaProducts = additionalSafaPackageId === "all"
+    ? additionalSafaProducts
+    : additionalSafaProducts.filter((product) => getBaratiSafaPackage(product)?.id === additionalSafaPackageId)
+
+  const additionalSafaProduct = additionalSafaProducts.find((product) => product.id === additionalSafaId)
+  const getProductSubcategoryName = (product: Product) => {
+    return getBaratiSafaPackage(product)?.name || "Package"
+  }
+  const alreadySelectedSafaQty = selectedItems.find((item) => item.product_id === additionalSafaId)?.quantity || 0
+  const additionalSafaAvailable = Math.max(0, (Number(additionalSafaProduct?.stock_available) || 0) - alreadySelectedSafaQty)
+
+  const addAdditionalSafa = () => {
+    if (!additionalSafaProduct || additionalSafaAvailable <= 0) return
+    const quantity = Math.max(1, Math.min(additionalSafaQty, additionalSafaAvailable))
+    onProductSelect(additionalSafaProduct, quantity)
+    setAdditionalSafaQty(1)
+    toast.success("Additional Safa added", {
+      description: `${quantity} × ${additionalSafaProduct.name}`,
+      duration: 2000,
+    })
+  }
+
+  return (
+    <div className={`rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 ${className}`}>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2 font-semibold text-amber-950">
+            <Package className="h-4 w-4 text-amber-700" />
+            Additional Safa
+            <Badge variant="outline" className="border-amber-200 bg-white/80 text-[10px] text-amber-800">
+              {additionalSafaProducts.length} options
+            </Badge>
+          </div>
+          <p className="mt-1 text-[11px] text-amber-800/70">
+            Select additional Safa only from Barati Safa packages.
+          </p>
+        </div>
+        {alreadySelectedSafaQty > 0 && additionalSafaProduct && (
+          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+            {alreadySelectedSafaQty} already selected
+          </Badge>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[150px_minmax(0,1fr)_100px_auto]">
+        <select
+          aria-label="Additional Safa package"
+          value={additionalSafaPackageId}
+          onChange={(event) => {
+            setAdditionalSafaPackageId(event.target.value)
+            setAdditionalSafaId("")
+            setAdditionalSafaQty(1)
+          }}
+          className="h-10 rounded-md border border-amber-200 bg-white px-3 text-sm text-slate-800 focus:border-amber-400 focus:outline-none"
+        >
+          <option value="all">All Packages</option>
+          {additionalSafaPackages.map((subcategory) => (
+            <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Additional Safa product"
+          value={additionalSafaId}
+          onChange={(event) => {
+            setAdditionalSafaId(event.target.value)
+            setAdditionalSafaQty(1)
+          }}
+          className="h-10 min-w-0 rounded-md border border-amber-200 bg-white px-3 text-sm text-slate-800 focus:border-amber-400 focus:outline-none"
+        >
+          <option value="">Select Barati Safa package product</option>
+          {visibleAdditionalSafaProducts.map((product) => (
+            <option key={product.id} value={product.id} disabled={(Number(product.stock_available) || 0) <= 0}>
+              {getProductSubcategoryName(product)} — {product.name} — Stock {Number(product.stock_available) || 0}
+            </option>
+          ))}
+        </select>
+        <Input
+          aria-label="Additional Safa quantity"
+          type="number"
+          min={1}
+          max={Math.max(1, additionalSafaAvailable)}
+          value={additionalSafaQty}
+          onChange={(event) => setAdditionalSafaQty(Math.max(1, Number(event.target.value) || 1))}
+          disabled={!additionalSafaProduct || additionalSafaAvailable <= 0}
+          className="h-10 border-amber-200 bg-white"
+          title={additionalSafaProduct ? `${additionalSafaAvailable} available after current selection` : "Choose a Safa first"}
+        />
+        <Button
+          type="button"
+          onClick={addAdditionalSafa}
+          disabled={!additionalSafaProduct || additionalSafaAvailable <= 0}
+          className="h-10 bg-amber-600 text-white hover:bg-amber-700"
+        >
+          <Plus className="mr-1.5 h-4 w-4" /> Add Safa
+        </Button>
+      </div>
+      {additionalSafaProduct && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-amber-900/70">
+          <span>Available now: <strong>{additionalSafaAvailable}</strong></span>
+          {!hidePricing && (
+            <span>Rental price: <strong>₹{Number(additionalSafaProduct.rental_price) || 0}</strong></span>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

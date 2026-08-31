@@ -113,6 +113,7 @@ export async function GET(request: NextRequest) {
     const packageIds = (packageRes.data || []).map((r: any) => r.id)
 
     let productTotals: Record<string, number> = {}
+    const itemNamesByOrder: Record<string, string[]> = {}
     let packageTotals: Record<string, number> = {}
     const ordersWithAnyItems = new Set<string>()
     const packagesWithAnyItems = new Set<string>()
@@ -137,12 +138,13 @@ export async function GET(request: NextRequest) {
       // Get all unique product IDs
       const productItemIds = [...new Set(poItems?.map(i => i.product_id).filter(Boolean) || [])]
       
-      // Fetch product details with category info
+      // Fetch product details (name + category) so we can both classify Safas and show what was actually selected
       let productCategoryMap: Record<string, string> = {}
+      let productNameMap: Record<string, string> = {}
       if (productItemIds.length > 0) {
         const { data: products } = await supabase
           .from('products')
-          .select('id, category_id')
+          .select('id, name, category_id')
           .in('id', productItemIds)
         
         // Get category IDs
@@ -165,14 +167,25 @@ export async function GET(request: NextRequest) {
             productCategoryMap[product.id] = catIdToName[product.category_id] || ''
           }
         }
+
+        for (const product of products || []) {
+          productNameMap[product.id] = product.name || ''
+        }
       }
       
-      // Count only Safa products (category name contains "SAFA")
+      // Count only Safa products (category name contains "SAFA"), and separately collect
+      // every selected item's name so non-Safa product orders can show what was actually picked.
       for (const row of poItems || []) {
         const categoryName = productCategoryMap[row.product_id] || ''
         const isSafa = categoryName.toUpperCase().includes('SAFA')
         if (isSafa) {
           productTotals[row.order_id] = (productTotals[row.order_id] || 0) + (Number(row.quantity) || 0)
+        }
+        const productName = productNameMap[row.product_id]
+        if (row.order_id && productName) {
+          if (!itemNamesByOrder[row.order_id]) itemNamesByOrder[row.order_id] = []
+          const qty = Number(row.quantity) || 1
+          itemNamesByOrder[row.order_id].push(`${productName} x${qty}`)
         }
       }
       
@@ -420,6 +433,7 @@ export async function GET(request: NextRequest) {
       type: r.booking_type === 'sale' ? 'sale' : 'rental',
       booking_kind: 'product' as const,
       total_safas: productTotals[r.id] || 0,
+      item_names: itemNamesByOrder[r.id] || [],
       has_items: ordersWithAnyItems.has(r.id),
       is_archived: r.is_archived || false,
       // Modification fields for calendar tab
@@ -432,6 +446,7 @@ export async function GET(request: NextRequest) {
     const directSalesIds = (directSalesRes.data || []).map((r: any) => r.id)
     let directSalesTotals: Record<string, number> = {}
     const directSalesWithAnyItems = new Set<string>()
+    const itemNamesByDirectSale: Record<string, string[]> = {}
 
     if (directSalesIds.length > 0) {
       // Fetch from direct_sales_items with product_id
@@ -464,12 +479,13 @@ export async function GET(request: NextRequest) {
       ]
       const uniqueProductIds = [...new Set(allProductIds)]
       
-      // Fetch product details with category info
+      // Fetch product details (name + category) with category info
       let dsCategoryMap: Record<string, string> = {}
+      let dsNameMap: Record<string, string> = {}
       if (uniqueProductIds.length > 0) {
         const { data: products } = await supabase
           .from('products')
-          .select('id, category_id')
+          .select('id, name, category_id')
           .in('id', uniqueProductIds)
         
         const categoryIds = [...new Set(products?.map(p => p.category_id).filter(Boolean) || [])]
@@ -489,14 +505,24 @@ export async function GET(request: NextRequest) {
             dsCategoryMap[product.id] = catIdToName[product.category_id] || ''
           }
         }
+
+        for (const product of products || []) {
+          dsNameMap[product.id] = product.name || ''
+        }
       }
       
-      // Count only Safa products
+      // Count only Safa products, and separately collect every selected item's name
       for (const row of dsiItems || []) {
         const categoryName = dsCategoryMap[row.product_id] || ''
         const isSafa = categoryName.toUpperCase().includes('SAFA')
         if (isSafa) {
           directSalesTotals[row.sale_id] = (directSalesTotals[row.sale_id] || 0) + (Number(row.quantity) || 0)
+        }
+        const productName = dsNameMap[row.product_id]
+        if (row.sale_id && productName) {
+          if (!itemNamesByDirectSale[row.sale_id]) itemNamesByDirectSale[row.sale_id] = []
+          const qty = Number(row.quantity) || 1
+          itemNamesByDirectSale[row.sale_id].push(`${productName} x${qty}`)
         }
       }
       for (const row of poiItems || []) {
@@ -504,6 +530,12 @@ export async function GET(request: NextRequest) {
         const isSafa = categoryName.toUpperCase().includes('SAFA')
         if (isSafa) {
           directSalesTotals[row.order_id] = (directSalesTotals[row.order_id] || 0) + (Number(row.quantity) || 0)
+        }
+        const productName = dsNameMap[row.product_id]
+        if (row.order_id && productName) {
+          if (!itemNamesByDirectSale[row.order_id]) itemNamesByDirectSale[row.order_id] = []
+          const qty = Number(row.quantity) || 1
+          itemNamesByDirectSale[row.order_id].push(`${productName} x${qty}`)
         }
       }
     }
@@ -553,6 +585,7 @@ export async function GET(request: NextRequest) {
       type: 'sale' as const,
       booking_kind: 'product' as const,
       total_safas: directSalesTotals[r.id] || 0,
+      item_names: itemNamesByDirectSale[r.id] || [],
       has_items: directSalesWithAnyItems.has(r.id),
       is_archived: r.is_archived || false,
     }))

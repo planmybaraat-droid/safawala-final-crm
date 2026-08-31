@@ -40,6 +40,7 @@ import {
   ShoppingCart,
   TrendingUp,
   CheckCircle,
+  CheckCircle2,
   Printer,
 } from "lucide-react"
 import jsPDF from 'jspdf'
@@ -483,6 +484,16 @@ export default function BookingsPage() {
       return pending <= 0
     }).length,
     revenue: modeBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0),
+    // Orders Completed: rentals that have been returned, or sales marked order-complete
+    completed: modeBookings.filter(b => {
+      const isRental = (b as any).type === 'rental' || (b as any).type === 'package'
+      return isRental ? b.status === 'returned' : b.status === 'order_complete'
+    }).length,
+    // In Use (Active): rentals genuinely out with the customer right now — delivered, with items, not yet returned
+    active: modeBookings.filter(b => {
+      const isRental = (b as any).type === 'rental' || (b as any).type === 'package'
+      return isRental && b.status === 'delivered' && (b as any).has_items
+    }).length,
     // Additional insights
     rentalCount: activeBookings.filter(b => (b as any).type === 'rental' || (b as any).type === 'package').length,
     saleCount: activeBookings.filter(b => (b as any).type === 'sale').length,
@@ -1401,9 +1412,10 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      <div className="booking-stats-grid grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="booking-stats-grid grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {loading ? (
           <>
+            <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
@@ -1537,10 +1549,30 @@ export default function BookingsPage() {
                 </div>
                 <div className="mt-3">
                   <div className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 tracking-tight">
-                    {smartStats.delivered}
+                    {bookingMode === "rental" ? smartStats.active : smartStats.delivered}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1.5">
                     {bookingMode === "rental" ? "Rentals currently active" : "Sales successfully delivered"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Card 7: Orders Completed */}
+            <Card className="booking-stat-card border-violet-100 dark:border-violet-900/30 bg-violet-50/10 dark:bg-violet-950/10 shadow-sm hover:shadow-md transition-all duration-300">
+              <CardContent className="p-4 flex flex-col justify-between h-full min-h-[140px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">
+                    Orders Completed
+                  </span>
+                  <CheckCircle2 className="h-4 w-4 text-violet-500" />
+                </div>
+                <div className="mt-3">
+                  <div className="text-3xl font-extrabold text-violet-600 dark:text-violet-400 tracking-tight">
+                    {smartStats.completed}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    {bookingMode === "rental" ? "Rentals returned & completed" : "Orders fully completed"}
                   </p>
                 </div>
               </CardContent>

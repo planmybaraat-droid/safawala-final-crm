@@ -341,6 +341,8 @@ export default function EditProductPage() {
         color: formData.color || null,
         material: formData.material || null,
         price: formData.price,
+        // Keep sale_price in sync with price — booking/sale screens read sale_price, not price.
+        sale_price: formData.price,
         regular_price: formData.regular_price,
         rental_price: formData.rental_price,
         cost_price: formData.cost_price,

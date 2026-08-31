@@ -412,6 +412,8 @@ export function ProductEditorModal({
 
       const payload = {
         ...formData,
+        // Keep sale_price in sync with price — booking/sale screens read sale_price, not price.
+        sale_price: formData.price,
         // Convert empty strings to null for UUID fields
         category_id: formData.category_id || null,
         subcategory_id: formData.subcategory_id || null,

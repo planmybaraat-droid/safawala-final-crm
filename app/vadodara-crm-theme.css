@@ -525,6 +525,18 @@ body.vadodara-crm-theme [class*="shadow-lg"] {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.055) !important;
 }
 
+/* Printed documents (invoices, etc.) must never carry this decorative drop-shadow —
+   it shows up as a stray gray/gradient smudge on the page. The rule above applies
+   unconditionally with !important, which was silently beating pages' own
+   `print:shadow-none` intent (same class of bug as the booking-new-topbar fix above). */
+@media print {
+  body.vadodara-crm-theme [class*="shadow-sm"],
+  body.vadodara-crm-theme [class*="shadow-md"],
+  body.vadodara-crm-theme [class*="shadow-lg"] {
+    box-shadow: none !important;
+  }
+}
+
 body.vadodara-crm-theme .bg-indigo-50,
 body.vadodara-crm-theme .bg-violet-50,
 body.vadodara-crm-theme .bg-purple-50 {
@@ -3858,6 +3870,39 @@ body.vadodara-crm-theme[data-crm-visual-scope="main"] .booking-new-page .booking
   box-shadow: 0 12px 30px rgba(30, 20, 70, 0.055) !important;
 }
 
+/* Rental package picker: the generic white-card rule above (matched via
+   [class*="rounded-lg"][class*="border"]) was neutralizing the selected-package
+   green highlight. Give the selected card an id so this override wins regardless
+   of stylesheet order, and make the selection unmistakable. */
+#selected-package-card {
+  background: #ecfdf3 !important;
+  background-image: none !important;
+  border: 2px solid #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25), 0 10px 22px rgba(16, 124, 16, 0.12) !important;
+}
+
+/* "Selected Package" summary card: .booking-new-section-card itself is a direct target of the
+   generic white-card rule above (border-left-width forced to 1px, all sides forced to the same
+   lavender color), so a plain border-l-4/border-l-green-500 utility never actually shows through
+   there either. Override it explicitly by id so this card reads as its own distinct, tinted
+   section instead of blending into the plain white package list above it. */
+#package-summary-card {
+  background: #f0fdf4 !important;
+  background-image: none !important;
+  border-color: #bbf7d0 !important;
+  border-left-color: #22c55e !important;
+  border-left-width: 4px !important;
+}
+
+/* Same fix for the "Add Safas to Package" info card (blue accent). */
+#add-safas-info-card {
+  background: #eff6ff !important;
+  background-image: none !important;
+  border-color: #bfdbfe !important;
+  border-left-color: #3b82f6 !important;
+  border-left-width: 4px !important;
+}
+
 body.vadodara-crm-theme[data-crm-visual-scope="main"] .booking-new-section-card:hover {
   border-color: #d9cdf0 !important;
   box-shadow: 0 16px 36px rgba(30, 20, 70, 0.075) !important;
@@ -4322,6 +4367,15 @@ body.vadodara-crm-theme[data-crm-visual-scope="main"] .booking-new-topbar > div:
 
 body.vadodara-crm-theme[data-crm-visual-scope="main"] .booking-new-topbar > div:last-child button:disabled:last-child svg {
   color: #9b91ad !important;
+}
+
+/* Printing this page must NOT include the on-screen toolbar (Back / All Bookings / Print / etc).
+   The rule above forces display: grid at all times with high specificity, which was silently
+   beating the app's own print:hidden intent — this print-scoped override restores it. */
+@media print {
+  body.vadodara-crm-theme[data-crm-visual-scope="main"] .booking-new-topbar {
+    display: none !important;
+  }
 }
 
 @media (max-width: 980px) {

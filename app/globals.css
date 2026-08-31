@@ -409,6 +409,14 @@
   }
 }
 
+/* Reduce the blank space Chrome's own print header/footer (date, URL, page number)
+   leaves at the top and bottom of every printed page. The text itself is a browser
+   setting (uncheck "Headers and footers" in the print dialog to remove it entirely) —
+   this just keeps the wasted margin small when it is left on. */
+@page {
+  margin: 0.4in 0.3in;
+}
+
 /* ============================================
    DESKTOP COMPACT MODE OVERRIDES
    ============================================ */

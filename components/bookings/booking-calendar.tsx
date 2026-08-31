@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { format, isBefore, startOfDay } from "date-fns"
-import { Search, CalendarIcon, Package, Eye, Wrench, Lock, Trash2, User, MapPin, Loader2, Scissors } from "lucide-react"
+import { Search, CalendarIcon, Package, Eye, Wrench, Lock, Trash2, User, MapPin, Loader2, Scissors, Star, Pencil, Printer, RefreshCw, Archive } from "lucide-react"
 import { ItemsDisplayDialog, ItemsSelectionDialog, CompactItemsDisplayDialog } from "@/components/shared"
 import type { SelectedItem } from "@/components/shared/types/items"
 import { PincodeService } from "@/lib/pincode-service"
+import { isMuhuratDate } from "@/lib/muhurat-dates"
 import { useToast } from "@/hooks/use-toast"
 import { usePathname } from "next/navigation"
 
@@ -285,6 +286,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
           paid_amount: Number(r.paid_amount) || 0,
           status: r.status,
           total_safas: Number(r.total_safas) || 0,
+          item_names: Array.isArray(r.item_names) ? r.item_names : [],
           assigned_staff_name: undefined,
           booking_items: [],
           customer: {
@@ -455,10 +457,9 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
     setModificationBookings(dayModifications)
     setSelectedCalendarBooking(dayBookings.length > 0 ? dayBookings[0] : null)
     setActiveTab(dayBookings.length > 0 ? 'events' : isLocked ? 'locked' : (dayModifications.length > 0 ? 'modifications' : 'events'))
+    setSelectedDate(date)
     setShowDateDetails(true)
     console.log("[v0] Popup should open, showDateDetails:", true)
-    // Clear selection immediately to prevent black selected state
-    setTimeout(() => setSelectedDate(undefined), 0)
   }
 
   const filteredDateBookings = dateBookings.filter(
@@ -586,15 +587,15 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
 
           <div className="flex items-center gap-4 text-[11px] flex-wrap">
             <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-white border border-slate-300 dark:border-slate-700 shadow-sm" />
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-100 dark:bg-green-950 border border-green-300 shadow-sm" />
               <span className="text-slate-600 dark:text-slate-400 font-medium">0 Bookings</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 shadow-sm" />
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-300 shadow-sm" />
               <span className="text-slate-600 dark:text-slate-400 font-medium">1-10 Bookings</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-orange-100 dark:bg-orange-950 border border-orange-300 shadow-sm" />
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-100 dark:bg-red-950 border border-red-300 shadow-sm" />
               <span className="text-slate-600 dark:text-slate-400 font-medium">10+ Bookings</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -608,6 +609,10 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
             <div className="flex items-center gap-1.5">
               <Lock className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
               <span className="text-slate-600 dark:text-slate-400 font-medium">Locked Date</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Star className="h-3 w-3 text-amber-500 fill-amber-400" />
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Muhurat Date</span>
             </div>
           </div>
         </div>
@@ -634,13 +639,14 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
             const lockedDetails = lockedDateObjects.find(ld => ld.locked_date === dateStr)
             
             const isPastDate = isBefore(startOfDay(day), startOfDay(new Date()))
-            let cellBgClass = "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+            const isMuhurat = isMuhuratDate(dateStr)
+            let cellBgClass = "bg-green-50 dark:bg-green-950/20 text-green-900 dark:text-green-300 border-green-100 dark:border-green-900/10"
             if (isPastDate) {
               cellBgClass = "bg-slate-100 dark:bg-slate-900/65 text-slate-400 dark:text-slate-500 opacity-80 cursor-not-allowed"
             } else if (dayBookings.length > 0 && dayBookings.length <= 10) {
-              cellBgClass = "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/10"
+              cellBgClass = "bg-blue-50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300 border-blue-100 dark:border-blue-900/10"
             } else if (dayBookings.length > 10) {
-              cellBgClass = "bg-orange-50 dark:bg-orange-950/20 text-orange-900 dark:text-orange-300 border-orange-100 dark:border-orange-900/10"
+              cellBgClass = "bg-red-50 dark:bg-red-950/20 text-red-900 dark:text-red-300 border-red-100 dark:border-red-900/10"
             }
             
             return (
@@ -648,7 +654,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                 key={dateStr} 
                 onClick={() => handleDateClick(day)}
                 className={`${cellBgClass} min-h-[110px] p-2 flex flex-col justify-between border-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all cursor-pointer group ${
-                  isToday ? "ring-1 ring-inset ring-indigo-500 bg-indigo-50/5" : ""
+                  isToday ? "ring-1 ring-inset ring-indigo-500 bg-indigo-50/5" : isMuhurat ? "ring-2 ring-inset ring-amber-400" : ""
                 }`}
               >
                 <div className="flex justify-between items-center mb-1">
@@ -657,12 +663,19 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                   }`}>
                     {day.getDate()}
                   </span>
-                  
-                  {dayModifications.length > 0 && (
-                    <span className="animate-pulse" title="Modifications Pending">
-                      <Scissors className="h-3 w-3 text-amber-500" />
-                    </span>
-                  )}
+
+                  <div className="flex items-center gap-1">
+                    {isMuhurat && (
+                      <span title="Muhurat Date">
+                        <Star className="h-3 w-3 text-amber-500 fill-amber-400" />
+                      </span>
+                    )}
+                    {dayModifications.length > 0 && (
+                      <span className="animate-pulse" title="Modifications Pending">
+                        <Scissors className="h-3 w-3 text-amber-500" />
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex-1 flex flex-col gap-1 overflow-y-auto max-h-[80px] scrollbar-none">
@@ -718,25 +731,41 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
         }}
       >
         <DialogContent className={`${compact ? 'max-w-md' : 'max-w-4xl'} max-h-[90vh] overflow-y-auto`}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 flex-wrap">
-              <CalendarIcon className="w-5 h-5" />
-              Bookings — {selectedDate && format(selectedDate, "MMMM dd, yyyy")}
+          <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-3 flex-wrap">
+              <span className="flex items-center justify-center h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 shrink-0">
+                <CalendarIcon className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" />
+              </span>
+              <span className="flex flex-col">
+                <span className="text-base font-bold leading-tight">
+                  {selectedDate ? format(selectedDate, "MMMM dd, yyyy") : "Bookings"}
+                </span>
+                {selectedDate && (
+                  <span className="text-xs font-normal text-slate-400">
+                    {format(selectedDate, "EEEE")}
+                    {isMuhuratDate(format(selectedDate, "yyyy-MM-dd")) && (
+                      <span className="inline-flex items-center gap-1 ml-2 text-amber-600 dark:text-amber-400 font-semibold">
+                        <Star className="h-3 w-3 fill-amber-400" /> Muhurat Date
+                      </span>
+                    )}
+                  </span>
+                )}
+              </span>
             </DialogTitle>
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'events' | 'modifications' | 'locked')} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="events" className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4" />
+            <TabsList className="grid w-full grid-cols-3 h-10 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg">
+              <TabsTrigger value="events" className="flex items-center gap-1.5 text-xs font-semibold rounded-md data-[state=active]:shadow-sm">
+                <CalendarIcon className="w-3.5 h-3.5" />
                 Events ({dateBookings.length})
               </TabsTrigger>
-              <TabsTrigger value="modifications" className="flex items-center gap-2">
-                <Wrench className="w-4 h-4" />
+              <TabsTrigger value="modifications" className="flex items-center gap-1.5 text-xs font-semibold rounded-md data-[state=active]:shadow-sm">
+                <Wrench className="w-3.5 h-3.5" />
                 Mod. ({modificationBookings.length})
               </TabsTrigger>
-              <TabsTrigger value="locked" className="flex items-center gap-2">
-                <Lock className="w-4 h-4" />
+              <TabsTrigger value="locked" className="flex items-center gap-1.5 text-xs font-semibold rounded-md data-[state=active]:shadow-sm">
+                <Lock className="w-3.5 h-3.5" />
                 Locked ({lockedDateObjects.length})
               </TabsTrigger>
             </TabsList>
@@ -775,7 +804,9 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                         const rows = filteredDateBookings.map((b: any, i: number) => {
                           const safaInfo = b.package_details
                             ? `${b.package_details.name}${b.variant_name ? ' / ' + b.variant_name : ''} (${b.total_safas || 0} safas${b.extra_safas ? '+' + b.extra_safas : ''})`
-                            : b.total_safas ? `${b.total_safas} safas` : 'No items'
+                            : b.total_safas ? `${b.total_safas} safas`
+                              : (Array.isArray(b.item_names) && b.item_names.length > 0) ? b.item_names.join(', ')
+                                : 'No items'
                           return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
                             <td style="border:1px solid #e5e7eb;padding:8px;font-weight:600;color:#4f46e5">${b.booking_number}</td>
                             <td style="border:1px solid #e5e7eb;padding:8px">${b.customer_name}<br/><span style="color:#6b7280;font-size:11px">${b.customer_phone||''}</span></td>
@@ -829,6 +860,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                             const extraSafas = b.extra_safas || 0
                             const pkgName = b.package_details?.name || null
                             const variantName = b.variant_name || null
+                            const itemNames: string[] = Array.isArray(b.item_names) ? b.item_names : []
 
                             return (
                               <tr key={b.id} className="hover:bg-slate-50 transition-colors">
@@ -861,6 +893,13 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                                       </div>
                                     ) : totalSafas > 0 ? (
                                       <div className="text-[11px] text-slate-600">👤 {totalSafas} Safas</div>
+                                    ) : itemNames.length > 0 ? (
+                                      <div className="text-[11px] text-slate-700 leading-snug" title={itemNames.join(', ')}>
+                                        {itemNames.slice(0, 2).join(', ')}
+                                        {itemNames.length > 2 && (
+                                          <span className="text-slate-400"> +{itemNames.length - 2} more</span>
+                                        )}
+                                      </div>
                                     ) : (
                                       <span className="text-[10px] text-slate-400 italic">Pending selection</span>
                                     )
@@ -868,6 +907,13 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                                     <div>
                                       <div className="font-semibold text-slate-700 text-[11px]">👤 {totalSafas} Safas</div>
                                       <div className="text-[10px] text-slate-400">Barati Safa</div>
+                                    </div>
+                                  ) : itemNames.length > 0 ? (
+                                    <div className="text-[11px] text-slate-700 leading-snug" title={itemNames.join(', ')}>
+                                      {itemNames.slice(0, 2).join(', ')}
+                                      {itemNames.length > 2 && (
+                                        <span className="text-slate-400"> +{itemNames.length - 2} more</span>
+                                      )}
                                     </div>
                                   ) : (
                                     <span className="text-[10px] text-slate-400 italic">No items</span>
@@ -896,18 +942,18 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                                     <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-slate-100"
                                       title="Edit Booking"
                                       onClick={() => window.open(`${bookingEditorPath}?mode=edit&id=${b.id}`, '_blank')}>
-                                      <span className="text-xs">✏️</span>
+                                      <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-green-50 hover:text-green-700"
                                       title="Print Invoice"
                                       onClick={() => window.open(`${bookingEditorPath}?mode=edit&id=${b.id}&print=true`, '_blank')}>
-                                      <span className="text-xs">🖨️</span>
+                                      <Printer className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button size="icon" variant="ghost"
                                       className="h-7 w-7 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded"
                                       title="Convert to New Invoice"
                                       onClick={() => setConvertTypeBooking(b)}>
-                                      <span className="text-xs">🔄</span>
+                                      <RefreshCw className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-red-50 hover:text-red-600"
                                       title="Archive"
@@ -922,7 +968,7 @@ export function BookingCalendar({ franchiseId, compact = false, mini = false, on
                                           if (res.ok) { toast({ title: 'Archived' }); fetchBookings(); setShowDateDetails(false) }
                                         } catch { toast({ title: 'Error', variant: 'destructive' }) }
                                       }}>
-                                      <span className="text-xs">📦</span>
+                                      <Archive className="h-3.5 w-3.5" />
                                     </Button>
                                   </div>
                                 </td>
